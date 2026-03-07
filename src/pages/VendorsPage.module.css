@@ -1,0 +1,30 @@
+.page   { padding: var(--page-pad); }
+.header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
+.pageTitle { font-size:1.45rem; margin-bottom:2px; }
+
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+
+.vendorTop { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.vendorName { font-family:'Syne',sans-serif; font-size:.92rem; font-weight:700; color:var(--text); }
+.vendorCity { display:flex; align-items:center; gap:4px; font-size:.72rem; color:var(--text3); margin-top:3px; }
+.vendorInfo { display:flex; flex-direction:column; gap:5px; font-size:.83rem; color:var(--text2); margin-bottom:14px; }
+
+.delBtn {
+  background:none; border:1px solid var(--border); color:var(--text3);
+  border-radius:var(--r); padding:5px; cursor:pointer; display:flex; transition:all .14s;
+}
+.delBtn:hover { background:var(--red-dim); border-color:rgba(248,81,73,.2); color:var(--red); }
+
+.preview {
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+  padding:12px; font-size:.76rem; white-space:pre-wrap;
+  font-family:'Instrument Sans',sans-serif; color:var(--text2);
+  max-height:180px; overflow-y:auto; margin-bottom:14px; line-height:1.5;
+}
+
+.empty {
+  background:var(--surface); border:1px dashed var(--border);
+  border-radius:var(--r-lg); padding:60px; text-align:center; color:var(--text3);
+}
+
+@media (max-width:480px) { .grid { grid-template-columns:1fr; } }

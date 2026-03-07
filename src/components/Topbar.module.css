@@ -1,0 +1,85 @@
+.topbar {
+  position: fixed; top: 0;
+  left: var(--sidebar-w); right: 0;
+  height: var(--topbar-h);
+  background: rgba(13,17,23,.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 18px; z-index: 100;
+  gap: 8px;
+}
+
+.left  { display: flex; align-items: center; gap: 8px; min-width: 0; flex-shrink: 1; }
+.right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* ── Hamburguer ── */
+.menuBtn {
+  display: none;
+  background: none; border: none; color: var(--text2);
+  cursor: pointer; padding: 5px; border-radius: var(--r);
+  align-items: center; justify-content: center;
+  flex-shrink: 0; transition: color .15s;
+}
+.menuBtn:hover { color: var(--text); }
+
+/* ── Breadcrumb ── */
+.breadcrumb { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.bSub  { font-size: .75rem; color: var(--text3); white-space: nowrap; }
+.bSep  { color: var(--border2); font-size: .75rem; }
+.bPage { font-size: .84rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+/* ── Portal button ── */
+.portalBtn {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 6px 11px;
+  font-size: .76rem; font-weight: 600; color: var(--text2);
+  cursor: pointer; transition: all .15s;
+  font-family: 'Instrument Sans', sans-serif;
+  white-space: nowrap;
+}
+.portalBtn:hover { color: var(--text); border-color: var(--border2); }
+.pText { } /* texto escondido no mobile */
+
+/* ── User chip ── */
+.userChip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 100px; padding: 3px 10px 3px 3px;
+  flex-shrink: 0;
+}
+.avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--amber-dim); border: 1px solid var(--amber-glow);
+  color: var(--amber); font-size: .7rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.uname { font-size: .76rem; font-weight: 600; color: var(--text2); }
+
+/* ── Logout ── */
+.logoutBtn {
+  background: none; border: 1px solid var(--border); border-radius: var(--r);
+  color: var(--text3); cursor: pointer; padding: 5px; display: flex;
+  transition: all .15s; flex-shrink: 0;
+}
+.logoutBtn:hover { color: var(--red); border-color: rgba(248,81,73,.3); background: var(--red-dim); }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .topbar  { left: 0; padding: 0 12px; }
+  .menuBtn { display: flex; }
+
+  /* esconde textos — só ícones no mobile */
+  .bSub, .bSep { display: none; }
+  .pText        { display: none; }
+  .uname        { display: none; }
+
+  /* portal vira só ícone */
+  .portalBtn { padding: 6px 8px; }
+
+  /* userchip sem padding direito */
+  .userChip { padding: 3px; border-radius: 50%; }
+}

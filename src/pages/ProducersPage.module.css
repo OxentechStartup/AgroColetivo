@@ -1,0 +1,57 @@
+.page    { padding: var(--page-pad); }
+.heading { margin-bottom: 20px; }
+.pageTitle { font-size: 1.45rem; margin-bottom: 2px; }
+
+.empty {
+  background:var(--surface); border:1px dashed var(--border);
+  border-radius:var(--r-lg); padding:60px; text-align:center; color:var(--text3);
+}
+
+/* desktop: table inside card */
+.tableCard {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden;
+}
+.tableWrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+/* mobile: cards */
+.cards { display:none; flex-direction:column; gap:6px; }
+
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden;
+}
+.cardBtn {
+  width:100%; display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; gap:10px; background:none; border:none;
+  cursor:pointer; font-family:'Instrument Sans',sans-serif; text-align:left;
+}
+.cardLeft  { flex:1; min-width:0; }
+.cardRight { text-align:right; flex-shrink:0; }
+
+.pName  { font-weight:700; font-size:.9rem; color:var(--text); }
+.pPhone { display:flex; align-items:center; gap:3px; font-size:.7rem; color:var(--text3); margin-top:2px; }
+
+.totalVal  { font-family:'Syne',sans-serif; font-size:1rem; font-weight:800; color:var(--green); }
+.cardMeta2 { font-size:.68rem; color:var(--text3); margin-top:1px; }
+
+.cardBody {
+  border-top:1px solid var(--border); background:var(--surface2);
+  padding:12px 16px; display:flex; flex-direction:column; gap:7px;
+}
+.detailRow {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:.79rem; gap:10px;
+}
+.detailRow span:first-child { color:var(--text3); }
+.detailRow span:last-child  { color:var(--text); font-weight:500; text-align:right; }
+.detailTotal {
+  border-top:1px solid var(--border); padding-top:7px; margin-top:2px;
+  font-weight:700;
+}
+.detailTotal span:last-child { color:var(--green); font-size:.94rem; }
+
+@media (max-width: 680px) {
+  .tableCard { display:none; }
+  .cards     { display:flex; }
+}

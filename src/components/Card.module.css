@@ -1,0 +1,17 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+  gap: 10px; flex-wrap: wrap;
+}
+
+.title { font-family:'Syne',sans-serif; font-size:.9rem; font-weight:700; color:var(--text); }
+
+.body    { padding: 18px; }
+.noPad   { padding: 0; }

@@ -1,0 +1,66 @@
+.page    { padding: var(--page-pad); max-width: 1100px; }
+.heading { margin-bottom: 22px; }
+.heading h1 { font-size: 1.45rem; margin-bottom: 2px; }
+
+.statsGrid {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 10px; margin-bottom: 22px;
+}
+
+.stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 18px 16px;
+  position: relative; overflow: hidden;
+}
+.stat::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.stat_amber::after { background: var(--amber); }
+.stat_green::after { background: var(--green); }
+.stat_blue::after  { background: var(--blue); }
+.stat_red::after   { background: var(--red); }
+
+.statIcon  { margin-bottom: 10px; }
+.stat_amber .statIcon { color: var(--amber); }
+.stat_green .statIcon { color: var(--green); }
+.stat_blue  .statIcon { color: var(--blue); }
+.stat_red   .statIcon { color: var(--red); }
+
+.statValue { font-family: 'Syne', sans-serif; font-size: 1.9rem; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 4px; }
+.statLabel { font-size: .76rem; font-weight: 600; color: var(--text2); }
+.statSub   { font-size: .68rem; color: var(--text3); margin-top: 2px; }
+
+.row { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; align-items: flex-start; }
+
+/* chart */
+.chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding-bottom: 2px; }
+.barGroup { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; gap: 5px; min-width: 0; }
+.barTrack { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+.bar {
+  width: 52%; min-height: 4px; border-radius: 4px 4px 0 0;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 4px; transition: height .5s ease; opacity: .85;
+}
+.bar:hover { opacity: 1; }
+.barVal    { font-size: .66rem; font-weight: 700; color: #0D1117; }
+.barLabel  { font-size: .62rem; color: var(--text3); text-align: center; line-height: 1.2; overflow: hidden; max-height: 2.4em; width: 100%; }
+
+.legend    { display: flex; gap: 10px; flex-wrap: wrap; }
+.legendDot { display: flex; align-items: center; gap: 5px; font-size: .68rem; color: var(--text3); }
+
+.campaignRow { padding: 13px 16px; }
+.rowBorder   { border-bottom: 1px solid var(--border); }
+.rowTop  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
+.rowName { font-weight: 600; font-size: .88rem; }
+.rowMeta { display: flex; gap: 10px; font-size: .7rem; color: var(--text3); flex-wrap: wrap; margin-top: 5px; }
+
+.empty { text-align: center; padding: 40px; color: var(--text3); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.empty p { font-size: .84rem; }
+
+@media (max-width: 1050px) { .row { grid-template-columns: 1fr; } }
+@media (max-width: 860px)  { .statsGrid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px)  {
+  .statsGrid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { padding: 14px 12px; }
+  .statValue { font-size: 1.6rem; }
+}
