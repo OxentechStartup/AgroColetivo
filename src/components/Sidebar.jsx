@@ -42,7 +42,7 @@ export function Sidebar({ page, setPage, open, onClose, user, blocked }) {
 
   return (
     <>
-      {open && <div className={styles.overlay} onClick={onClose}/>}
+      <div className={[styles.overlay, open ? styles.overlayOpen : ""].join(" ")} onClick={onClose}/>
       <aside className={`${styles.sidebar} ${open ? styles.open : ''}`}>
         <div className={styles.brandRow}>
           <img src="https://i.imgur.com/clDJyAh.png" alt="AgroColetivo" width="28" height="28" style={{ borderRadius: 7, objectFit: "cover", flexShrink: 0 }}/>

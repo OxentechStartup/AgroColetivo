@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Package, Clock, CheckCircle, ChevronDown, ChevronUp, TrendingUp, DollarSign, MessageCircle, Truck } from 'lucide-react'
+import { Package, Clock, CheckCircle, ChevronDown, ChevronUp, TrendingUp, DollarSign, Truck } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardBody } from '../components/Card'
 import { Badge }  from '../components/Badge'
 import { totalOrdered, STATUS_LABEL } from '../utils/data'
@@ -139,13 +139,6 @@ function CampaignQuoteCard({ campaign, vendor }) {
           {/* Banner de ganhos */}
           <EarningsBanner earnings={earnings} unit={campaign.unit}/>
 
-          <div className={styles.detailActions}>
-            <a href={waUrl} target="_blank" rel="noopener noreferrer" className={styles.waBtn}>
-              <MessageCircle size={13}/>
-              {hasMyLot ? 'Confirmar interesse' : 'Manifestar interesse'}
-            </a>
-          </div>
-
           <div className={styles.detailNote}>
             <Clock size={12}/> Entrega em Tabuleiro do Norte/CE
           </div>
@@ -156,7 +149,7 @@ function CampaignQuoteCard({ campaign, vendor }) {
 }
 
 export function VendorDashboardPage({ campaigns, vendors, user }) {
-  const vendor  = vendors.find(v => v.user_id === user?.id) ?? vendors?.[0] ?? null
+  const vendor  = vendors.find(v => v.user_id === user?.id) ?? null
   const open    = campaigns.filter(c => c.status === 'open' || c.status === 'negotiating')
   const closed  = campaigns.filter(c => c.status === 'closed')
 
