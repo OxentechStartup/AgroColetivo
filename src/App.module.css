@@ -1,17 +1,23 @@
-.app  { display: flex; height: 100vh; overflow: hidden; }
-
-.main {
-  margin-left: var(--sidebar-w);
-  flex: 1; min-width: 0;
-  display: flex; flex-direction: column;
-  height: 100vh; overflow: hidden;
+.app {
+  display: flex;
+  min-height: 100dvh;
 }
-
-.content {
+.main {
   flex: 1;
-  padding-top: var(--topbar-h);
-  overflow-y: auto;
+  margin-left: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--bg);
+  /* Prevent horizontal overflow from tables/panels */
   overflow-x: hidden;
 }
-
-@media (max-width: 768px) { .main { margin-left: 0; } }
+.content {
+  flex: 1;
+  overflow: hidden;
+  /* On desktop content has its own scroll per-page */
+}
+@media (max-width: 768px) {
+  .main    { margin-left: 0; overflow-x: hidden; }
+  .content { overflow: visible; flex: none; }
+}

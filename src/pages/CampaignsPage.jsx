@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { Plus, Share2, Lock, Unlock, CheckCircle, XCircle, Trash2, Phone, CalendarDays } from 'lucide-react'
+import {
+  Plus, Share2, Lock, Unlock, CheckCircle, XCircle, Trash2,
+  Phone, CalendarDays, MessageCircle, Info, ChevronLeft,
+} from 'lucide-react'
 import { Badge } from '../components/Badge'
 import { Button } from '../components/Button'
 import { ProgressBar } from '../components/ProgressBar'
@@ -10,7 +13,7 @@ import { NewCampaignModal } from '../components/NewCampaignModal'
 import { ProducerOrderModal } from '../components/ProducerOrderModal'
 import { ShareModal } from '../components/ShareModal'
 import { VendorOrderModal } from '../components/VendorOrderModal'
-import { totalOrdered, STATUS_LABEL } from '../utils/data'
+import { totalOrdered, STATUS_LABEL, campaignRealValue, campaignValueIsEstimate, calcPlatformFee } from '../utils/data'
 import { formatCurrency, displayPhone } from '../utils/masks'
 import { useToast } from '../hooks/useToast'
 import styles from './CampaignsPage.module.css'
@@ -21,45 +24,53 @@ const fmtDate = (iso) => {
   return `${d}/${m}/${y}`
 }
 
-export function CampaignsPage({ campaigns, vendors, actions }) {
-  const { addCampaign, addOrder, removeOrder, closeCampaign, reopenCampaign,
-          approvePending, rejectPending, addLot, removeLot, saveFinancials,
-          deleteCampaign } = actions
+export function CampaignsPage({ campaigns, vendors, actions, user }) {
+  const {
+    addCampaign, addOrder, removeOrder, closeCampaign, reopenCampaign,
+    approvePending, rejectPending, addLot, removeLot, saveFinancials,
+    deleteCampaign,
+  } = actions
   const { toast, showToast, clearToast } = useToast()
 
-  const [selectedId, setSelectedId] = useState(campaigns[0]?.id ?? null)
-  const [tab,        setTab]        = useState('orders')
-  const [showNew,    setShowNew]    = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [showShare,  setShowShare]  = useState(false)
-  const [showOrder,  setShowOrder]  = useState(false)
+  const [selectedId,      setSelectedId]      = useState(campaigns[0]?.id ?? null)
+  const [tab,             setTab]             = useState('orders')
+  const [showNew,         setShowNew]         = useState(false)
+  const [confirmDelete,   setConfirmDelete]   = useState(false)
+  const [showShare,       setShowShare]       = useState(false)
+  const [showOrder,       setShowOrder]       = useState(false)
   const [showVendorOrder, setShowVendorOrder] = useState(false)
+  const [mobileDetail,    setMobileDetail]    = useState(false)
 
   const active       = campaigns.find(c => c.id === selectedId) ?? null
   const pendingCount = active?.pendingOrders?.length ?? 0
 
-  // Botão "Fazer Pedido" só aparece quando:
-  // 1. meta de pedidos foi atingida (totalOrdered >= goalQty)
-  // 2. fornecedores cobrem toda a demanda (isFulfilled)
-  const activeStats  = active
+  const activeStats = active
     ? calcSupplyStats(active.lots ?? [], active.orders ?? [], active.freightTotal, active.markupTotal)
     : null
-  const goalMet      = active
+
+  const goalMet = active
     ? totalOrdered(active) >= active.goalQty && active.goalQty > 0 && (activeStats?.isFulfilled ?? false)
     : false
+
+  const activeTotalValue = active ? campaignRealValue(active) : 0
+  const activeIsEstimate = active ? campaignValueIsEstimate(active) : false
+  const { feeValue: activeFee } = calcPlatformFee(activeTotalValue, 1.5)
 
   const run = (fn, msg) => async (...args) => {
     try   { await fn(...args); showToast(msg) }
     catch (e) { showToast(e.message, 'error') }
   }
 
-  // Quando seleciona outra campanha, volta para aba ordens
-  const select = (id) => { setSelectedId(id); setTab('orders') }
+  const select = (id) => {
+    setSelectedId(id)
+    setTab('orders')
+    setMobileDetail(true)
+  }
 
   return (
     <div className={`${styles.page} page-enter`}>
 
-      <div className={styles.header}>
+      <div className={`${styles.header} ${mobileDetail ? styles.headerHidden : ''}`}>
         <div>
           <h1 className={styles.pageTitle}>Cotações</h1>
           <p className="text-muted">Compras coletivas em andamento</p>
@@ -71,8 +82,7 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
 
       <div className={styles.layout}>
 
-        {/* ── Lista lateral ── */}
-        <div className={styles.list}>
+        <div className={`${styles.list} ${mobileDetail ? styles.listHidden : ''}`}>
           {campaigns.length === 0
             ? <div className={styles.emptyList}>Nenhuma cotação ainda.</div>
             : campaigns.map(c => {
@@ -85,38 +95,64 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
                       <span className={styles.itemName}>{c.product}</span>
                       <Badge status={c.status}>{STATUS_LABEL[c.status]}</Badge>
                     </div>
-                    <ProgressBar value={totalOrdered(c)} goal={c.goalQty} unit={c.unit} compact/>
-                    <div className={styles.itemMeta}>
-                      <span>{c.orders.length} prod.</span>
-                      <span>·</span>
-                      <span>meta {c.goalQty} {c.unit}</span>
-                      {pend > 0 && <span className={styles.pendTag}>{pend} pendente{pend>1?'s':''}</span>}
+                    <div className={styles.itemTotalRow}>
+                      <span className={styles.itemMetaInline}>
+                        {c.orders.length} prod. · meta {c.goalQty} {c.unit}
+                        {pend > 0 && <span className={styles.pendTag}>{pend} pendente{pend>1?'s':''}</span>}
+                      </span>
+                      {campaignRealValue(c) > 0 && (
+                        <span className={styles.itemTotal}>
+                          {formatCurrency(campaignRealValue(c))}
+                        </span>
+                      )}
                     </div>
+                    <ProgressBar value={totalOrdered(c)} goal={c.goalQty} unit={c.unit} compact/>
                   </button>
                 )
               })
           }
         </div>
 
-        {/* ── Detalhe ── */}
         {active ? (
-          <div className={styles.detail}>
+          <div className={`${styles.detail} ${mobileDetail ? styles.detailVisible : ''}`}>
+            <button className={styles.backBtn} onClick={() => setMobileDetail(false)}>
+              <ChevronLeft size={16}/> Voltar para lista
+            </button>
 
             <div className={styles.detailHead}>
-              <h2 className={styles.detailTitle}>{active.product}</h2>
-              <div className={styles.detailMeta}>
-                <Badge status={active.status}>{STATUS_LABEL[active.status]}</Badge>
-                {active.deadline && (
-                  <span className="text-muted" style={{display:'flex',alignItems:'center',gap:4}}>
-                    <CalendarDays size={12}/> {fmtDate(active.deadline)}
-                  </span>
-                )}
+              <div className={styles.detailHeadLeft}>
+                <h2 className={styles.detailTitle}>{active.product}</h2>
+                <div className={styles.detailMeta}>
+                  <Badge status={active.status}>{STATUS_LABEL[active.status]}</Badge>
+                  {active.deadline && (
+                    <span className="text-muted" style={{display:'flex',alignItems:'center',gap:4}}>
+                      <CalendarDays size={12}/> {fmtDate(active.deadline)}
+                    </span>
+                  )}
+                </div>
               </div>
+              {activeTotalValue > 0 && (
+                <div className={styles.detailTotalBox}>
+                  <span className={styles.detailTotalLabel}>Valor total{activeIsEstimate ? ' est.' : ''}</span>
+                  <span className={styles.detailTotalValue}>{formatCurrency(activeTotalValue)}</span>
+                </div>
+              )}
             </div>
 
             <div className={styles.progressWrap}>
               <ProgressBar value={totalOrdered(active)} goal={active.goalQty} unit={active.unit}/>
             </div>
+
+            {activeTotalValue > 0 && (
+              <div className={styles.feeBanner}>
+                <Info size={13} style={{flexShrink:0}}/>
+                <span>
+                  Taxa da plataforma <strong>1,5%</strong> sobre o valor total{activeIsEstimate ? ' estimado' : ''}:
+                  {' '}<strong style={{color:'var(--primary)'}}>{formatCurrency(activeFee)}</strong>
+                  {' '}(total{activeIsEstimate ? ' est.' : ''}: {formatCurrency(activeTotalValue)})
+                </span>
+              </div>
+            )}
 
             {goalMet && (
               <div className={styles.goalBanner}>
@@ -125,12 +161,11 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
                   <span className={styles.goalBannerSub}>Fornecedores cobrem toda a demanda.</span>
                 </div>
                 <button className={styles.goalMetBtn} onClick={() => setShowVendorOrder(true)}>
-                  Fazer Pedido
+                  <MessageCircle size={14}/> Fazer Pedido
                 </button>
               </div>
             )}
 
-            {/* Estatísticas */}
             {(() => {
               const s = activeStats
               return (
@@ -141,7 +176,7 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
                     { l: 'Produtores',   v: active.orders.length },
                     { l: 'Pendentes',    v: pendingCount },
                     { l: 'Toneladas',    v: `${((totalOrdered(active)*(active.unitWeight??25))/1000).toFixed(1)} t` },
-                    { l: 'Preço médio',  v: s.avgPrice > 0 ? formatCurrency(s.avgPrice) : '—' },
+                    { l: 'Preço médio',  v: active.pricePerUnit > 0 ? formatCurrency(active.pricePerUnit) : (s.avgPrice > 0 ? formatCurrency(s.avgPrice) : '—') },
                   ].map(({ l, v }) => (
                     <div key={l} className={styles.stat}>
                       <span className={styles.statL}>{l}</span>
@@ -152,7 +187,6 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
               )
             })()}
 
-            {/* Ações */}
             <div className={styles.actions}>
               {active.status === 'open' || active.status === 'negotiating' ? <>
                 <Button variant="secondary" size="sm" onClick={() => setShowOrder(true)}>
@@ -177,27 +211,33 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
                   <Trash2 size={13}/> Apagar
                 </Button>
               </>}
+
+              {!goalMet && (active.status === 'open' || active.status === 'negotiating') && (active.lots?.length ?? 0) > 0 && (
+                <Button variant="whatsapp" size="sm" onClick={() => setShowVendorOrder(true)}>
+                  <MessageCircle size={13}/> Fazer Pedido
+                </Button>
+              )}
             </div>
 
-            {/* Tabs */}
             <div className={styles.tabs}>
-              <button className={`${styles.tab} ${tab==='orders'?styles.tabOn:''}`}
-                onClick={() => setTab('orders')}>
+              <button className={`${styles.tab} ${tab==='orders'?styles.tabOn:''}`} onClick={() => setTab('orders')}>
                 Aprovados ({active.orders.length})
               </button>
-              <button className={`${styles.tab} ${tab==='pending'?styles.tabOn:''}`}
-                onClick={() => setTab('pending')}>
+              <button className={`${styles.tab} ${tab==='pending'?styles.tabOn:''}`} onClick={() => setTab('pending')}>
                 Pendentes{pendingCount > 0 && <span className={styles.pendBadge}>{pendingCount}</span>}
               </button>
-              <button className={`${styles.tab} ${tab==='lots'?styles.tabOn:''}`}
-                onClick={() => setTab('lots')}>
+              <button className={`${styles.tab} ${tab==='lots'?styles.tabOn:''}`} onClick={() => setTab('lots')}>
                 Fornecedores{(active.lots?.length ?? 0) > 0 && <span className={styles.lotsBadge}>{active.lots.length}</span>}
               </button>
             </div>
 
-            {/* ── Aba: Aprovados ── */}
             {tab === 'orders' && (() => {
-              const s = calcSupplyStats(active.lots ?? [], active.orders, active.freightTotal, active.markupTotal)
+              const s         = calcSupplyStats(active.lots ?? [], active.orders, active.freightTotal, active.markupTotal)
+              // Prioriza pricePerUnit confirmado; fallback: preço médio ponderado dos lotes
+              const unitPrice = active.pricePerUnit > 0 ? active.pricePerUnit : (s.avgPrice > 0 ? s.avgPrice : null)
+              const n         = active.orders.length
+              const freightEach = n > 0 ? (active.freightTotal ?? 0) / n : 0
+              const markupEach  = n > 0 ? (active.markupTotal  ?? 0) / n : 0
               return (
                 <div className={styles.tableWrap}>
                   {active.orders.length === 0
@@ -205,19 +245,12 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
                     : (
                       <table className="tbl">
                         <thead><tr>
-                          <th>Produtor</th>
-                          <th>Qtd</th>
-                          <th>Ton.</th>
-                          <th>Preço médio/un.</th>
-                          <th>Total</th>
-                          <th></th>
+                          <th>Produtor</th><th>Qtd</th><th>Ton.</th><th>Preço/un.</th><th>Total</th><th></th>
                         </tr></thead>
                         <tbody>
                           {active.orders.map((o, i) => {
-                            // produto = preço médio ponderado × qtd do produtor
-                            const produto = s.avgPrice > 0 ? s.avgPrice * o.qty : null
-                            // total  = produto + frete/nBuyers + markup/nBuyers
-                            const total   = produto != null ? produto + s.freightEach + s.markupEach : null
+                            const produto = unitPrice != null ? unitPrice * o.qty : null
+                            const total   = produto  != null ? produto + freightEach + markupEach : null
                             return (
                               <tr key={i}>
                                 <td>
@@ -229,13 +262,13 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
                                 <td style={{whiteSpace:'nowrap'}}>{o.qty} {active.unit}</td>
                                 <td style={{color:'var(--text2)'}}>{((o.qty*(active.unitWeight??25))/1000).toFixed(1)} t</td>
                                 <td>
-                                  {s.avgPrice > 0
-                                    ? formatCurrency(s.avgPrice)
+                                  {unitPrice != null
+                                    ? formatCurrency(unitPrice)
                                     : <span style={{color:'var(--text3)'}}>—</span>}
                                 </td>
                                 <td>
                                   {total != null
-                                    ? <strong style={{color:'var(--green)'}}>{formatCurrency(total)}</strong>
+                                    ? <strong style={{color:'var(--primary)'}}>{formatCurrency(total)}</strong>
                                     : <span style={{color:'var(--text3)'}}>Aguardando preço</span>}
                                 </td>
                                 <td>
@@ -256,7 +289,6 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
               )
             })()}
 
-            {/* ── Aba: Pendentes ── */}
             {tab === 'pending' && (
               <div className={styles.tableWrap}>
                 {pendingCount === 0
@@ -292,7 +324,6 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
               </div>
             )}
 
-            {/* ── Aba: Fornecedores (Lotes) ── */}
             {tab === 'lots' && (
               <LotsPanel
                 campaign={active}
@@ -304,7 +335,9 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
             )}
           </div>
         ) : (
-          <div className={styles.noSel}>Selecione uma cotação ao lado</div>
+          <div className={`${styles.noSel} ${mobileDetail ? styles.detailVisible : ''}`}>
+            Selecione uma cotação ao lado
+          </div>
         )}
       </div>
 
@@ -320,26 +353,33 @@ export function CampaignsPage({ campaigns, vendors, actions }) {
           <ModalFooter>
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>Cancelar</Button>
             <Button variant="danger" onClick={async () => {
+              const deletedId = active.id
+              const remaining = campaigns.filter(c => c.id !== deletedId)
               setConfirmDelete(false)
+              setSelectedId(remaining[0]?.id ?? null)
+              setMobileDetail(false)
               try {
-                await deleteCampaign(active.id)
-                setSelectedId(campaigns.filter(c => c.id !== active.id)[0]?.id ?? null)
+                await deleteCampaign(deletedId)
                 showToast('Cotação apagada')
-              } catch(e) { showToast(e.message, 'error') }
+              } catch(e) {
+                setSelectedId(deletedId)
+                showToast(e.message, 'error')
+              }
             }}>Apagar</Button>
           </ModalFooter>
         </Modal>
       )}
-      {showNew   && <NewCampaignModal onClose={() => setShowNew(false)} onSave={run(addCampaign, 'Cotação criada!')} />}
-      {showShare && active && <ShareModal campaign={active} onClose={() => setShowShare(false)} />}
-      {showOrder && active && (
+
+      {showNew    && <NewCampaignModal onClose={() => setShowNew(false)} onSave={run(addCampaign, 'Cotação criada!')}/>}
+      {showShare  && active && <ShareModal campaign={active} onClose={() => setShowShare(false)}/>}
+      {showOrder  && active && (
         <ProducerOrderModal campaign={active} onClose={() => setShowOrder(false)}
-          onSave={run(o => addOrder(active.id, o), 'Pedido adicionado!')} />
+          onSave={run(o => addOrder(active.id, o), 'Pedido adicionado!')}/>
       )}
       {showVendorOrder && active && (
-        <VendorOrderModal campaign={active} vendors={vendors} onClose={() => setShowVendorOrder(false)} />
+        <VendorOrderModal campaign={active} vendors={vendors} onClose={() => setShowVendorOrder(false)}/>
       )}
-      {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast} />}
+      {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast}/>}
     </div>
   )
 }

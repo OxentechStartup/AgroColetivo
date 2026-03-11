@@ -1,0 +1,47 @@
+.page    { padding: var(--page-pad); display: flex; flex-direction: column; gap: 20px; overflow-y: auto; height: calc(100dvh - var(--topbar-h)); }
+.heading { display: flex; flex-direction: column; gap: 2px; }
+.heading h1 { font-size: 1.3rem; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  max-width: 560px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.emailRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.emailVal   { flex: 1; font-size: .84rem; color: var(--text2); }
+.emailBadge {
+  font-size: .68rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-dim);
+  border: 1px solid var(--primary-border);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+
+.section { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+
+@media (max-width: 540px) {
+  .page { padding: var(--page-pad); gap: 14px; }
+}
+
+/* ── Mobile overrides ── */
+@media (max-width: 768px) {
+  .page { height: auto; min-height: calc(100dvh - var(--topbar-h)); overflow-y: visible; }
+  .card { max-width: 100%; }
+}
+
+@media (max-width: 768px) {
+  .page { height: auto; min-height: calc(100dvh - var(--topbar-h)); overflow-y: visible; }
+}

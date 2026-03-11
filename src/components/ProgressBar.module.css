@@ -1,15 +1,10 @@
-.wrap       { display: flex; flex-direction: column; gap: 6px; }
-.wrapCompact { display: flex; flex-direction: column; gap: 4px; }
+.wrap         { display: flex; flex-direction: column; gap: 4px; }
+.labels       { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; color: var(--text2); }
+.pct          { font-weight: 600; color: var(--primary); font-size: .75rem; }
+.track        { height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.fill         { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-lt)); border-radius: 4px; transition: width .4s ease; }
+.fillOver     { background: linear-gradient(90deg, var(--primary), #15803d); }
 
-.labels { display: flex; justify-content: space-between; font-size: .73rem; color: var(--text2); }
-.pct    { font-weight: 700; color: var(--amber); font-family: 'Syne', sans-serif; }
-
-.track  { height: 5px; background: var(--surface3); border-radius: 100px; overflow: hidden; }
-.trackCompact { height: 3px; background: var(--surface3); border-radius: 100px; overflow: hidden; }
-
-.fill   {
-  height: 100%; border-radius: 100px;
-  background: linear-gradient(90deg, var(--amber), var(--amber2));
-  transition: width .5s ease;
-}
-.fillOver { background: linear-gradient(90deg, var(--green), #56e86b); }
+/* compact variant */
+.wrapCompact  { display: block; }
+.trackCompact { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }

@@ -1,103 +1,45 @@
 .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+  display: inline-flex; align-items: center; gap: 6px;
   border-radius: var(--r);
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  cursor: pointer;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 600; cursor: pointer;
   border: 1px solid transparent;
-  transition: all .16s;
-  text-decoration: none;
-  white-space: nowrap;
-  line-height: 1;
-  letter-spacing: .01em;
+  transition: all .14s; white-space: nowrap; line-height: 1;
 }
-
-/* sizes */
-.xs  { padding: 4px 10px;  font-size: .75rem; }
+.xs  { padding: 4px 9px;   font-size: .74rem; }
 .sm  { padding: 6px 12px;  font-size: .82rem; }
 .md  { padding: 8px 16px;  font-size: .875rem; }
-.lg  { padding: 11px 22px; font-size: .95rem; }
-
+.lg  { padding: 11px 20px; font-size: .95rem; }
 .block { width: 100%; justify-content: center; }
 
-/* primary — amber */
-.primary {
-  background: var(--amber);
-  color: #0D1117;
-  border-color: var(--amber);
-}
-.primary:hover:not(:disabled) {
-  background: var(--amber2);
-  border-color: var(--amber2);
-  box-shadow: 0 0 16px var(--amber-glow);
-  transform: translateY(-1px);
-}
+.primary  { background: var(--primary); color: #fff; border-color: var(--primary); }
+.primary:hover:not(:disabled)  { background: #15803d; border-color: #15803d; box-shadow: 0 2px 8px rgba(22,163,74,.3); }
 
-/* secondary — subtle surface */
-.secondary {
-  background: var(--surface3);
-  color: var(--text);
-  border-color: var(--border);
-}
-.secondary:hover:not(:disabled) {
-  background: var(--border);
-  border-color: var(--border2);
-}
+.secondary { background: var(--surface3); color: var(--text2); border-color: var(--border); }
+.secondary:hover:not(:disabled) { background: var(--border); color: var(--text); }
 
-/* outline */
-.outline {
-  background: transparent;
-  color: var(--text2);
-  border-color: var(--border);
-}
-.outline:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--border2);
-  background: var(--surface2);
-}
+.outline  { background: transparent; color: var(--text2); border-color: var(--border); }
+.outline:hover:not(:disabled)  { background: var(--surface3); color: var(--text); border-color: var(--border2); }
 
-/* ghost */
-.ghost {
-  background: transparent;
-  color: var(--text2);
-  border-color: transparent;
-}
-.ghost:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--surface2);
-}
+.ghost    { background: transparent; color: var(--text2); border-color: transparent; }
+.ghost:hover:not(:disabled)    { background: var(--surface3); color: var(--text); }
 
-/* green */
-.green {
-  background: var(--green-dim);
-  color: var(--green);
-  border-color: rgba(63,185,80,.25);
-}
-.green:hover:not(:disabled) {
-  background: rgba(63,185,80,.2);
-}
+.green    { background: var(--primary-dim); color: var(--primary); border-color: var(--primary-border); }
+.green:hover:not(:disabled)    { background: var(--primary-mid); }
 
-/* danger */
-.danger {
-  background: var(--red-dim);
-  color: var(--red);
-  border-color: rgba(248,81,73,.25);
-}
-.danger:hover:not(:disabled) {
-  background: rgba(248,81,73,.2);
-}
+.blue     { background: var(--blue-dim); color: var(--blue); border-color: var(--blue-border); }
+.blue:hover:not(:disabled)     { background: var(--blue-mid); }
 
-/* whatsapp */
-.whatsapp {
-  background: #25D366;
-  color: #fff;
-  border-color: #25D366;
-}
-.whatsapp:hover:not(:disabled) {
-  background: #1ebe5c;
-  box-shadow: 0 0 16px rgba(37,211,102,.3);
-}
+.danger   { background: var(--red-dim); color: var(--red); border-color: var(--red-border); }
+.danger:hover:not(:disabled)   { background: var(--red-mid); }
 
-.btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+.whatsapp { background: #25D366; color: #fff; border-color: #25D366; }
+.whatsapp:hover:not(:disabled) { background: #1ebe5c; }
+
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Mobile: ensure minimum tap target ── */
+@media (max-width: 600px) {
+  .md { min-height: 42px; padding: 9px 16px; }
+  .sm { min-height: 38px; }
+}

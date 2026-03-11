@@ -1,29 +1,38 @@
 import { useState, useCallback } from 'react'
-import { login, getSession, saveSession, clearSession } from '../lib/auth'
+import { login, register, getSession, saveSession, clearSession } from '../lib/auth'
 
 export function useAuth() {
   const [user,    setUser]    = useState(() => getSession())
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
 
-  const signIn = useCallback(async (username, password) => {
-    setLoading(true)
-    setError(null)
+  const signIn = useCallback(async (phone, password) => {
+    setLoading(true); setError(null)
     try {
-      const u = await login(username, password)
+      clearSession()           // garante que sessão anterior é apagada antes
+      const u = await login(phone, password)
       saveSession(u)
       setUser(u)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
+  }, [])
+
+  const signUp = useCallback(async (phone, password, role, extra = {}) => {
+    setLoading(true); setError(null)
+    try {
+      clearSession()           // garante que sessão anterior é apagada antes
+      const u = await register(phone, password, role, extra)
+      saveSession(u)
+      setUser(u)
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
   }, [])
 
   const signOut = useCallback(() => {
     clearSession()
     setUser(null)
+    setError(null)
   }, [])
 
-  return { user, loading, error, signIn, signOut }
+  return { user, loading, error, signIn, signUp, signOut }
 }

@@ -15,7 +15,7 @@
 }
 
 .vendorName {
-  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-family: 'Inter', system-ui, sans-serif; font-weight: 800;
   font-size: .95rem; color: var(--text);
 }
 .vendorPhone { font-size: .72rem; color: var(--text3); flex-shrink: 0; }
@@ -35,15 +35,15 @@
   border-bottom: none;
 }
 .totalVal {
-  font-family: 'Syne', sans-serif; font-weight: 800;
-  font-size: .98rem; color: var(--green) !important;
+  font-family: 'Inter', system-ui, sans-serif; font-weight: 800;
+  font-size: .98rem; color: var(--primary) !important;
 }
 
 .waBtn {
   display: flex; align-items: center; justify-content: center; gap: 7px;
   width: 100%; padding: 11px;
   background: #25D366; color: #fff; border: none;
-  font-family: 'Syne', sans-serif; font-size: .84rem; font-weight: 700;
+  font-family: 'Inter', system-ui, sans-serif; font-size: .84rem; font-weight: 700;
   cursor: pointer; transition: all .15s;
 }
 .waBtn:hover { background: #1ebe5c; box-shadow: 0 0 14px rgba(37,211,102,.3); }

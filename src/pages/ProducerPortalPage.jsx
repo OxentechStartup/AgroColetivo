@@ -5,9 +5,31 @@ import {
   CalendarDays, MapPin, Sprout, Wheat,
 } from 'lucide-react'
 import { ProgressBar } from '../components/ProgressBar'
-import { totalOrdered } from '../utils/data'
 import { maskPhone, unmaskPhone } from '../utils/masks'
+import { supabase } from '../lib/supabase'
 import styles from './ProducerPortalPage.module.css'
+
+// Busca TODAS as cotações abertas, sem filtro de pivô (portal é público)
+async function fetchOpenCampaigns() {
+  const { data, error } = await supabase
+    .from('v_campaign_summary')
+    .select('*')
+    .in('status', ['open'])
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(row => ({
+    id:         row.id,
+    product:    row.product,
+    unit:       row.unit,
+    unitWeight: Number(row.unit_weight_kg ?? 25),
+    goalQty:    Number(row.goal_qty),
+    minQty:     Number(row.min_qty ?? 1),
+    status:     row.status,
+    deadline:   row.deadline,
+    totalOrdered: Number(row.total_ordered ?? 0),
+    orders:     [],   // portal não precisa de lista de produtores
+  }))
+}
 
 // ── helpers de URL ────────────────────────────────────────────────────────
 function getCidFromURL() {
@@ -30,7 +52,7 @@ function fmtDate(iso) {
 
 // ── Card de cotação ───────────────────────────────────────────────────────
 function CampaignCard({ campaign, onJoin }) {
-  const ordered = totalOrdered(campaign)
+  const ordered = campaign.totalOrdered ?? 0
   const pct = campaign.goalQty > 0
     ? Math.min(100, Math.round((ordered / campaign.goalQty) * 100))
     : 0
@@ -42,9 +64,6 @@ function CampaignCard({ campaign, onJoin }) {
         <h3 className={styles.campaignCardTitle}>{campaign.product}</h3>
 
         <div className={styles.campaignStats}>
-          <div className={styles.campaignStat}>
-            <Users size={12}/><span>{campaign.orders?.length ?? 0} produtores</span>
-          </div>
           <div className={styles.campaignStat}>
             <Target size={12}/><span>Meta: {campaign.goalQty} {campaign.unit}</span>
           </div>
@@ -140,20 +159,42 @@ function CampaignsCarousel({ campaigns, onJoin }) {
 }
 
 // ── Página principal ──────────────────────────────────────────────────────
-export function ProducerPortalPage({ campaigns, onSubmit }) {
+export function ProducerPortalPage({ onSubmit }) {
   const initialCid  = getCidFromURL()
+
+  // Carrega todas as cotações abertas diretamente (independente do usuário logado)
+  const [allCampaigns, setAllCampaigns] = useState([])
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true)
+  useEffect(() => {
+    fetchOpenCampaigns()
+      .then(setAllCampaigns)
+      .catch(() => {})
+      .finally(() => setLoadingCampaigns(false))
+  }, [])
+
+  // Lembra os dados do fazendeiro entre visitas
+  const savedProducer = (() => {
+    try { return JSON.parse(localStorage.getItem('agro_producer') ?? 'null') } catch { return null }
+  })()
+
   const [step,   setStep]   = useState(initialCid ? 'form' : 'browse')
   const [cId,    setCId]    = useState(initialCid)
-  const [name,   setName]   = useState('')
-  const [phone,  setPhone]  = useState('')
+  const [name,   setName]   = useState(savedProducer?.name  ?? '')
+  const [phone,  setPhone]  = useState(savedProducer?.phone ? maskPhone(savedProducer.phone) : '')
   const [qty,    setQty]    = useState('')
   const [saving, setSaving] = useState(false)
   const [error,  setError]  = useState(null)
+  const [isKnown,setIsKnown]= useState(!!savedProducer)
 
-  const open    = (campaigns ?? []).filter(c => c.status === 'open')
+  const open    = allCampaigns
   const active  = open.find(c => c.id === cId) ?? null
+  const orderedInActive = active ? active.totalOrdered : 0
   const tons    = active && qty ? ((+qty * (active.unitWeight ?? 25)) / 1000).toFixed(2) : null
-  const canSend = active && name.trim().length > 1 && +qty > 0
+  const minQty  = active?.minQty ?? 1
+  const maxQty  = active?.maxQty ?? null
+  const qtyNum  = +qty
+  const qtyOk   = qtyNum >= minQty && (maxQty === null || qtyNum <= maxQty)
+  const canSend = active && name.trim().length > 1 && qtyOk
 
   // Sincroniza estado com o botão Voltar/Avançar do navegador
   useEffect(() => {
@@ -182,9 +223,12 @@ export function ProducerPortalPage({ campaigns, onSubmit }) {
     if (!canSend) return
     setSaving(true); setError(null)
     try {
+      const cleanPhone = unmaskPhone(phone)
+      // Salva dados do produtor para próxima visita
+      localStorage.setItem('agro_producer', JSON.stringify({ name: name.trim(), phone: cleanPhone }))
       await onSubmit(cId, {
         producerName: name.trim(),
-        phone:        unmaskPhone(phone),
+        phone:        cleanPhone,
         qty:          +qty,
         confirmedAt:  new Date().toISOString().slice(0, 10),
       })
@@ -235,6 +279,24 @@ export function ProducerPortalPage({ campaigns, onSubmit }) {
           <h2 className={styles.formTitle}>Registrar Pedido</h2>
           <p className={styles.formSub}>Preencha os dados. O coordenador confirma via WhatsApp.</p>
 
+          {isKnown && (
+            <div style={{
+              display:'flex', alignItems:'center', gap:8,
+              background:'var(--primary-dim)', border:'1px solid var(--primary-border)',
+              borderRadius:'var(--r)', padding:'9px 14px',
+              fontSize:'.8rem', color:'var(--primary)', marginBottom:4,
+            }}>
+              <span style={{fontSize:'1rem'}}>👋</span>
+              <span>Bem-vindo de volta, <strong>{name}</strong>! Seus dados foram preenchidos automaticamente.</span>
+              <button style={{
+                marginLeft:'auto', background:'none', border:'none', cursor:'pointer',
+                fontSize:'.7rem', color:'var(--text3)', textDecoration:'underline',
+              }} onClick={() => { setName(''); setPhone(''); setIsKnown(false) }}>
+                Trocar
+              </button>
+            </div>
+          )}
+
           {/* Select manual só se não veio do carrossel */}
           {!cId && (
             <div className="form-group">
@@ -249,7 +311,7 @@ export function ProducerPortalPage({ campaigns, onSubmit }) {
 
           {active && (
             <div className={styles.formProgress}>
-              <ProgressBar value={totalOrdered(active)} goal={active.goalQty} unit={active.unit}/>
+              <ProgressBar value={orderedInActive} goal={active.goalQty} unit={active.unit}/>
             </div>
           )}
 
@@ -277,11 +339,20 @@ export function ProducerPortalPage({ campaigns, onSubmit }) {
               <label className="form-label">
                 <Package size={11} style={{marginRight:5,verticalAlign:'middle'}}/>
                 Quantidade ({active.unit})
+                {minQty > 1 && <span style={{color:'var(--text3)',fontWeight:400}}> · mín. {minQty}</span>}
+                {maxQty && <span style={{color:'var(--text3)',fontWeight:400}}> · máx. {maxQty}</span>}
               </label>
               <input type="number" className={`form-input ${styles.qtyInput}`}
-                placeholder="40" value={qty} min="1"
+                placeholder={maxQty ? `${minQty}–${maxQty}` : `Mín. ${minQty}`}
+                value={qty} min={minQty} max={maxQty ?? undefined}
                 onChange={e => setQty(e.target.value)} inputMode="numeric"/>
-              {tons && <span className="form-hint" style={{color:'var(--amber)'}}>≈ {tons} toneladas</span>}
+              {qty && qtyNum < minQty && (
+                <span className="form-hint" style={{color:'var(--red)'}}>Mínimo: {minQty} {active.unit}</span>
+              )}
+              {qty && maxQty && qtyNum > maxQty && (
+                <span className="form-hint" style={{color:'var(--red)'}}>Máximo: {maxQty} {active.unit}</span>
+              )}
+              {tons && qtyOk && <span className="form-hint" style={{color:'var(--amber)'}}>≈ {tons} toneladas</span>}
             </div>
           )}
 
@@ -310,7 +381,12 @@ export function ProducerPortalPage({ campaigns, onSubmit }) {
       </div>
 
       <div className={styles.browseWrap}>
-        {open.length > 0 ? (
+        {loadingCampaigns ? (
+          <div className={styles.empty}>
+            <Loader size={28} className={styles.spin} style={{color:'var(--primary)'}}/>
+            <p>Carregando cotações…</p>
+          </div>
+        ) : open.length > 0 ? (
           <CampaignsCarousel campaigns={open} onJoin={handleJoin}/>
         ) : (
           <div className={styles.empty}>
@@ -342,9 +418,7 @@ function Bg() {
 function Header() {
   return (
     <header className={styles.header}>
-      <div className={styles.logoMark}>
-        <img src="https://i.imgur.com/uPDoDdf.jpeg" alt="AgroColetivo"/>
-      </div>
+      <img src="https://i.imgur.com/clDJyAh.png" alt="AgroColetivo" width="32" height="32" style={{ borderRadius: 8, objectFit: "cover" }}/>
       <span className={styles.logoText}>AgroColetivo</span>
     </header>
   )

@@ -110,7 +110,7 @@ export function SetPriceModal({ campaign, onClose, onSave }) {
             <Row label="Markup"        value={mNum} />
             <div style={{borderTop:'1px solid var(--border)',paddingTop:10,display:'flex',justifyContent:'space-between',fontWeight:700}}>
               <span style={{color:'var(--text)'}}>Total da compra</span>
-              <span style={{color:'var(--green)',fontSize:'1.05rem'}}>{formatCurrency(grand)}</span>
+              <span style={{color:'var(--primary)',fontSize:'1.05rem'}}>{formatCurrency(grand)}</span>
             </div>
           </div>
         )}

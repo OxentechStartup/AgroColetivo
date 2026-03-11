@@ -1,136 +1,185 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #0D1117;
-  --surface:    #161B22;
-  --surface2:   #1C2128;
-  --surface3:   #21262D;
-  --border:     #30363D;
-  --border2:    #3D444D;
-  --text:       #E6EDF3;
-  --text2:      #9198A1;
-  --text3:      #656D76;
+  --bg:         #F5F7FA;
+  --bg2:        #EEF1F6;
+  --surface:    #FFFFFF;
+  --surface2:   #F8FAFC;
+  --surface3:   #F1F4F8;
+  --border:     #E2E8F0;
+  --border2:    #CBD5E1;
+  --text:       #0F172A;
+  --text2:      #475569;
+  --text3:      #94A3B8;
 
-  --amber:      #F0B429;
-  --amber2:     #FCCB52;
-  --amber-dim:  rgba(240,180,41,.10);
-  --amber-glow: rgba(240,180,41,.25);
+  --primary:       #16A34A;
+  --primary-lt:    #22C55E;
+  --primary-dim:   #F0FDF4;
+  --primary-mid:   #DCFCE7;
+  --primary-border:#BBF7D0;
 
-  --green:      #3FB950;
-  --green-dim:  rgba(63,185,80,.12);
-  --red:        #F85149;
-  --red-dim:    rgba(248,81,73,.12);
-  --blue:       #58A6FF;
-  --blue-dim:   rgba(88,166,255,.12);
+  --blue:          #2563EB;
+  --blue-lt:       #3B82F6;
+  --blue-dim:      #EFF6FF;
+  --blue-mid:      #DBEAFE;
+  --blue-border:   #BFDBFE;
 
-  --r:          8px;
-  --r-lg:       12px;
-  --r-xl:       16px;
+  --amber:         #D97706;
+  --amber-lt:      #F59E0B;
+  --amber-dim:     #FFFBEB;
+  --amber-mid:     #FEF3C7;
+  --amber-border:  #FDE68A;
 
-  --shadow-lg:  0 4px 24px rgba(0,0,0,.5);
-  --shadow-xl:  0 8px 48px rgba(0,0,0,.65);
+  --red:           #DC2626;
+  --red-dim:       #FEF2F2;
+  --red-mid:       #FEE2E2;
+  --red-border:    #FECACA;
 
-  --sidebar-w:  224px;
-  --topbar-h:   54px;
+  --r:      6px;
+  --r-lg:   10px;
+  --r-xl:   14px;
+
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --shadow:    0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
+  --shadow-lg: 0 10px 32px rgba(15,23,42,.10), 0 4px 8px rgba(15,23,42,.04);
+
+  --sidebar-w:  220px;
+  --topbar-h:   56px;
   --page-pad:   28px;
 }
 
-html { font-size: 15px; overflow-x: hidden; }
-
-body {
-  font-family: 'Instrument Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  height: 100vh;
-  overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-  line-height: 1.5;
+/* ── Responsive vars ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root { --page-pad: 14px; --topbar-h: 52px; }
+}
+@media (max-width: 480px) {
+  :root { --page-pad: 12px; --topbar-h: 50px; }
 }
 
-h1,h2,h3,h4 { font-family: 'Syne', sans-serif; line-height: 1.2; }
-a   { text-decoration: none; color: inherit; }
-button { font-family: 'Instrument Sans', sans-serif; }
+/* ── Base ─────────────────────────────────────────────────────── */
+html {
+  font-size: 15px;
+  overflow-x: hidden;
+  /* Prevent iOS bounce on body but allow page scroll */
+  height: 100%;
+}
 
-/* ── UTILS ─────────────────────────────────── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  /* Use dvh so iOS URL bar doesn't clip content */
+  min-height: 100dvh;
+  /* Allow scroll on mobile — pages handle their own overflow */
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  /* Safe area for notch/home indicator */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* On desktop keep the app fixed-height layout */
+@media (min-width: 769px) {
+  body { height: 100dvh; overflow: hidden; }
+}
+
+h1,h2,h3,h4 { font-weight: 700; line-height: 1.25; color: var(--text); }
+a   { text-decoration: none; color: inherit; }
+button { font-family: 'Inter', system-ui, sans-serif; }
+
 .text-muted  { color: var(--text2); font-size: .82rem; }
 .text-center { text-align: center; }
 
-/* ── SCROLLBAR ──────────────────────────────── */
-::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
 
-/* ── FORMS ─────────────────────────────────── */
+/* ── Forms ────────────────────────────────────────────────────── */
 .form-group { margin-bottom: 16px; }
 
 .form-label {
   display: block;
-  font-size: .7rem; font-weight: 700;
-  color: var(--text3);
-  margin-bottom: 6px;
-  letter-spacing: .07em; text-transform: uppercase;
+  font-size: .72rem; font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 5px;
+  letter-spacing: .02em;
 }
 
 .form-input, .form-select {
-  width: 100%; padding: 10px 13px;
-  background: var(--surface2);
+  width: 100%; padding: 9px 12px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  font-family: 'Instrument Sans', sans-serif;
-  font-size: .9rem; color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: .875rem; color: var(--text);
   outline: none;
   transition: border-color .15s, box-shadow .15s;
   -webkit-appearance: none;
 }
 .form-input::placeholder { color: var(--text3); }
-.form-select option       { background: var(--surface2); }
+.form-select option       { background: #fff; color: var(--text); }
 .form-input:focus, .form-select:focus {
-  border-color: var(--amber);
-  box-shadow: 0 0 0 3px var(--amber-dim);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-mid);
 }
 
-.form-hint { font-size: .72rem; color: var(--text3); margin-top: 5px; display: block; line-height: 1.4; }
+/* Bigger tap targets on mobile */
+@media (max-width: 480px) {
+  .form-input, .form-select { padding: 12px; font-size: .92rem; }
+}
 
-/* ── GRID ───────────────────────────────────── */
+.form-hint { font-size: .72rem; color: var(--text3); margin-top: 4px; display: block; line-height: 1.4; }
+
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 480px) { .grid-2 { grid-template-columns: 1fr; } }
 
-/* ── TABLE ─────────────────────────────────── */
-.tbl { width: 100%; border-collapse: collapse; font-size: .84rem; }
-
+/* ── Tables ───────────────────────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; }
 .tbl thead th {
-  padding: 10px 14px;
+  padding: 9px 14px;
   background: var(--surface2);
-  font-size: .66rem; font-weight: 700;
-  letter-spacing: .08em; text-transform: uppercase;
+  font-size: .68rem; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase;
   color: var(--text3); text-align: left;
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
 }
-
 .tbl tbody td {
-  padding: 12px 14px;
+  padding: 11px 14px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 .tbl tbody tr:last-child td { border-bottom: none; }
-.tbl tbody tr:hover td       { background: rgba(255,255,255,.018); }
-
+.tbl tbody tr:hover td       { background: var(--surface2); }
 .tbl tfoot td {
-  padding: 11px 14px;
+  padding: 10px 14px;
   background: var(--surface2);
-  font-weight: 700;
+  font-weight: 600;
   border-top: 1px solid var(--border2);
 }
 
-/* ── ANIMATION ─────────────────────────────── */
+/* All tables scroll on mobile */
+@media (max-width: 768px) {
+  .tbl { min-width: 520px; }
+}
+/* Ensure table wrappers always allow horizontal scroll */
+.tableWrap, [class*="tableWrap"] {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* Global minimum tap target for interactive elements */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ── Animations ───────────────────────────────────────────────── */
 @keyframes fadeUp {
-  from { opacity:0; transform: translateY(8px); }
+  from { opacity:0; transform: translateY(6px); }
   to   { opacity:1; transform: translateY(0); }
 }
-.page-enter { animation: fadeUp .22s ease both; }
-
-/* ── MOBILE ────────────────────────────────── */
-@media (max-width: 768px) { :root { --page-pad: 14px; } }
+.page-enter { animation: fadeUp .2s ease both; }

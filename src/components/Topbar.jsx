@@ -1,42 +1,39 @@
 import { Menu, ExternalLink, LogOut } from 'lucide-react'
 import styles from './Topbar.module.css'
 
-const TITLES = {
-  dashboard: 'Dashboard',
-  campaigns: 'Cotações',
-  producers: 'Produtores',
-  vendors:   'Vendedores',
-}
+const ROLE_LABEL = { pivo: 'Pivô', admin: 'Admin', vendor: 'Fornecedor' }
 
-export function Topbar({ page, onMenuClick, onPortalClick, user, onLogout }) {
+export function Topbar({ title, onMenuClick, onPortalClick, user, onLogout, onProfile }) {
+  const role = user?.role ?? 'pivo'
   return (
     <header className={styles.topbar}>
-      <div className={styles.left}>
-        <button className={styles.menuBtn} onClick={onMenuClick} aria-label="Menu">
-          <Menu size={20} />
+      <button className={styles.menuBtn} onClick={onMenuClick} aria-label="Menu">
+        <Menu size={18}/>
+      </button>
+
+      <span className={styles.title}>{title}</span>
+
+      <div className={styles.actions}>
+        {role !== 'vendor' && (
+          <button className={styles.portalBtn} onClick={onPortalClick} title="Portal do Produtor">
+            <ExternalLink size={13}/>
+            <span>Portal Produtor</span>
+          </button>
+        )}
+        <button
+          className={styles.userBtn}
+          title={role === 'vendor' ? 'Meu Perfil' : `${user?.name} · ${ROLE_LABEL[role] ?? role}`}
+          onClick={role === 'vendor' ? onProfile : undefined}
+          style={role === 'vendor' ? {cursor:'pointer'} : {cursor:'default'}}
+        >
+          <div className={styles.avatar}>{user?.name?.[0]?.toUpperCase() ?? 'A'}</div>
+          <div className={styles.userInfo}>
+            <span className={styles.userName}>{user?.name ?? 'Usuário'}</span>
+            <span className={styles.userRole}>{ROLE_LABEL[role] ?? role}</span>
+          </div>
         </button>
-        <div className={styles.breadcrumb}>
-          <span className={styles.bSub}>AgroColetivo</span>
-          <span className={styles.bSep}>/</span>
-          <span className={styles.bPage}>{TITLES[page]}</span>
-        </div>
-      </div>
-
-      <div className={styles.right}>
-        {/* Desktop: botão com texto | Mobile: só ícone */}
-        <button className={styles.portalBtn} onClick={onPortalClick} title="Portal do Produtor">
-          <ExternalLink size={13} />
-          <span className={styles.pText}>Portal do Produtor</span>
-        </button>
-
-        {/* Avatar chip — desktop mostra nome, mobile só avatar */}
-        <div className={styles.userChip}>
-          <div className={styles.avatar}>{user?.username?.[0]?.toUpperCase() ?? 'A'}</div>
-          <span className={styles.uname}>{user?.username ?? 'admin'}</span>
-        </div>
-
         <button className={styles.logoutBtn} onClick={onLogout} title="Sair">
-          <LogOut size={15} />
+          <LogOut size={15}/>
         </button>
       </div>
     </header>

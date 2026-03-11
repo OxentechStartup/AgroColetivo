@@ -129,7 +129,7 @@ export function ProducersPage({ campaigns }) {
                       </td>
                       <td>
                         {r.hasPrice
-                          ? <strong style={{color:'var(--green)'}}>{formatCurrency(r.total)}</strong>
+                          ? <strong style={{color:'var(--primary)'}}>{formatCurrency(r.total)}</strong>
                           : <span style={{color:'var(--text3)'}}>—</span>}
                       </td>
                     </tr>
