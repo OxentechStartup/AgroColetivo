@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Plus, Package, Trash2, Edit3, Tag, Percent, DollarSign,
   ChevronDown, ChevronUp, Save, X, Truck, CreditCard, Check,
