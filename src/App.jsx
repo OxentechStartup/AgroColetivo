@@ -356,7 +356,7 @@ export default function App() {
           onMenuClick={() => document.dispatchEvent(new Event("open-sidebar"))}
           onPortalClick={() => window.open("/portalforms", "_blank")}
           user={user}
-          onLogout={() => signOut()}
+          onLogout={signOut}
           onProfile={() => navigate("vendor-profile")}
         />
         <div className={styles.content}>{renderPage()}</div>

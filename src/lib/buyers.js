@@ -1,11 +1,37 @@
 import { supabase } from './supabase'
+import { logSecurityEvent } from './authorization'
 
 // ── BUYERS (fazendeiros/compradores) ──────────────────────────────────────────
 // Identificados por telefone — sem senha (acesso via link).
 // O sistema os reconhece automaticamente nas próximas cotações.
 
+// SEGURANÇA: rate limit client-side para portal anon (complementa o server-side)
+// Chave: phone → { count, windowStart }
+const _portalRateCache = new Map()
+const PORTAL_MAX     = 5   // max pedidos por telefone
+const PORTAL_WINDOW  = 60 * 60 * 1000 // 1 hora em ms
+
+function checkPortalRateLimit(phone) {
+  const now = Date.now()
+  const entry = _portalRateCache.get(phone)
+  if (!entry || now - entry.windowStart > PORTAL_WINDOW) {
+    _portalRateCache.set(phone, { count: 1, windowStart: now })
+    return true // permitido
+  }
+  if (entry.count >= PORTAL_MAX) return false // bloqueado
+  entry.count++
+  return true // permitido
+}
+
 export async function findOrCreateBuyer(name, phone) {
   const cleanPhone = phone.replace(/\D/g, '')
+
+  // Rate limit client-side (complementa a função SQL)
+  if (!checkPortalRateLimit(cleanPhone)) {
+    await logSecurityEvent('portal_rate_limit', null, 'buyers', null,
+      `phone=${cleanPhone} blocked=client`)
+    throw new Error('Muitos pedidos em pouco tempo. Tente novamente em 1 hora.')
+  }
 
   // Tenta encontrar pelo telefone
   const { data: existing } = await supabase
@@ -16,7 +42,7 @@ export async function findOrCreateBuyer(name, phone) {
 
   if (existing) return existing
 
-  // Cria novo buyer
+  // Cria novo buyer — a função SQL find_or_create_buyer faz rate limit server-side
   const { data, error } = await supabase
     .from('buyers')
     .insert({ name: name.trim(), phone: cleanPhone })
@@ -27,10 +53,8 @@ export async function findOrCreateBuyer(name, phone) {
   return data
 }
 
-// Buscar histórico de um buyer pelo telefone (para o portal público)
 export async function fetchBuyerHistory(phone) {
   const cleanPhone = phone.replace(/\D/g, '')
-
   const { data, error } = await supabase
     .from('orders')
     .select(`
@@ -41,12 +65,10 @@ export async function fetchBuyerHistory(phone) {
     .eq('buyers.phone', cleanPhone)
     .neq('status', 'rejected')
     .order('submitted_at', { ascending: false })
-
   if (error) throw new Error('Erro ao buscar histórico: ' + error.message)
   return data
 }
 
-// Buscar dados de um buyer por telefone (reconhecimento automático)
 export async function getBuyerByPhone(phone) {
   const cleanPhone = phone.replace(/\D/g, '')
   const { data } = await supabase
@@ -57,7 +79,6 @@ export async function getBuyerByPhone(phone) {
   return data ?? null
 }
 
-// Listar todos os buyers (para o pivô)
 export async function fetchBuyers() {
   const { data, error } = await supabase
     .from('buyers')
@@ -67,7 +88,7 @@ export async function fetchBuyers() {
   return data
 }
 
-// Legado: alias para compatibilidade com código antigo (producers → buyers)
+// Legado
 export const findOrCreateProducer = findOrCreateBuyer
 export const fetchProducerCosts   = async () => {
   const { data, error } = await supabase

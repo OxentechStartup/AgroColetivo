@@ -15,7 +15,7 @@ export function useVendorProducts(vendorId) {
     if (!vendorId) { setProducts([]); return }
     setLoading(true)
     try { setProducts(await fetchVendorProducts(vendorId)) }
-    catch (e) { console.error(e) }
+    catch (e) { setProducts([]) } // falha silenciosa — UI mostra lista vazia
     finally   { setLoading(false) }
   }, [vendorId])
 

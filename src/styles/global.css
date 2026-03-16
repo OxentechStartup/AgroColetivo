@@ -1,13 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #F5F7FA;
-  --bg2:        #EEF1F6;
+  --bg:         #F4F6FA;
+  --bg2:        #ECF0F6;
   --surface:    #FFFFFF;
   --surface2:   #F8FAFC;
-  --surface3:   #F1F4F8;
+  --surface3:   #F0F4F8;
   --border:     #E2E8F0;
   --border2:    #CBD5E1;
   --text:       #0F172A;
@@ -37,15 +37,15 @@
   --red-mid:       #FEE2E2;
   --red-border:    #FECACA;
 
-  --r:      6px;
-  --r-lg:   10px;
-  --r-xl:   14px;
+  --r:      7px;
+  --r-lg:   11px;
+  --r-xl:   16px;
 
-  --shadow-sm: 0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
-  --shadow:    0 4px 12px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.04);
-  --shadow-lg: 0 10px 32px rgba(15,23,42,.10), 0 4px 8px rgba(15,23,42,.04);
+  --shadow-sm: 0 1px 3px rgba(15,23,42,.05), 0 1px 2px rgba(15,23,42,.03);
+  --shadow:    0 4px 14px rgba(15,23,42,.07), 0 2px 4px rgba(15,23,42,.04);
+  --shadow-lg: 0 10px 32px rgba(15,23,42,.09), 0 4px 8px rgba(15,23,42,.04);
 
-  --sidebar-w:  220px;
+  --sidebar-w:  224px;
   --topbar-h:   56px;
   --page-pad:   28px;
 }
@@ -62,7 +62,6 @@
 html {
   font-size: 15px;
   overflow-x: hidden;
-  /* Prevent iOS bounce on body but allow page scroll */
   height: 100%;
 }
 
@@ -70,18 +69,14 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
-  /* Use dvh so iOS URL bar doesn't clip content */
   min-height: 100dvh;
-  /* Allow scroll on mobile — pages handle their own overflow */
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
-  /* Safe area for notch/home indicator */
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* On desktop keep the app fixed-height layout */
 @media (min-width: 769px) {
   body { height: 100dvh; overflow: hidden; }
 }
@@ -126,7 +121,6 @@ button { font-family: 'Inter', system-ui, sans-serif; }
   box-shadow: 0 0 0 3px var(--primary-mid);
 }
 
-/* Bigger tap targets on mobile */
 @media (max-width: 480px) {
   .form-input, .form-select { padding: 12px; font-size: .92rem; }
 }
@@ -161,16 +155,13 @@ button { font-family: 'Inter', system-ui, sans-serif; }
   border-top: 1px solid var(--border2);
 }
 
-/* All tables scroll on mobile */
 @media (max-width: 768px) {
   .tbl { min-width: 520px; }
 }
-/* Ensure table wrappers always allow horizontal scroll */
 .tableWrap, [class*="tableWrap"] {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-/* Global minimum tap target for interactive elements */
 @media (max-width: 768px) {
   button, a, [role="button"] {
     -webkit-tap-highlight-color: transparent;
@@ -184,17 +175,10 @@ button { font-family: 'Inter', system-ui, sans-serif; }
 }
 .page-enter { animation: fadeUp .2s ease both; }
 
-/* ══════════════════════════════════════════════════════════════
-   MOBILE IMPROVEMENTS
-   ══════════════════════════════════════════════════════════════ */
-
-/* Bottom nav bar — visible only on mobile */
-.bottomNav {
-  display: none;
-}
+/* ── Bottom Nav (mobile only) ─────────────────────────────────── */
+.bottomNav { display: none; }
 
 @media (max-width: 768px) {
-  /* Bottom navigation bar */
   .bottomNav {
     display: flex;
     align-items: stretch;
@@ -230,13 +214,8 @@ button { font-family: 'Inter', system-ui, sans-serif; }
     -webkit-tap-highlight-color: transparent;
     min-width: 0;
   }
-  .bottomNavItem svg {
-    flex-shrink: 0;
-  }
-  .bottomNavItem span,
-  .bottomNavItem {
-    line-height: 1;
-  }
+  .bottomNavItem svg { flex-shrink: 0; }
+  .bottomNavItem span, .bottomNavItem { line-height: 1; }
   .bottomNavItem.active {
     color: var(--primary);
     background: var(--primary-dim);
@@ -246,24 +225,19 @@ button { font-family: 'Inter', system-ui, sans-serif; }
     color: var(--text2);
   }
 
-  /* Push content above bottom nav */
   .mainWithBottomNav {
     padding-bottom: calc(60px + env(safe-area-inset-bottom));
   }
 
-  /* Better modal on mobile */
   .modal-mobile {
     border-radius: var(--r-xl) var(--r-xl) 0 0 !important;
     position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
     top: auto !important;
     max-height: 90dvh;
     overflow-y: auto;
   }
 
-  /* Larger tap targets */
   .tbl tbody td { padding: 13px 12px; }
   .tbl thead th { padding: 10px 12px; }
 }

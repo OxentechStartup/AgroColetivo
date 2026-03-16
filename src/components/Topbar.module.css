@@ -15,17 +15,11 @@
 .mobileLogo {
   display: none;
   align-items: center;
-  gap: 7px;
-  flex-shrink: 0;
-}
-.mobileLogoIcon {
-  width: 28px; height: 28px; border-radius: 8px;
-  background: var(--primary); color: #fff;
-  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 .mobileLogoText {
-  font-size: .9rem; font-weight: 800; color: var(--text);
+  font-size: .92rem; font-weight: 800; color: var(--text);
   letter-spacing: -.02em;
 }
 

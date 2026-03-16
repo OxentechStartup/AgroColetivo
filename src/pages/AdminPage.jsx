@@ -8,6 +8,8 @@ import {
 import { Button } from '../components/Button'
 import { Card, CardHeader, CardTitle, CardBody } from '../components/Card'
 import { Badge } from '../components/Badge'
+import { Toast } from '../components/Toast'
+import { useToast } from '../hooks/useToast'
 import { totalOrdered, campaignRealValue, campaignValueIsEstimate, calcPlatformFee, STATUS_LABEL } from '../utils/data'
 import { formatCurrency } from '../utils/masks'
 import { fetchGestorsAdmin, setGestorActive } from '../lib/auth'
@@ -129,28 +131,25 @@ export function AdminPage({ campaigns, actions, reload }) {
   const [search,   setSearch]   = useState('')
   const [paying, setPaying] = useState(null)
   const [confirmBill, setConfirmBill] = useState(null)
+  const { toast, showToast, clearToast } = useToast()
 
   const loadGestors = useCallback(async () => {
     setGestorLoad(true)
     try { setGestors(await fetchGestorsAdmin()) }
-    catch (e) { console.error(e) }
+    catch (e) { showToast(e.message || 'Erro ao carregar gestores', 'error') }
     finally { setGestorLoad(false) }
-  }, [])
+  }, [showToast])
 
   useEffect(() => { loadGestors() }, [loadGestors])
 
-  const [toggleError, setToggleError] = useState(null)
-
   const handleToggle = async (userId, newActive) => {
     setToggling(userId)
-    setToggleError(null)
     try {
       await setGestorActive(userId, newActive)
-      // Recarrega do banco para confirmar valor real
       await loadGestors()
+      showToast(newActive ? 'Gestor desbloqueado!' : 'Gestor bloqueado.')
     } catch (e) {
-      console.error('Erro ao bloquear/desbloquear:', e)
-      setToggleError(e.message || 'Erro ao atualizar. Verifique as permissões RLS no Supabase.')
+      showToast(e.message || 'Erro ao atualizar.', 'error')
     }
     finally { setToggling(null) }
   }
@@ -180,6 +179,7 @@ export function AdminPage({ campaigns, actions, reload }) {
   )
 
   return (
+    <>
     <div className={`${styles.page} page-enter`}>
       <div className={styles.heading}>
         <div>
@@ -322,12 +322,6 @@ export function AdminPage({ campaigns, actions, reload }) {
             </div>
           </div>
 
-          {toggleError && (
-            <div className={styles.alertBanner} style={{background:'var(--red-dim)',borderColor:'var(--red-border)',color:'var(--red)'}}>
-              <AlertTriangle size={13}/> {toggleError}
-            </div>
-          )}
-
           {blockedGestors.length > 0 && !search && (
             <div className={styles.alertBanner}>
               <AlertTriangle size={13}/>
@@ -426,7 +420,7 @@ export function AdminPage({ campaigns, actions, reload }) {
             }
             if (reload) await reload()
           } catch(e) {
-            alert('Erro ao registrar pagamento: ' + e.message)
+            showToast('Erro ao registrar pagamento: ' + e.message, 'error')
           } finally {
             setPaying(null)
             setConfirmBill(null)
@@ -571,5 +565,7 @@ export function AdminPage({ campaigns, actions, reload }) {
         )
       })()}
     </div>
+    {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast}/>}
+    </>
   )
 }

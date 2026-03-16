@@ -2,221 +2,143 @@
  * Middleware de Autorização e Controle de Acesso
  */
 
-import { ROLES } from "../constants/roles";
+import { ROLES } from '../constants/roles'
+import { supabase } from './supabase'
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTORIZAÇÃO BASEADA EM ROLE
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Verifica se o usuário tem permissão para acessar um recurso
- * @param {object} user - Usuário autenticado
- * @param {string} requiredRole - Role requerido
- * @returns {boolean}
- */
 export function hasRole(user, requiredRole) {
-  if (!user) return false;
-  if (user.role === ROLES.ADMIN) return true; // Admin tem acesso a tudo
-  return user.role === requiredRole;
+  if (!user) return false
+  if (user.role === ROLES.ADMIN) return true
+  return user.role === requiredRole
 }
 
-/**
- * Verifica se o usuário tem qualquer um dos roles
- * @param {object} user - Usuário autenticado
- * @param {string[]} roles - Array de roles permitidos
- * @returns {boolean}
- */
 export function hasAnyRole(user, roles) {
-  if (!user) return false;
-  if (user.role === ROLES.ADMIN) return true;
-  return roles.includes(user.role);
+  if (!user) return false
+  if (user.role === ROLES.ADMIN) return true
+  return roles.includes(user.role)
 }
 
-/**
- * Verifica permissões granulares
- * @param {object} user - Usuário autenticado
- * @param {string} action - Ação (create, read, update, delete)
- * @param {string} resource - Recurso (campaigns, vendors, producers)
- * @returns {boolean}
- */
 export function hasPermission(user, action, resource) {
-  if (!user) return false;
+  if (!user) return false
 
   const permissions = {
     [ROLES.ADMIN]: {
-      campaigns: ["create", "read", "update", "delete", "publish"],
-      vendors: ["create", "read", "update", "delete"],
-      producers: ["read"],
-      financial: ["read", "update"],
+      campaigns:  ['create', 'read', 'update', 'delete', 'publish'],
+      vendors:    ['create', 'read', 'update', 'delete'],
+      producers:  ['read'],
+      financial:  ['read', 'update'],
     },
     [ROLES.GESTOR]: {
-      campaigns: ["create", "read", "update", "delete", "publish"],
-      vendors: ["create", "read", "update"], // Pode deletar apenas suas
-      producers: ["read"],
-      financial: ["read", "update"],
+      campaigns:  ['create', 'read', 'update', 'delete', 'publish'],
+      vendors:    ['create', 'read', 'update'],
+      producers:  ['read'],
+      financial:  ['read', 'update'],
     },
     [ROLES.VENDOR]: {
-      campaigns: ["read"],
-      products: ["create", "read", "update", "delete"],
-      profile: ["read", "update"],
+      campaigns:  ['read'],
+      products:   ['create', 'read', 'update', 'delete'],
+      profile:    ['read', 'update'],
     },
-  };
+  }
 
-  const userPermissions = permissions[user.role];
-  if (!userPermissions) return false;
+  const userPermissions = permissions[user.role]
+  if (!userPermissions) return false
 
-  const resourcePermissions = userPermissions[resource] || [];
-  return resourcePermissions.includes(action);
+  const resourcePermissions = userPermissions[resource] || []
+  return resourcePermissions.includes(action)
 }
 
-/**
- * Verifica se o usuário é o proprietário do recurso
- * @param {object} user - Usuário autenticado
- * @param {string} resourceUserId - ID do dono do recurso
- * @returns {boolean}
- */
 export function isResourceOwner(user, resourceUserId) {
-  if (!user) return false;
-  if (user.role === ROLES.ADMIN) return true; // Admin pode acessar tudo
-  return user.id === resourceUserId;
+  if (!user) return false
+  if (user.role === ROLES.ADMIN) return true
+  return user.id === resourceUserId
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROTEÇÃO DE DADOS SENSÍVEIS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Remove campos sensíveis antes de enviar ao cliente
- * @param {object} data - Dados a filtrar
- * @param {object} user - Usuário autenticado
- * @returns {object}
- */
 export function filterSensitiveFields(data, user) {
-  if (!data) return data;
-
-  // Campos sempre sensíveis
-  const alwaysSensitive = ["password_hash", "password", "secret", "token"];
-
-  // Cria uma cópia
-  const filtered = { ...data };
-
-  // Remove campos sensíveis
-  alwaysSensitive.forEach((field) => {
-    delete filtered[field];
-  });
-
-  // Se não é admin, remove mais campos
+  if (!data) return data
+  const alwaysSensitive = ['password_hash', 'password', 'secret', 'token']
+  const filtered = { ...data }
+  alwaysSensitive.forEach(field => { delete filtered[field] })
   if (user?.role !== ROLES.ADMIN) {
-    delete filtered.fee_paid_by;
+    delete filtered.fee_paid_by
   }
-
-  return filtered;
+  return filtered
 }
 
-/**
- * Filtra array de dados removendo campos sensíveis
- * @param {array} array - Array de dados
- * @param {object} user - Usuário autenticado
- * @returns {array}
- */
 export function filterSensitiveFieldsArray(array, user) {
-  if (!Array.isArray(array)) return array;
-  return array.map((item) => filterSensitiveFields(item, user));
+  if (!Array.isArray(array)) return array
+  return array.map(item => filterSensitiveFields(item, user))
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// VALIDAÇÕES DE SEGURANÇA PARA OPERAÇÕES
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Valida se uma operação é permitida
- * @param {object} user - Usuário autenticado
- * @param {string} action - Ação desejada
- * @param {string} resource - Recurso
- * @param {string} resourceOwnerId - ID do dono do recurso (opcional)
- * @returns {object} { allowed: boolean, reason?: string }
- */
 export function validateOperation(user, action, resource, resourceOwnerId) {
-  // Verifica autenticação
-  if (!user) {
-    return { allowed: false, reason: "Usuário não autenticado" };
-  }
-
-  // Verifica se usuário está bloqueado
-  if (user.blocked) {
-    return { allowed: false, reason: "Sua conta foi bloqueada" };
-  }
-
-  // Verifica permissão geral
+  if (!user) return { allowed: false, reason: 'Usuário não autenticado' }
+  if (user.blocked) return { allowed: false, reason: 'Sua conta foi bloqueada' }
   if (!hasPermission(user, action, resource)) {
-    return {
-      allowed: false,
-      reason: `Sem permissão para ${action} ${resource}`,
-    };
+    return { allowed: false, reason: `Sem permissão para ${action} ${resource}` }
   }
-
-  // Se é delete ou update, e não é admin, valida proprietário
-  if ((action === "delete" || action === "update") && resourceOwnerId) {
+  if ((action === 'delete' || action === 'update') && resourceOwnerId) {
     if (!isResourceOwner(user, resourceOwnerId)) {
-      return {
-        allowed: false,
-        reason: "Você pode apenas modificar seus próprios registros",
-      };
+      return { allowed: false, reason: 'Você pode apenas modificar seus próprios registros' }
     }
   }
-
-  return { allowed: true, reason: null };
+  return { allowed: true, reason: null }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AUDITORIA
+// AUDITORIA — persiste no banco via RPC
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Log seguro de ações sensíveis
- * @param {string} action - Ação realizada
- * @param {object} user - Usuário que realizou a ação
- * @param {string} resource - Recurso afetado
- * @param {string} resourceId - ID do recurso
- * @param {any} details - Detalhes adicionais
+ * Registra evento de segurança no banco (audit_logs).
+ * Chama a função SQL log_security_event via supabase.rpc.
+ * Nunca lança erro — falha silenciosamente para não interromper o fluxo.
  */
-export function logSecurityEvent(action, user, resource, resourceId, details) {
-  const timestamp = new Date().toISOString();
-  const event = {
-    timestamp,
-    action,
-    userId: user?.id,
-    userPhone: user?.phone,
-    userRole: user?.role,
-    resource,
-    resourceId,
-    details: typeof details === "string" ? details : JSON.stringify(details),
-  };
+export async function logSecurityEvent(action, user, resource, resourceId, details) {
+  const payload = {
+    p_action:      action,
+    p_user_id:     user?.id     ?? null,
+    p_user_phone:  user?.phone  ?? null,
+    p_user_role:   user?.role   ?? null,
+    p_resource:    resource     ?? null,
+    p_resource_id: resourceId != null ? String(resourceId) : null,
+    p_details:     typeof details === 'string' ? details : JSON.stringify(details ?? null),
+    p_ip_hint:     null, // IP não disponível no browser sem backend próprio
+  }
 
-  // Envia para logging system (implementar com seu logger)
-  console.log("🔐 SECURITY EVENT:", event);
+  try {
+    const { error } = await supabase.rpc('log_security_event', payload)
+    if (error) {
+      // Loga localmente apenas em desenvolvimento para não expor detalhes em prod
+      if (import.meta.env.DEV) {
+        console.warn('[audit] Falha ao persistir evento:', error.message, payload)
+      }
+    }
+  } catch {
+    // Ignora erros de rede — auditoria nunca deve bloquear o fluxo principal
+  }
 
-  // TODO: Enviar para Supabase audit_logs ou serviço de logging externo
-  return event;
+  // Mantém log local em desenvolvimento para facilitar debug
+  if (import.meta.env.DEV) {
+    console.log('SECURITY EVENT:', { ...payload, timestamp: new Date().toISOString() })
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PROTEÇÃO CONTRA ATAQUES COMUNS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Verifica if request está tentando acessar múltiplos usuários (enum attack)
- * @param {array} userIds - Array de IDs de usuários a acessar
- * @param {object} user - Usuário autenticado
- * @param {number} threshold - Limite de tentativas (default 10)
- * @returns {boolean}
- */
 export function detectEnumeration(userIds, user, threshold = 10) {
-  if (user?.role === ROLES.ADMIN) return false;
-  if (!Array.isArray(userIds)) return false;
-
-  const uniqueIds = new Set(userIds);
-  return uniqueIds.size >= threshold;
+  if (user?.role === ROLES.ADMIN) return false
+  if (!Array.isArray(userIds)) return false
+  const uniqueIds = new Set(userIds)
+  return uniqueIds.size >= threshold
 }
 
 export default {
@@ -229,4 +151,4 @@ export default {
   validateOperation,
   logSecurityEvent,
   detectEnumeration,
-};
+}

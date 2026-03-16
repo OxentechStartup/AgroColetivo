@@ -260,9 +260,11 @@ export function useCampaigns(user) {
   };
 
   const addPendingOrder = async (campaignId, order) => {
+    if (!campaignId) throw new Error("Cotação inválida.");
     const buyer = await findOrCreateProducer(order.producerName, order.phone);
     await createOrder(campaignId, buyer.id, order.qty, "pending");
-    logEvent(campaignId, EVENT.ORDER_SUBMITTED, { producerName: order.producerName, qty: order.qty, pending: true }, buyer.id);
+    // actor_id = null porque o portal é público (comprador não tem user_id)
+    logEvent(campaignId, EVENT.ORDER_SUBMITTED, { producerName: order.producerName, qty: order.qty, pending: true }, null);
     await reloadCampaign(campaignId);
   };
   const approvePending = async (campaignId, orderId) => {

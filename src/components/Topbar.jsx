@@ -1,6 +1,8 @@
-import { Menu, ExternalLink, LogOut, Leaf } from "lucide-react";
+import { Menu, ExternalLink, LogOut } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import styles from "./Topbar.module.css";
+
+const LOGO_URL = "https://i.imgur.com/clDJyAh.png";
 
 const ROLE_DISPLAY = {
   [ROLES.GESTOR]:  "Gestor",
@@ -33,10 +35,14 @@ export function Topbar({
 
       {/* Logo visível apenas no mobile */}
       <div className={styles.mobileLogo}>
-        <div className={styles.mobileLogoIcon}>
-          <Leaf size={14} />
-        </div>
-        <span className={styles.mobileLogoText}>AgroGestão</span>
+        <img
+          src={LOGO_URL}
+          alt="AgroColetivo"
+          width="28"
+          height="28"
+          style={{ borderRadius: 7, objectFit: "cover", flexShrink: 0 }}
+        />
+        <span className={styles.mobileLogoText}>AgroColetivo</span>
       </div>
 
       <span className={styles.title}>{title}</span>
