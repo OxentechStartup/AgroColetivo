@@ -162,8 +162,23 @@ do $$ begin
 end $$;
 
 -- ──────────────────────────────────────────────────────────────
--- 7. vendor_campaign_offers — status da oferta
+-- 7. vendor_campaign_offers — propostas dos fornecedores
 -- ──────────────────────────────────────────────────────────────
+create table if not exists vendor_campaign_offers (
+  id             uuid        primary key default uuid_generate_v4(),
+  campaign_id    uuid        not null references campaigns(id) on delete cascade,
+  vendor_id      uuid        not null references vendors(id) on delete cascade,
+  price_per_unit numeric     not null,
+  available_qty  integer     not null,
+  notes          text,
+  status         text        not null default 'pending',
+  created_at     timestamptz not null default now(),
+  constraint vco_status_check check (status in ('pending', 'accepted', 'rejected'))
+);
+
+create unique index if not exists vendor_campaign_offers_vendor_campaign_idx
+  on vendor_campaign_offers(vendor_id, campaign_id);
+
 do $$ begin
   if not exists (
     select 1 from information_schema.columns

@@ -15,15 +15,6 @@ export async function fetchVendorProducts(vendorId) {
   return (data ?? []).map(normalizeProduct)
 }
 
-export async function fetchAllVendorProducts() {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, product_promotions(*), vendors(id, name, phone, city, users(name, city))')
-    .eq('active', true)
-    .order('created_at', { ascending: false })
-  if (error) throw new Error(error.message)
-  return (data ?? []).map(normalizeProduct)
-}
 
 export async function upsertVendorProduct(vendorId, product) {
   const weightKg     = product.weightKg    != null ? Number(product.weightKg)    : 0
@@ -59,10 +50,6 @@ export async function softDeleteVendorProduct(id) {
   if (error) throw new Error(error.message)
 }
 
-export async function deleteVendorProduct(id) {
-  const { error } = await supabase.from('products').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
 
 // ── Promoções ─────────────────────────────────────────────────────────────────
 // promo_type: 'percent_discount' ou 'fixed_discount'

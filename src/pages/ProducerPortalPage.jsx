@@ -6,15 +6,16 @@ import {
 } from 'lucide-react'
 import { ProgressBar } from '../components/ProgressBar'
 import { maskPhone, unmaskPhone } from '../utils/masks'
+import { daysUntilDeadline } from '../utils/data'
 import { supabase } from '../lib/supabase'
 import styles from './ProducerPortalPage.module.css'
 
-// Busca TODAS as cotações abertas, sem filtro de pivô (portal é público)
+// Busca TODAS as cotações abertas, sem filtro de gestor (portal é público)
 async function fetchOpenCampaigns() {
   const { data, error } = await supabase
     .from('v_campaign_summary')
     .select('*')
-    .in('status', ['open'])
+    .in('status', ['open', 'negotiating'])
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []).map(row => ({
@@ -67,11 +68,20 @@ function CampaignCard({ campaign, onJoin }) {
           <div className={styles.campaignStat}>
             <Target size={12}/><span>Meta: {campaign.goalQty} {campaign.unit}</span>
           </div>
-          {campaign.deadline && (
-            <div className={styles.campaignStat}>
-              <CalendarDays size={12}/><span>Prazo: {fmtDate(campaign.deadline)}</span>
-            </div>
-          )}
+          {campaign.deadline && (() => {
+            const days = daysUntilDeadline(campaign.deadline)
+            const urgent = days !== null && days <= 3 && days >= 0
+            return (
+              <div className={styles.campaignStat} style={urgent ? {color:'var(--red)',fontWeight:700} : {}}>
+                <CalendarDays size={12}/>
+                <span>{
+                  days === 0 ? '⚠ Encerra hoje!' :
+                  urgent ? `⚠ Encerra em ${days} dia${days > 1 ? 's' : ''}!` :
+                  `Prazo: ${fmtDate(campaign.deadline)}`
+                }</span>
+              </div>
+            )
+          })()}
         </div>
 
         <div className={styles.campaignProgress}>
@@ -251,7 +261,7 @@ export function ProducerPortalPage({ onSubmit }) {
         <div className={styles.successCard}>
           <CheckCircle size={48} className={styles.successIcon}/>
           <h2>Pedido enviado!</h2>
-          <p>Recebido com sucesso. O coordenador confirma via WhatsApp em breve.</p>
+          <p>Recebido com sucesso. O gestor confirma via WhatsApp em breve.</p>
           <button className={styles.resetBtn} onClick={reset}>Fazer outro pedido</button>
         </div>
       </div>
@@ -277,7 +287,7 @@ export function ProducerPortalPage({ onSubmit }) {
           )}
 
           <h2 className={styles.formTitle}>Registrar Pedido</h2>
-          <p className={styles.formSub}>Preencha os dados. O coordenador confirma via WhatsApp.</p>
+          <p className={styles.formSub}>Preencha os dados. O gestor confirma via WhatsApp.</p>
 
           {isKnown && (
             <div style={{
@@ -392,7 +402,7 @@ export function ProducerPortalPage({ onSubmit }) {
           <div className={styles.empty}>
             <Sprout size={32} style={{color:'var(--text3)'}}/>
             <p>Nenhuma cotação aberta no momento.</p>
-            <span className={styles.emptySub}>Volte em breve ou contate o coordenador.</span>
+            <span className={styles.emptySub}>Volte em breve ou contate o gestor.</span>
           </div>
         )}
 

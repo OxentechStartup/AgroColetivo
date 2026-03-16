@@ -36,3 +36,26 @@
 @media (max-width: 768px) {
   .page { height: auto; min-height: calc(100dvh - var(--topbar-h)); overflow-y: visible; }
 }
+
+/* Filtros */
+.filters {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.searchInput {
+  flex: 1; min-width: 160px;
+  padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--r); background: var(--surface);
+  font-size: .84rem; color: var(--text);
+  outline: none; transition: border-color .12s;
+}
+.searchInput:focus { border-color: var(--primary); }
+.filterSelect {
+  padding: 8px 12px; border: 1px solid var(--border);
+  border-radius: var(--r); background: var(--surface);
+  font-size: .84rem; color: var(--text);
+  cursor: pointer; outline: none;
+}
+.filterSelect:focus { border-color: var(--primary); }
+
+.entryBlock { border-bottom: 1px solid var(--border); padding: 8px 0; }
+.entryBlock:last-child { border-bottom: none; }

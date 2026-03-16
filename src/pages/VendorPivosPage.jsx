@@ -18,12 +18,12 @@ export function VendorPivosPage({ pivos = [], loading = false }) {
     <div className={`${styles.page} page-enter`}>
       <div className={styles.heading}>
         <div>
-          <h1>Pivôs Disponíveis</h1>
-          <p className="text-muted">Coordenadores de compras coletivas</p>
+          <h1>Gestores Disponíveis</h1>
+          <p className="text-muted">Gestores de compras coletivas</p>
         </div>
         <div className={styles.searchBox}>
           <Search size={14} className={styles.searchIcon}/>
-          <input className={styles.searchInput} placeholder="Buscar pivô…"
+          <input className={styles.searchInput} placeholder="Buscar gestor…"
             value={search} onChange={e => setSearch(e.target.value)}/>
         </div>
       </div>
@@ -33,7 +33,7 @@ export function VendorPivosPage({ pivos = [], loading = false }) {
       ) : filtered.length === 0 ? (
         <div className={styles.empty}>
           <User size={32} style={{opacity:.3}}/>
-          <p>Nenhum pivô encontrado.</p>
+          <p>Nenhum gestor encontrado.</p>
         </div>
       ) : (
         <div className={styles.grid}>
@@ -43,7 +43,7 @@ export function VendorPivosPage({ pivos = [], loading = false }) {
               <div className={styles.info}>
                 <div className={styles.name}>{p.name}</div>
                 <div className={styles.role}>
-                  {p.role === 'admin' ? '⭐ Administrador' : '🌱 Pivô / Gestor'}
+                  {p.role === 'admin' ? '⭐ Administrador' : '🌱 Gestor'}
                 </div>
                 {p.phone && (
                   <div className={styles.metaRow}>

@@ -36,8 +36,10 @@ export const producerTotal = (order, campaign) => {
   return product + freight + markup + fee
 }
 
-export const generateShareLink = () =>
-  `${window.location.origin}/portalforms`
+export const generateShareLink = (slug) =>
+  slug
+    ? `${window.location.origin}/portalforms?c=${slug}`
+    : `${window.location.origin}/portalforms`
 
 export const buildWhatsAppMsg = (campaign, vendor, opts = {}) => {
   const total    = totalOrdered(campaign)
@@ -46,6 +48,7 @@ export const buildWhatsAppMsg = (campaign, vendor, opts = {}) => {
     .map(o => `  • ${o.producerName}: ${o.qty} ${campaign.unit}`)
     .join('\n')
   const greeting = vendor ? `Olá, *${vendor.name}*! ` : ''
+  const sysLink  = typeof window !== 'undefined' ? window.location.origin : 'https://agrocoletivo.com.br'
 
   // Condições da cotação
   const deadline  = opts.quotationDays  ? `${opts.quotationDays} dias` : '3 dias úteis'
@@ -56,23 +59,23 @@ export const buildWhatsAppMsg = (campaign, vendor, opts = {}) => {
   return (
     `${greeting}*COTAÇÃO COLETIVA – ${campaign.product.toUpperCase()}*\n\n` +
     `📦 *Total: ${total} ${campaign.unit}* (${totalTon} toneladas)\n` +
-    `👨‍🌾 Produtores: ${(campaign.orders ?? []).length}\n\n` +
+    `👨‍🌾 Compradores: ${(campaign.orders ?? []).length}\n\n` +
     `*📋 Detalhamento de demanda:*\n${lines}\n\n` +
     `*⚙️ Condições da cotação:*\n` +
     `  💳 Pagamento: ${payment}\n` +
     `  🚚 Frete: ${freight}\n` +
     `  📅 Prazo de entrega: ${delivery}\n` +
     `  ⏰ Prazo para cotação: *${deadline}*\n\n` +
-    `Favor enviar melhor preço por ${campaign.unit.replace(/s$/, '')} ` +
-    `para entrega em Tabuleiro do Norte/CE.\n\n` +
-    `Responda esta mensagem com: Preço/unidade + condições especiais.\n\nObrigado! 🌾`
+    `Para enviar sua proposta, acesse o sistema:\n🔗 *${sysLink}*\n\n` +
+    `Ou responda esta mensagem com: Preço/${campaign.unit.replace(/s$/, '')} + qtd disponível + condições.\n\nObrigado! 🌾`
   )
 }
 
 export const STATUS_LABEL = {
   open:        'Aberta',
-  closed:      'Encerrada',
+  closed:      'Pausada',
   negotiating: 'Negociando',
+  finished:    'Encerrada',
 }
 
 // ── MONETIZAÇÃO ──────────────────────────────────────────────────────────────
@@ -83,12 +86,6 @@ export const calcPlatformFee = (totalValue, feePercent = 1.5) => ({
   netValue:  totalValue * (1 - feePercent / 100),
 })
 
-export const campaignTotalValue = (campaign) => {
-  if (!campaign.pricePerUnit) return 0
-  return (campaign.pricePerUnit * totalOrdered(campaign))
-    + (campaign.freightTotal ?? 0)
-    + (campaign.markupTotal  ?? 0)
-}
 
 // ── Cálculo central de oferta — preço médio ponderado por prioridade ──────────
 // Centralizado aqui para uso no Admin e Dashboard (antes só existia no LotsPanel)
@@ -148,4 +145,11 @@ export function campaignRealValue(campaign) {
 // Retorna true quando o valor é estimado via lotes (sem pricePerUnit confirmado)
 export function campaignValueIsEstimate(campaign) {
   return !campaign.pricePerUnit && (campaign.lots ?? []).length > 0 && (campaign.orders ?? []).length > 0
+}
+
+// ── Dias restantes até o prazo ────────────────────────────────────────────────
+export function daysUntilDeadline(deadlineIso) {
+  if (!deadlineIso) return null
+  const diff = new Date(deadlineIso + 'T23:59:59') - new Date()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
 }

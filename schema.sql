@@ -24,8 +24,8 @@ drop type  if exists user_role          cascade;
 drop function if exists find_or_create_buyer cascade;
 
 -- ── ENUMs ─────────────────────────────────────────────────────
-create type user_role as enum ('pivo', 'vendor', 'buyer');
-create type campaign_status as enum ('open', 'negotiating', 'closed');
+create type user_role as enum ('admin', 'pivo', 'vendor', 'buyer');
+create type campaign_status as enum ('open', 'negotiating', 'closed', 'finished');
 create type order_status    as enum ('pending', 'approved', 'rejected');
 create type product_unit    as enum ('sacos','kg','toneladas','litros','fardos','caixas','unidades');
 create type promo_type      as enum ('fixed_discount','percent_discount','fixed_bonus');
@@ -108,6 +108,7 @@ create table campaigns (
   markup_total   numeric(12,2),
   status         campaign_status not null default 'open',
   deadline       date,
+  closed_at      timestamptz,
   created_at     timestamptz     not null default now()
 );
 
@@ -204,6 +205,28 @@ end;
 $$;
 
 -- ── DADOS INICIAIS ────────────────────────────────────────────
--- Cria um pivô padrão. Altere a senha depois.
-insert into users (name, phone, password_hash, role)
-values ('Admin Pivô', '00000000000', 'admin123', 'pivo');
+-- Cria usuários padrão para cada papel
+
+-- Admin
+insert into users (name, phone, password_hash, role, city, notes, active)
+values ('Admin Sistema', '38991110000', 'admin@123', 'admin', 'Pirapora', 'Administrador do sistema', true);
+
+-- Gestor (Pivô)
+insert into users (name, phone, password_hash, role, city, notes, active)
+values ('Gestor Sistema', '38991110001', 'gestor@123', 'pivo', 'Pirapora', 'Gestor de cotações', true);
+
+-- Vendor (Fornecedor)
+insert into users (name, phone, password_hash, role, city, notes, active)
+values ('Fornecedor Demo 1', '38999999001', 'vendor@123', 'vendor', 'Pirapora', 'Fornecedor teste', true);
+
+-- Vendor 2
+insert into users (name, phone, password_hash, role, city, notes, active)
+values ('Fornecedor Demo 2', '38999999002', 'vendor@123', 'vendor', 'Buritizeiro', 'Fornecedor teste 2', true);
+
+-- ══════════════════════════════════════════════════════════════
+-- CONFIGURAR RLS (Row Level Security) - NECESSÁRIO PARA LOGIN
+-- ══════════════════════════════════════════════════════════════
+
+-- DESABILITAR RLS na tabela users (app não usa autenticação JWT do Supabase)
+-- Usa autenticação manual por phone/password_hash
+alter table public.users disable row level security;

@@ -632,7 +632,7 @@ export function VendorProductsPage({ user, vendor, products = [], loading = fals
         <div className={styles.empty}>
           <div className={styles.emptyIcon}><Package size={36}/></div>
           <h3>Nenhum produto ainda</h3>
-          <p>Cadastre seus produtos com preço, peso e condições para aparecer nas cotações dos pivôs.</p>
+          <p>Cadastre seus produtos com preço, peso e condições para aparecer nas cotações dos gestors.</p>
           <Button variant="primary" onClick={() => setEditProduct({})}>
             <Plus size={14}/> Cadastrar primeiro produto
           </Button>

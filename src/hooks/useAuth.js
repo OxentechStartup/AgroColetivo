@@ -1,10 +1,26 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { login, register, getSession, saveSession, clearSession } from '../lib/auth'
+import { supabase } from '../lib/supabase'
 
 export function useAuth() {
   const [user,    setUser]    = useState(() => getSession())
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
+
+  // Valida sessão salva contra o banco (detecta banco recriado)
+  useEffect(() => {
+    const saved = getSession()
+    if (!saved?.id) return
+    supabase.from('users').select('id').eq('id', saved.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) {
+          // Usuário não existe mais no banco (banco foi recriado) — força novo login
+          clearSession()
+          setUser(null)
+        }
+      })
+      .catch(() => {}) // silencia erros de rede
+  }, [])
 
   const signIn = useCallback(async (phone, password) => {
     setLoading(true); setError(null)

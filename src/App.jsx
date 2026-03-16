@@ -1,152 +1,298 @@
-import { useState, useEffect } from 'react'
-import { Sidebar }             from './components/Sidebar'
-import { Topbar }              from './components/Topbar'
-import { LoadingScreen, ErrorScreen } from './components/LoadingScreen'
-import { LoginPage }           from './pages/LoginPage'
-import { DashboardPage }       from './pages/DashboardPage'
-import { CampaignsPage }       from './pages/CampaignsPage'
-import { ProducersPage }       from './pages/ProducersPage'
-import { AdminPage }           from './pages/AdminPage'
-import { VendorDashboardPage } from './pages/VendorDashboardPage'
-import { VendorProductsPage }  from './pages/VendorProductsPage'
-import { VendorPivosPage }     from './pages/VendorPivosPage'
-import { VendorProfilePage }   from './pages/VendorProfilePage'
-import { ProducerPortalPage }  from './pages/ProducerPortalPage'
-import { useCampaigns }        from './hooks/useCampaigns'
-import { useVendorProducts }   from './hooks/useVendorProducts'
-import { usePivos }            from './hooks/usePivos'
-import { useAuth }             from './hooks/useAuth'
-import styles from './App.module.css'
+import { useState, useEffect } from "react";
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Store,
+  Users,
+  ShieldCheck,
+  Send,
+  UserSquare2,
+  Package,
+} from "lucide-react";
+import { Sidebar } from "./components/Sidebar";
+import { Topbar } from "./components/Topbar";
+import { LoadingScreen, ErrorScreen } from "./components/LoadingScreen";
+import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { CampaignsPage } from "./pages/CampaignsPage";
+import { ProducersPage } from "./pages/ProducersPage";
+import { AdminPage } from "./pages/AdminPage";
+import { FinancialPage } from "./pages/FinancialPage";
+import { VendorDashboardPage } from "./pages/VendorDashboardPage";
+import { VendorProductsPage } from "./pages/VendorProductsPage";
+import { VendorProfilePage } from "./pages/VendorProfilePage";
+import { VendorPivosPage } from "./pages/VendorPivosPage";
+import { VendorsPage } from "./pages/VendorsPage";
+import { ProducerPortalPage } from "./pages/ProducerPortalPage";
+import { useCampaigns } from "./hooks/useCampaigns";
+import { useVendorProducts } from "./hooks/useVendorProducts";
+import { useGestores } from "./hooks/useGestores";
+import { useAuth } from "./hooks/useAuth";
+import { ROLES } from "./constants/roles";
+import styles from "./App.module.css";
 
 const isPortalRoute = () =>
-  window.location.pathname === '/portalforms' ||
-  window.location.hash === '#/portalforms'
+  window.location.pathname === "/portalforms" ||
+  window.location.hash === "#/portalforms";
 
 function defaultPageForRole(role) {
-  if (role === 'vendor') return 'vendor-dashboard'
-  if (role === 'admin')  return 'admin'
-  return 'dashboard'
+  if (role === ROLES.VENDOR) return "vendor-dashboard";
+  if (role === ROLES.ADMIN) return "admin";
+  return "dashboard";
 }
 
 const ALLOWED = {
-  pivo:   ['dashboard', 'campaigns', 'producers'],
-  vendor: ['vendor-dashboard', 'vendor-products', 'vendor-pivos', 'vendor-profile'],
-  admin:  ['dashboard', 'campaigns', 'producers', 'admin'],
-}
+  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "vendors", "financial"],
+  [ROLES.VENDOR]: ["vendor-dashboard", "vendor-profile", "vendor-products", "vendor-pivos"],
+  [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "vendors", "financial"],
+};
 
 const PAGE_TITLES = {
-  dashboard:          'Dashboard',
-  campaigns:          'Cotações',
-  producers:          'Produtores',
-  admin:              'Monitoramento Financeiro',
-  'vendor-dashboard': 'Cotações Disponíveis',
-  'vendor-products':  'Meus Produtos',
-  'vendor-pivos':     'Pivôs',
-  'vendor-profile':   'Meu Perfil',
+  dashboard: "Dashboard",
+  campaigns: "Cotações",
+  producers: "Compradores",
+  vendors: "Fornecedores",
+  admin: "Monitoramento Financeiro",
+  financial: "Financeiro",
+  "vendor-dashboard": "Propostas",
+  "vendor-profile": "Meu Perfil",
+  "vendor-products": "Meus Produtos",
+  "vendor-pivos": "Gestores",
+};
+
+// ── Bottom Navigation (mobile only) ───────────────────────────────────────
+function BottomNav({ page, setPage, role, blocked }) {
+  const items =
+    role === ROLES.VENDOR
+      ? [
+          { id: "vendor-dashboard", label: "Propostas", Icon: Send },
+          { id: "vendor-products", label: "Produtos", Icon: Package },
+          { id: "vendor-profile", label: "Perfil", Icon: UserSquare2 },
+          { id: "vendor-pivos", label: "Gestores", Icon: Users },
+        ]
+      : role === ROLES.ADMIN
+        ? [
+            { id: "dashboard", label: "Início", Icon: LayoutDashboard },
+            { id: "campaigns", label: "Cotações", Icon: ClipboardList },
+            { id: "vendors", label: "Fornecedores", Icon: Store },
+            { id: "producers", label: "Compradores", Icon: Users },
+            { id: "admin", label: "Admin", Icon: ShieldCheck },
+          ]
+        : [
+            { id: "dashboard", label: "Início", Icon: LayoutDashboard },
+            { id: "campaigns", label: "Cotações", Icon: ClipboardList },
+            { id: "vendors", label: "Fornecedores", Icon: Store },
+            { id: "producers", label: "Compradores", Icon: Users },
+          ];
+
+  return (
+    <nav className="bottomNav">
+      {items.map(({ id, label, Icon }) => {
+        const isLocked = blocked && id !== "dashboard";
+        return (
+          <button
+            key={id}
+            className={`bottomNavItem ${page === id ? "active" : ""}`}
+            onClick={() => !isLocked && setPage(id)}
+            disabled={isLocked}
+          >
+            <Icon size={20} />
+            {label}
+          </button>
+        );
+      })}
+    </nav>
+  );
 }
 
 export default function App() {
-  const [isPortal, setIsPortal] = useState(isPortalRoute)
-  const { user, loading: authLoading, error: authError, signIn, signUp, signOut } = useAuth()
-  const [page, setPage] = useState(() => defaultPageForRole(user?.role))
+  const [isPortal, setIsPortal] = useState(isPortalRoute);
+  const {
+    user,
+    loading: authLoading,
+    error: authError,
+    signIn,
+    signUp,
+    signOut,
+  } = useAuth();
+  const [page, setPage] = useState(() => defaultPageForRole(user?.role));
 
   // ── Estado global de campanhas / vendors
   const {
-    campaigns, vendors,
-    loading, error, reload,
-    addCampaign, addOrder, removeOrder, saveFinancials,
-    closeCampaign, reopenCampaign, deleteCampaign,
-    addPendingOrder, approvePending, rejectPending,
-    addLot, removeLot, addVendor, removeVendor,
-  } = useCampaigns(user)
+    campaigns,
+    vendors,
+    loading,
+    error,
+    reload,
+    addCampaign,
+    addOrder,
+    removeOrder,
+    saveFinancials,
+    closeCampaign,
+    finishCampaign,
+    reopenCampaign,
+    publishToVendors,
+    deleteCampaign,
+    addPendingOrder,
+    approvePending,
+    rejectPending,
+    addLot,
+    removeLot,
+    addVendor,
+    removeVendor,
+    reloadCampaign,
+    ownVendor,
+  } = useCampaigns(user);
 
   // ── Estado global de produtos do fornecedor (só ativo para vendors)
-  const vendor     = vendors?.find(v => v.user_id === user?.id) ?? null
-  const vendorId   = vendor?.id ?? null
+  // For vendor role: use ownVendor (their own record fetched directly)
+  // For gestor/admin: find in vendors array
+  const vendor =
+    user?.role === ROLES.VENDOR
+      ? (ownVendor ?? null)
+      : (vendors?.find((v) => v.user_id === user?.id) ?? null);
+  const vendorId = vendor?.id ?? null;
   const {
-    products, loading: productsLoading,
-    saveProduct, removeProduct, addPromo, removePromo,
-  } = useVendorProducts(user?.role === 'vendor' ? vendorId : null)
+    products,
+    loading: productsLoading,
+    saveProduct,
+    removeProduct,
+    addPromo,
+    removePromo,
+  } = useVendorProducts(user?.role === ROLES.VENDOR ? vendorId : null);
 
-  // ── Estado global de pivôs (só ativo para vendors)
-  const { pivos, loading: pivosLoading } = usePivos()
+  // ── Lista de gestores (para a página vendor-pivos)
+  const { gestores, loading: gestoresLoading } = useGestores();
 
   // ── Vendor profile: atualiza vendor local no array sem reload
   const handleVendorUpdate = (updated) => {
-    // vendors vem do useCampaigns; atualizamos o estado de campaigns indiretamente
-    // como vendors é array simples, fazemos reload leve só de vendors
-    reload()
-  }
+    reload();
+  };
 
   // listeners de rota
   useEffect(() => {
-    const check = () => setIsPortal(isPortalRoute())
-    window.addEventListener('hashchange', check)
-    window.addEventListener('popstate',   check)
+    const check = () => setIsPortal(isPortalRoute());
+    window.addEventListener("hashchange", check);
+    window.addEventListener("popstate", check);
     return () => {
-      window.removeEventListener('hashchange', check)
-      window.removeEventListener('popstate',   check)
-    }
-  }, [])
+      window.removeEventListener("hashchange", check);
+      window.removeEventListener("popstate", check);
+    };
+  }, []);
 
   useEffect(() => {
-    const open = isPortal || !user
-    document.body.style.overflow = open ? 'auto' : ''
-    document.body.style.height   = open ? 'auto' : ''
-  }, [isPortal, user])
+    const open = isPortal || !user;
+    document.body.style.overflow = open ? "auto" : "";
+    document.body.style.height = open ? "auto" : "";
+  }, [isPortal, user]);
 
   useEffect(() => {
     if (user) {
       // Novo usuário logado: navega para a página padrão do seu papel
-      setPage(defaultPageForRole(user.role))
+      setPage(defaultPageForRole(user.role));
     } else {
       // Usuário deslogado: garante que a página volta ao estado neutro
-      setPage('dashboard')
+      setPage("dashboard");
     }
-  }, [user?.id])  // ← depende do ID, não só do role — detecta troca de conta
+  }, [user?.id]); // ← depende do ID, não só do role — detecta troca de conta
 
   const navigate = (target) => {
-    if (user?.blocked && target !== 'dashboard') return
-    const allowed = ALLOWED[user?.role ?? 'pivo'] ?? ALLOWED.pivo
-    if (allowed.includes(target)) setPage(target)
-  }
+    if (user?.blocked && target !== "dashboard") return;
+    const allowed =
+      ALLOWED[user?.role ?? ROLES.GESTOR] ?? ALLOWED[ROLES.GESTOR];
+    if (allowed.includes(target)) setPage(target);
+  };
 
-  if (isPortal) return <ProducerPortalPage onSubmit={addPendingOrder}/>
-  if (!user)    return <LoginPage onLogin={signIn} onRegister={signUp} loading={authLoading} error={authError}/>
+  if (isPortal) return <ProducerPortalPage onSubmit={addPendingOrder} />;
+  if (!user)
+    return (
+      <LoginPage
+        onLogin={signIn}
+        onRegister={signUp}
+        loading={authLoading}
+        error={authError}
+      />
+    );
 
-  const role = user.role ?? 'pivo'
+  const role = user.role ?? ROLES.GESTOR;
 
   const campaignActions = {
-    addCampaign, addOrder, removeOrder, saveFinancials,
-    closeCampaign, reopenCampaign, deleteCampaign,
-    approvePending, rejectPending,
-    addLot, removeLot, addVendor, removeVendor,
-  }
+    addCampaign,
+    addOrder,
+    removeOrder,
+    saveFinancials,
+    closeCampaign,
+    finishCampaign,
+    reopenCampaign,
+    publishToVendors,
+    deleteCampaign,
+    approvePending,
+    rejectPending,
+    addLot,
+    removeLot,
+    addVendor,
+    removeVendor,
+    reload,
+    reloadCampaign,
+  };
 
   const renderPage = () => {
-    if (loading) return <LoadingScreen message="Carregando…"/>
-    if (error)   return <ErrorScreen  message={error} onRetry={reload}/>
+    if (loading) return <LoadingScreen message="Carregando…" />;
+    if (error) return <ErrorScreen message={error} onRetry={reload} />;
 
-    const allowed  = ALLOWED[role] ?? ALLOWED.pivo
-    const safePage = allowed.includes(page) ? page : defaultPageForRole(role)
+    const allowed = ALLOWED[role] ?? ALLOWED[ROLES.GESTOR];
+    const safePage = allowed.includes(page) ? page : defaultPageForRole(role);
 
     switch (safePage) {
-      case 'dashboard':
-        return <DashboardPage campaigns={campaigns} setPage={navigate} user={user}/>
+      case "dashboard":
+        return (
+          <DashboardPage campaigns={campaigns} setPage={navigate} user={user} />
+        );
 
-      case 'campaigns':
-        return <CampaignsPage campaigns={campaigns} vendors={vendors} actions={campaignActions} user={user}/>
+      case "campaigns":
+        return (
+          <CampaignsPage
+            campaigns={campaigns}
+            vendors={vendors}
+            actions={campaignActions}
+            user={user}
+            setPage={navigate}
+          />
+        );
 
-      case 'producers':
-        return <ProducersPage campaigns={campaigns}/>
+      case "producers":
+        return <ProducersPage campaigns={campaigns} user={user} />;
 
-      case 'admin':
-        return <AdminPage campaigns={campaigns}/>
+      case "vendors":
+        return (
+          <VendorsPage
+            vendors={vendors}
+            campaigns={campaigns}
+            actions={campaignActions}
+            user={user}
+          />
+        );
 
-      case 'vendor-dashboard':
-        return <VendorDashboardPage campaigns={campaigns} vendors={vendors} user={user}/>
+      case "admin":
+        return (
+          <AdminPage
+            campaigns={campaigns}
+            actions={campaignActions}
+            reload={reload}
+          />
+        );
 
-      case 'vendor-products':
+      case "vendor-dashboard":
+        return (
+          <VendorDashboardPage
+            campaigns={campaigns}
+            vendors={vendors}
+            vendor={vendor}
+            user={user}
+          />
+        );
+
+      case "vendor-products":
         return (
           <VendorProductsPage
             user={user}
@@ -158,44 +304,88 @@ export default function App() {
             onAddPromo={addPromo}
             onDeletePromo={removePromo}
           />
-        )
+        );
 
-      case 'vendor-pivos':
-        return <VendorPivosPage pivos={pivos} loading={pivosLoading}/>
+      case "vendor-profile":
+        return (
+          <VendorProfilePage
+            user={user}
+            vendor={vendor}
+            onSaved={handleVendorUpdate}
+          />
+        );
 
-      case 'vendor-profile':
-        return <VendorProfilePage user={user} vendor={vendor} onSaved={handleVendorUpdate}/>
+      case "financial":
+        return (
+          <FinancialPage
+            campaigns={campaigns}
+            actions={campaignActions}
+            onBack={() => navigate("campaigns")}
+          />
+        );
+
+      case "vendor-pivos":
+        return (
+          <VendorPivosPage
+            pivos={gestores}
+            loading={gestoresLoading}
+          />
+        );
 
       default:
-        return <DashboardPage campaigns={campaigns} setPage={navigate} user={user}/>
+        return (
+          <DashboardPage campaigns={campaigns} setPage={navigate} user={user} />
+        );
     }
-  }
+  };
 
   return (
     <div className={styles.app}>
-      <Sidebar page={page} setPage={navigate} open={false} onClose={() => {}} user={user} blocked={user?.blocked}/>
-      <SidebarMobile page={page} setPage={navigate} user={user}/>
-      <div className={styles.main}>
+      <Sidebar
+        page={page}
+        setPage={navigate}
+        open={false}
+        onClose={() => {}}
+        user={user}
+        blocked={user?.blocked}
+      />
+      <SidebarMobile page={page} setPage={navigate} user={user} />
+      <div className={`${styles.main} mainWithBottomNav`}>
         <Topbar
-          title={PAGE_TITLES[page] ?? ''}
-          onMenuClick={() => document.dispatchEvent(new Event('open-sidebar'))}
-          onPortalClick={() => window.open('/portalforms', '_blank')}
+          title={PAGE_TITLES[page] ?? ""}
+          onMenuClick={() => document.dispatchEvent(new Event("open-sidebar"))}
+          onPortalClick={() => window.open("/portalforms", "_blank")}
           user={user}
           onLogout={() => signOut()}
-          onProfile={() => navigate('vendor-profile')}
+          onProfile={() => navigate("vendor-profile")}
         />
         <div className={styles.content}>{renderPage()}</div>
       </div>
+      <BottomNav
+        page={page}
+        setPage={navigate}
+        role={user?.role ?? ROLES.GESTOR}
+        blocked={user?.blocked}
+      />
     </div>
-  )
+  );
 }
 
 function SidebarMobile({ page, setPage, user }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
   useEffect(() => {
-    const h = () => setOpen(true)
-    document.addEventListener('open-sidebar', h)
-    return () => document.removeEventListener('open-sidebar', h)
-  }, [])
-  return <Sidebar page={page} setPage={setPage} open={open} onClose={() => setOpen(false)} user={user} blocked={user?.blocked}/>
+    const h = () => setOpen(true);
+    document.addEventListener("open-sidebar", h);
+    return () => document.removeEventListener("open-sidebar", h);
+  }, []);
+  return (
+    <Sidebar
+      page={page}
+      setPage={setPage}
+      open={open}
+      onClose={() => setOpen(false)}
+      user={user}
+      blocked={user?.blocked}
+    />
+  );
 }

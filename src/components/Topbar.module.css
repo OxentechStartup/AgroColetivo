@@ -10,6 +10,25 @@
   min-width: 40px; min-height: 40px; align-items: center; justify-content: center;
 }
 .menuBtn:hover { background: var(--surface3); color: var(--text); }
+
+/* Logo mobile — oculta no desktop */
+.mobileLogo {
+  display: none;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.mobileLogoIcon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.mobileLogoText {
+  font-size: .9rem; font-weight: 800; color: var(--text);
+  letter-spacing: -.02em;
+}
+
 .title { font-size: .9rem; font-weight: 700; flex: 1; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
 .portalBtn {
@@ -32,8 +51,8 @@
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .userInfo { display: flex; flex-direction: column; gap: 1px; }
-.userName { font-size: .78rem; font-weight: 500; color: var(--text2); line-height: 1.2; }
-.userRole { font-size: .64rem; font-weight: 600; color: var(--text3); line-height: 1.2; text-transform: uppercase; letter-spacing: .03em; }
+.userName { font-size: .84rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+.userRole { font-size: .65rem; font-weight: 500; color: var(--text3); line-height: 1.2; text-transform: uppercase; letter-spacing: .04em; }
 .logoutBtn {
   background: none; border: 1px solid var(--border); border-radius: var(--r);
   color: var(--text3); cursor: pointer; padding: 8px; display: flex;
@@ -41,15 +60,24 @@
   align-items: center; justify-content: center;
 }
 .logoutBtn:hover { background: var(--red-dim); border-color: var(--red-border); color: var(--red); }
+
 @media (max-width: 768px) {
-  .menuBtn { display: flex; }
-  .portalBtn span { display: none; }
-  .portalBtn { padding: 8px 10px; }
-  .userName { display: none; }
+  .menuBtn { display: none; }
+  .portalBtn { display: none; }
+  .mobileLogo { display: flex; }
+  .title { display: none; }
+  .userName { display: block; font-size: .76rem; }
+  .userBtn { padding: 5px 8px; }
+  .logoutBtn {
+    min-width: 36px; min-height: 36px;
+    display: flex !important;
+    background: var(--red-dim);
+    border-color: var(--red-border);
+    color: var(--red);
+  }
 }
 @media (max-width: 380px) {
   .topbar { padding: 0 10px; gap: 6px; }
-  .title  { font-size: .82rem; }
-  .logoutBtn { display: none; }
   .userBtn { padding: 5px 8px; }
+  .userInfo { display: none; }
 }

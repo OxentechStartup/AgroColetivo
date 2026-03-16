@@ -141,3 +141,5 @@
 @media (max-width: 768px) {
   .page { height: auto; min-height: calc(100dvh - var(--topbar-h)); overflow-y: visible; }
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }

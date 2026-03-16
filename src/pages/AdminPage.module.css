@@ -67,11 +67,11 @@
 .summaryVal { font-size: .92rem; font-weight: 700; color: var(--text); }
 .summarySub { font-size: .7rem; color: var(--text3); margin-top: 1px; }
 
-/* ── Pivos section ── */
-.pivosSection { display: flex; flex-direction: column; gap: 12px; }
-.pivosHeader  { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+/* ── Gestors section ── */
+.gestorsSection { display: flex; flex-direction: column; gap: 12px; }
+.gestorsHeader  { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
 
-.pivosQuickStats { display: flex; align-items: center; gap: 8px; }
+.gestorsQuickStats { display: flex; align-items: center; gap: 8px; }
 .qStat     { font-size: .84rem; color: var(--text2); font-weight: 500; }
 .qStat span { font-size: 1.1rem; font-weight: 700; }
 .qStatDiv  { width: 1px; height: 20px; background: var(--border); }
@@ -92,40 +92,40 @@
   font-size: .8rem; color: var(--red);
 }
 
-.pivoList    { display: flex; flex-direction: column; gap: 8px; }
-.pivoLoading { text-align: center; padding: 32px; color: var(--text3); font-size: .84rem; }
-.pivoEmpty   { text-align: center; padding: 40px; color: var(--text3); font-size: .84rem;
+.gestorList    { display: flex; flex-direction: column; gap: 8px; }
+.gestorLoading { text-align: center; padding: 32px; color: var(--text3); font-size: .84rem; }
+.gestorEmpty   { text-align: center; padding: 40px; color: var(--text3); font-size: .84rem;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
 
-/* ── Pivo Card ── */
-.pivoCard {
+/* ── Gestor Card ── */
+.gestorCard {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-lg);
   transition: box-shadow .14s;
 }
-.pivoCard:hover { box-shadow: var(--shadow); }
-.pivoBlocked    { border-color: var(--red-border); background: var(--red-dim); }
+.gestorCard:hover { box-shadow: var(--shadow); }
+.gestorBlocked    { border-color: var(--red-border); background: var(--red-dim); }
 
-.pivoRow {
+.gestorRow {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
 }
-.pivoStatusDot {
+.gestorStatusDot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
 }
 .dotActive  { background: var(--primary); box-shadow: 0 0 0 3px var(--primary-mid); }
 .dotBlocked { background: var(--red);     box-shadow: 0 0 0 3px var(--red-mid); }
 
-.pivoInfo  { flex: 1; min-width: 0; }
-.pivoName  { font-weight: 700; font-size: .9rem; color: var(--text); }
-.pivoMeta  { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: .72rem; color: var(--text3); }
-.pivoMeta span { display: flex; align-items: center; gap: 3px; }
+.gestorInfo  { flex: 1; min-width: 0; }
+.gestorName  { font-weight: 700; font-size: .9rem; color: var(--text); }
+.gestorMeta  { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: .72rem; color: var(--text3); }
+.gestorMeta span { display: flex; align-items: center; gap: 3px; }
 
-.pivoStats { display: flex; gap: 20px; flex-shrink: 0; }
-.pivoStat  { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
-.pivoStatVal { font-size: .88rem; font-weight: 700; color: var(--text); }
-.pivoStatLbl { font-size: .66rem; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; }
+.gestorStats { display: flex; gap: 20px; flex-shrink: 0; }
+.gestorStat  { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.gestorStatVal { font-size: .88rem; font-weight: 700; color: var(--text); }
+.gestorStatLbl { font-size: .66rem; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; }
 
-.pivoActions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.gestorActions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
 .toggleBtn {
   display: inline-flex; align-items: center; gap: 5px;
@@ -138,22 +138,22 @@
 .unblockBtn:hover { background: var(--primary-mid); }
 .toggleBtn:disabled { opacity: .5; cursor: not-allowed; }
 
-.expandPivoBtn {
+.expandGestorBtn {
   background: var(--surface3); border: 1px solid var(--border);
   border-radius: var(--r); padding: 5px; cursor: pointer; color: var(--text2);
   display: flex; transition: all .12s;
 }
-.expandPivoBtn:hover { background: var(--border); color: var(--text); }
+.expandGestorBtn:hover { background: var(--border); color: var(--text); }
 
-/* Campaigns inside pivo */
-.pivoCampaigns { border-top: 1px solid var(--border); background: var(--surface2); padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; border-radius: 0 0 var(--r-lg) var(--r-lg); }
-.pivoCampRow   { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
-.pivoCampRow:last-child { border-bottom: none; }
-.pivoCampLeft  { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
-.pivoCampName  { font-size: .82rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pivoCampMid   { display: flex; align-items: center; gap: 6px; width: 100px; flex-shrink: 0; }
-.pivoCampPct   { font-size: .72rem; color: var(--text3); white-space: nowrap; }
-.pivoCampFee   { font-size: .82rem; font-weight: 600; color: var(--primary); min-width: 80px; text-align: right; flex-shrink: 0; }
+/* Campaigns inside gestor */
+.gestorCampaigns { border-top: 1px solid var(--border); background: var(--surface2); padding: 8px 16px; display: flex; flex-direction: column; gap: 6px; border-radius: 0 0 var(--r-lg) var(--r-lg); }
+.gestorCampRow   { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.gestorCampRow:last-child { border-bottom: none; }
+.gestorCampLeft  { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.gestorCampName  { font-size: .82rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gestorCampMid   { display: flex; align-items: center; gap: 6px; width: 100px; flex-shrink: 0; }
+.gestorCampPct   { font-size: .72rem; color: var(--text3); white-space: nowrap; }
+.gestorCampFee   { font-size: .82rem; font-weight: 600; color: var(--primary); min-width: 80px; text-align: right; flex-shrink: 0; }
 
 /* Mini bar */
 .miniBarTrack { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
@@ -190,7 +190,7 @@
   .page         { height: auto; min-height: calc(100dvh - var(--topbar-h)); overflow-y: auto; }
   .kpiGrid      { grid-template-columns: 1fr 1fr; gap: 8px; }
   .summaryStrip { grid-template-columns: 1fr 1fr; }
-  .pivoStats    { display: none; }
+  .gestorStats    { display: none; }
 
   /* Tabs: full width + scroll */
   .tabs         { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
@@ -198,7 +198,7 @@
   .tab          { flex: 1; justify-content: center; padding: 9px 10px; font-size: .78rem; min-height: 42px; white-space: nowrap; }
 
   /* Search takes full width */
-  .pivosHeader  { flex-direction: column; align-items: stretch; }
+  .gestorsHeader  { flex-direction: column; align-items: stretch; }
   .searchWrap   { max-width: 100%; }
   .searchInput  { font-size: .9rem; }
 }
@@ -207,12 +207,12 @@
   .heading h1   { font-size: 1.1rem; }
   .summaryStrip { grid-template-columns: 1fr; }
   .summaryItem  { border-right: none; border-bottom: 1px solid var(--border); }
-  .pivoRow      { flex-wrap: wrap; gap: 10px; }
-  .pivoInfo     { min-width: 0; flex: 1; }
-  .pivoActions  { width: 100%; justify-content: flex-end; margin-top: 2px; }
+  .gestorRow      { flex-wrap: wrap; gap: 10px; }
+  .gestorInfo     { min-width: 0; flex: 1; }
+  .gestorActions  { width: 100%; justify-content: flex-end; margin-top: 2px; }
   .toggleBtn    { min-height: 38px; }
   .kpiVal       { font-size: 1.15rem; }
-  .pivoCampMid  { display: none; }
+  .gestorCampMid  { display: none; }
 }
 @media (max-width: 380px) {
   .kpiGrid      { grid-template-columns: 1fr; }
@@ -233,10 +233,10 @@
   .kpiVal     { font-size: 1.1rem; }
   .summaryStrip { grid-template-columns: 1fr; }
   .summaryItem  { border-right: none; border-bottom: 1px solid var(--border); }
-  .pivoStats  { display: none; }
-  .pivoRow    { flex-wrap: wrap; gap: 8px; }
-  .pivoActions { width: 100%; justify-content: flex-end; }
-  .pivoCampMid { display: none; }
+  .gestorStats  { display: none; }
+  .gestorRow    { flex-wrap: wrap; gap: 8px; }
+  .gestorActions { width: 100%; justify-content: flex-end; }
+  .gestorCampMid { display: none; }
   .tableWrap .tbl { width: 100%; }
 }
 
