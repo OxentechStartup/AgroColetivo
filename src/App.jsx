@@ -162,7 +162,7 @@ export default function App() {
   } = useVendorProducts(user?.role === ROLES.VENDOR ? vendorId : null);
 
   // ── Lista de gestores (para a página vendor-pivos)
-  const { gestores, loading: gestoresLoading } = useGestores();
+  const { gestores, loading: gestoresLoading } = useGestores(user);
 
   // ── Vendor profile: atualiza vendor local no array sem reload
   const handleVendorUpdate = (updated) => {

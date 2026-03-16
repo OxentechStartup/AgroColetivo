@@ -66,3 +66,33 @@ function normalizeLot(r) {
     createdAt: r.created_at?.slice(0, 10),
   };
 }
+
+// ── BATCH: busca orders de múltiplas campanhas em UMA query ───────────────
+// Substitui o padrão N+1 do useCampaigns (1 query por campanha)
+export async function fetchAllOrdersForCampaigns(campaignIds) {
+  if (!campaignIds?.length) return []
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id, qty, status, submitted_at, lot_id, campaign_id,
+      buyers (id, name, phone),
+      campaign_lots (id, vendor_name, price_per_unit, qty_available, vendors(name))
+    `)
+    .in('campaign_id', campaignIds)
+    .in('status', ['approved', 'pending'])
+    .order('submitted_at', { ascending: true })
+  if (error) throw new Error('Erro ao buscar pedidos: ' + error.message)
+  return data ?? []
+}
+
+// ── BATCH: busca lotes de múltiplas campanhas em UMA query ────────────────
+export async function fetchAllLotsForCampaigns(campaignIds) {
+  if (!campaignIds?.length) return []
+  const { data, error } = await supabase
+    .from('campaign_lots')
+    .select('*, vendors(name, phone)')
+    .in('campaign_id', campaignIds)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error('Erro ao buscar lotes: ' + error.message)
+  return data ?? []
+}

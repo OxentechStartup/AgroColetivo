@@ -1,29 +1,45 @@
-import { useState, useEffect } from "react";
-import { ROLES } from "../constants/roles";
-import { supabase } from "../lib/supabase";
+import { useState, useEffect } from 'react'
+import { ROLES } from '../constants/roles'
+import { supabase } from '../lib/supabase'
 
 // Hook para carregar lista de gestores (pivôs) do sistema
-export function useGestores() {
-  const [gestores, setGestores] = useState([]);
-  const [loading, setLoading] = useState(true);
+// Só executa se o usuário estiver autenticado (evita 401 no Vercel)
+export function useGestores(user) {
+  const [gestores, setGestores] = useState([])
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState(null)
 
   useEffect(() => {
-    supabase
-      .from("users")
-      .select("id, name, phone, role, city, notes")
-      .eq("role", ROLES.GESTOR)
-      .order("name")
-      .then(({ data }) => {
-        setGestores(data ?? []);
-        setLoading(false);
-      });
-  }, []);
+    // Não busca sem sessão ativa — evita 401
+    if (!user?.id) {
+      setGestores([])
+      return
+    }
 
-  return { gestores, loading };
+    setLoading(true)
+    setError(null)
+
+    supabase
+      .from('users')
+      .select('id, name, phone, role, city, notes')
+      .eq('role', ROLES.GESTOR)
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) {
+          setError(error.message)
+          setGestores([])
+        } else {
+          setGestores(data ?? [])
+        }
+        setLoading(false)
+      })
+  }, [user?.id])
+
+  return { gestores, loading, error }
 }
 
-// Manter compatibilidade com código antigo (deprecated)
-export function usePivos() {
-  const { gestores, loading } = useGestores();
-  return { pivos: gestores, loading };
+// Alias legado — mantém compatibilidade
+export function usePivos(user) {
+  const { gestores, loading, error } = useGestores(user)
+  return { pivos: gestores, loading, error }
 }
