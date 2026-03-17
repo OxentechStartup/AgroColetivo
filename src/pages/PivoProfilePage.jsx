@@ -156,8 +156,8 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
         </div>
       </div>
 
-      {toast.message && (
-        <Toast message={toast.message} type={toast.type} onClose={clearToast} />
+      {toast && (
+        <Toast message={toast.msg} type={toast.type} onClose={clearToast} />
       )}
     </div>
   );

@@ -374,7 +374,7 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
       />
 
       {toast && (
-        <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
+        {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast} />}
       )}
     </div>
   );
