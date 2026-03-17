@@ -201,20 +201,26 @@ export async function logout() {
 // ─────────────────────────────────────────────────────────────────────────────
 // DELETE ACCOUNT
 // ─────────────────────────────────────────────────────────────────────────────
-export async function deleteAccount(password) {
+export async function deleteAccount(password, currentUser) {
   if (!password) throw new Error("Senha é obrigatória para deletar conta.");
 
   try {
-    // 1. Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-    if (userError || !user || !user.email) {
+    // Use provided user or fetch current user
+    let user = currentUser;
+    if (!user) {
+      const {
+        data: { user: fetchedUser },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError || !fetchedUser || !fetchedUser.email) {
+        throw new Error("Você precisa estar logado para deletar sua conta.");
+      }
+      user = fetchedUser;
+    } else if (!user.email) {
       throw new Error("Você precisa estar logado para deletar sua conta.");
     }
 
-    // 2. Testa credenciais fazendo um "login test"
+    // 2. Verify password by attempting sign in
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: user.email,
       password,

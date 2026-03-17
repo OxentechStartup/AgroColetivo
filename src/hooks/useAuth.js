@@ -82,20 +82,23 @@ export function useAuth() {
     }
   }, []);
 
-  const deleteUserAccount = useCallback(async (password) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteAccount(password);
-      clearSession();
-      setUser(null);
-    } catch (err) {
-      setError(err?.message || "Erro ao deletar conta");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const deleteUserAccount = useCallback(
+    async (password) => {
+      setLoading(true);
+      setError(null);
+      try {
+        await deleteAccount(password, user);
+        clearSession();
+        setUser(null);
+      } catch (err) {
+        setError(err?.message || "Erro ao deletar conta");
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user],
+  );
 
   return { user, loading, error, signIn, signUp, signOut, deleteUserAccount };
 }
