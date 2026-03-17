@@ -547,7 +547,7 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
       await reload();
       onAccepted();
     } catch (e) {
-      setErr("Erro ao aceitar: " + e.message);
+      setErr("Erro ao aceitar: " + (e?.message || "erro desconhecido"));
       setAccepting(null);
     }
   };
@@ -560,7 +560,7 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
       await reload();
       onCancelled();
     } catch (e) {
-      setErr("Erro ao cancelar: " + e.message);
+      setErr("Erro ao cancelar: " + (e?.message || "erro desconhecido"));
       setCancelling(null);
     }
   };
@@ -1902,7 +1902,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
         await fn(...args);
         if (msg) showToast(msg);
       } catch (e) {
-        showToast(e.message, "error");
+        showToast(e?.message || "Erro desconhecido", "error");
         throw e; // propaga para o modal não fechar em caso de erro
       }
     };
@@ -1919,7 +1919,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
         window.open(`https://wa.me/55${phone}?text=${msg}`, "_blank");
       }
     } catch (e) {
-      showToast(e.message, "error");
+      showToast(e?.message || "Erro ao aprovar pedido", "error");
     }
   };
 
@@ -1932,7 +1932,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
       showToast("Salvo!");
       await reloadCampaign(active.id);
     } catch (e) {
-      showToast(e.message, "error");
+      showToast(e?.message || "Erro ao salvar", "error");
     }
   };
 

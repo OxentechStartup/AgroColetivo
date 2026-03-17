@@ -36,7 +36,7 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
       showToast("Perfil atualizado!");
       onSaved?.(result);
     } catch (e) {
-      showToast(e.message, "error");
+      showToast(e?.message || "Erro ao atualizar perfil", "error");
     } finally {
       setSaving(false);
     }

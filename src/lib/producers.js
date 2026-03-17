@@ -16,6 +16,9 @@ export async function findOrCreateProducer(name, phone) {
     .insert({ name: name.trim(), phone: clean })
     .select()
     .single();
-  if (error) throw new Error("Erro ao cadastrar produtor: " + error.message);
+  if (error)
+    throw new Error(
+      "Erro ao cadastrar produtor: " + (error?.message || "unknown error"),
+    );
   return data;
 }

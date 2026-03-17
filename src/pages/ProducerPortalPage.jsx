@@ -29,7 +29,7 @@ async function fetchOpenCampaigns() {
     .select("*, gestor_name:users!pivo_id(name, phone)")
     .in("status", ["open", "negotiating"])
     .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao buscar campanhas");
   return (data ?? []).map((row) => ({
     id: row.id,
     product: row.product,
@@ -660,7 +660,7 @@ export function ProducerPortalPage({ onSubmit }) {
       setCidInURL("");
       setStep("done");
     } catch (e) {
-      setError(e.message);
+      setError(e?.message || "Erro ao enviar pedido");
     } finally {
       setSaving(false);
     }

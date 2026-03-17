@@ -24,7 +24,7 @@ export async function fetchVendors(userId, role) {
   }
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao buscar vendors");
   return (data ?? []).map((v) => ({
     ...v,
     admin_user_id: v.user_id,
@@ -44,7 +44,7 @@ export async function createVendor(vendor) {
     })
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao criar vendor");
   return { ...data, admin_user_id: data.user_id };
 }
 
@@ -60,7 +60,7 @@ export async function updateVendor(id, patch) {
     .eq("id", id)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao atualizar vendor");
   return { ...data, admin_user_id: data.user_id };
 }
 
@@ -75,5 +75,5 @@ export async function deleteVendor(id, userId, role) {
   }
 
   const { error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao deletar vendor");
 }

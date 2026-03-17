@@ -355,9 +355,9 @@ export async function updatePassword(newPassword) {
   });
 
   if (error) {
-    if (error.message.includes("session_not_found"))
+    if (error?.message?.includes("session_not_found"))
       throw new Error("Link de recuperação inválido ou expirado.");
-    throw new Error(error.message);
+    throw new Error(error?.message || "Erro ao atualizar senha");
   }
 
   return { message: "Senha atualizada com sucesso!" };
@@ -406,7 +406,10 @@ export async function setGestorActive(userId, active) {
     .update({ active })
     .eq("id", userId)
     .select("id, active");
-  if (error) throw new Error(`Supabase error ${status}: ${error.message}`);
+  if (error)
+    throw new Error(
+      `Supabase error ${status}: ${error?.message || "unknown error"}`,
+    );
   if (!data || data.length === 0) throw new Error("Update retornou 0 linhas.");
 
   if (!active) {
