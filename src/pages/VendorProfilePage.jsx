@@ -50,9 +50,8 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
 
     setUploading(true);
     try {
-      // Se é criação de novo vendor, usa ID temporário na URL
-      const tempId = vendor?.id || "temp";
-      const url = await uploadVendorPhoto(tempId, file);
+      // Upload usando mesmo padrão que campaigns - sem precisar de ID
+      const url = await uploadVendorPhoto(file);
       setPhotoUrl(url);
       showToast("Foto adicionada!");
     } catch (err) {

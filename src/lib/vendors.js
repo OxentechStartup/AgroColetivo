@@ -3,9 +3,9 @@ import { ROLES } from "../constants/roles";
 
 /**
  * Upload de foto de perfil do vendor para Supabase Storage
- * Retorna a URL pública da imagem
+ * Usa o mesmo padrão de campaigns - retorna apenas a URL, nunca salva o arquivo
  */
-export async function uploadVendorPhoto(vendorId, file) {
+export async function uploadVendorPhoto(file) {
   if (!file) throw new Error("Nenhum arquivo selecionado");
 
   // Validação de tamanho (5 MB)
@@ -20,13 +20,13 @@ export async function uploadVendorPhoto(vendorId, file) {
     throw new Error("Formato não suportado. Use JPG, PNG ou WebP");
   }
 
-  // Gerar nome único
+  // Gerar nome único (vendor-foto-timestamp-random)
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 10);
-  const fileName = `vendor-${vendorId}-${timestamp}-${random}`;
+  const fileName = `vendor-photo-${timestamp}-${random}`;
   const filePath = `vendors/${fileName}`;
 
-  // Upload para Supabase Storage
+  // Upload para Supabase Storage (mesmo bucket que campaigns)
   const { data, error } = await supabase.storage
     .from("public")
     .upload(filePath, file);
@@ -36,7 +36,7 @@ export async function uploadVendorPhoto(vendorId, file) {
     throw new Error("Erro ao fazer upload da imagem");
   }
 
-  // Retornar URL pública
+  // Retornar URL pública (nunca salvar o arquivo, apenas a URL)
   const { data: publicData } = supabase.storage
     .from("public")
     .getPublicUrl(filePath);
@@ -49,14 +49,14 @@ export async function uploadVendorPhoto(vendorId, file) {
 }
 
 /**
- * Deletar foto de perfil do vendor
+ * Deletar foto de perfil do vendor (remove do storage se existir)
  */
 export async function deleteVendorPhoto(photoUrl) {
   if (!photoUrl) return;
 
   try {
     // Extrair caminho do arquivo da URL
-    // Formato: https://...supabase.co/storage/v1/object/public/public/vendors/vendor-...
+    // Formato: https://...supabase.co/storage/v1/object/public/public/vendors/vendor-photo-...
     const urlParts = photoUrl.split("/public/");
     if (urlParts.length < 2) return;
 
