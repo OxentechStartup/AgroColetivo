@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, ExternalLink, LogOut, Trash2, ChevronDown } from "lucide-react";
+import { Menu, ExternalLink, LogOut, ChevronDown } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import styles from "./Topbar.module.css";
 
@@ -19,17 +19,11 @@ export function Topbar({
   user,
   onLogout,
   onProfile,
-  onDeleteAccount,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const role = user?.role ?? ROLES.GESTOR;
   const displayName = user?.name ?? "Usuário";
   const roleLabel = ROLE_DISPLAY[role] ?? role;
-
-  const handleDeleteClick = () => {
-    setMenuOpen(false);
-    onDeleteAccount?.();
-  };
 
   return (
     <header className={styles.topbar}>
@@ -120,25 +114,6 @@ export function Topbar({
                   Meu Perfil
                 </button>
               )}
-              <button
-                onClick={handleDeleteClick}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 16px",
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  color: "var(--danger)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Trash2 size={14} />
-                Deletar Conta
-              </button>
             </div>
           )}
         </div>

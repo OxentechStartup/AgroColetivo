@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Building2, Phone, MapPin, FileText, Save } from 'lucide-react'
+import { Building2, Phone, MapPin, FileText, Save, Trash2 } from 'lucide-react'
 import { updateVendor, createVendor } from '../lib/vendors'
 import { maskPhone, unmaskPhone } from '../utils/masks'
 import { Button } from '../components/Button'
@@ -7,7 +7,7 @@ import { Toast } from '../components/Toast'
 import { useToast } from '../hooks/useToast'
 import styles from './VendorProfilePage.module.css'
 
-export function VendorProfilePage({ user, vendor, onSaved }) {
+export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
   const [name,   setName]   = useState(vendor?.name  ?? user?.name ?? '')
   const [phone,  setPhone]  = useState(vendor?.phone ? maskPhone(vendor.phone) : '')
   const [city,   setCity]   = useState(vendor?.city  ?? '')
@@ -101,6 +101,37 @@ export function VendorProfilePage({ user, vendor, onSaved }) {
           <Button variant="primary" disabled={!name.trim() || saving} onClick={handleSave}>
             {saving ? 'Salvando…' : <><Save size={14}/> Salvar perfil</>}
           </Button>
+
+          <div style={{marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end'}}>
+            <button
+              onClick={onDeleteAccount}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text3)',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 10px',
+                borderRadius: 4,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(220,53,69,0.05)';
+                e.currentTarget.style.color = 'var(--danger)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'none';
+                e.currentTarget.style.color = 'var(--text3)';
+              }}
+              title="Deletar minha conta (irreversível)"
+            >
+              <Trash2 size={12}/>
+              Deletar conta
+            </button>
+          </div>
         </div>
       </div>
 

@@ -321,6 +321,7 @@ export default function App() {
             user={user}
             vendor={vendor}
             onSaved={handleVendorUpdate}
+            onDeleteAccount={() => setShowDeleteModal(true)}
           />
         );
 
@@ -362,7 +363,6 @@ export default function App() {
           user={user}
           onLogout={signOut}
           onProfile={() => navigate("vendor-profile")}
-          onDeleteAccount={() => setShowDeleteModal(true)}
         />
         <div className={styles.content}>{renderPage()}</div>
       </div>
