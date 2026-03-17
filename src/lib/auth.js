@@ -207,15 +207,18 @@ export async function deleteAccount(password) {
   if (!password) throw new Error("Senha é obrigatória para deletar conta.");
 
   try {
-    // 1. Valida a senha fazendo re-autenticação
-    const { data: session } = await supabase.auth.getSession();
-    if (!session?.session?.user?.email) {
+    // 1. Get current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError || !user || !user.email) {
       throw new Error("Você precisa estar logado para deletar sua conta.");
     }
 
     // 2. Testa credenciais fazendo um "login test"
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email: session.session.user.email,
+      email: user.email,
       password,
     });
 
@@ -223,12 +226,12 @@ export async function deleteAccount(password) {
       throw new Error("Senha incorreta.");
     }
 
-    const userId = session.session.user.id;
+    const userId = user.id;
 
     // 3. Delete account metadata
     await logSecurityEvent(
       "account_deletion_requested",
-      { id: userId, email: session.session.user.email },
+      { id: userId, email: user.email },
       "auth",
       userId,
       "User requested account deletion",
