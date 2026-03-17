@@ -48,7 +48,13 @@ function defaultPageForRole(role) {
 }
 
 const ALLOWED = {
-  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "financial", "pivo-profile"],
+  [ROLES.GESTOR]: [
+    "dashboard",
+    "campaigns",
+    "producers",
+    "financial",
+    "pivo-profile",
+  ],
   [ROLES.VENDOR]: [
     "vendor-dashboard",
     "vendor-profile",
