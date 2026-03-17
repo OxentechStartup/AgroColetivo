@@ -1,77 +1,58 @@
-import { supabase } from "./supabase";
+/**
+ * Utilitários de imagem — 100% frontend
+ * A imagem é convertida para uma URL de objeto (blob://) no navegador.
+ * APENAS essa string de URL é salva no banco. Nada é enviado ao Supabase Storage.
+ */
+
+const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const VALID_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 /**
- * Upload de imagem para Supabase Storage
- * Retorna apenas a URL da imagem, nunca o arquivo
+ * Valida e converte um arquivo de imagem para uma blob URL.
+ * @param {File} file
+ * @returns {Promise<string>} blob URL (ex: "blob://…")
  */
-export async function uploadCampaignImage(file) {
+export async function createImageUrl(file) {
   if (!file) throw new Error("Nenhum arquivo selecionado");
-
-  // Validação de tamanho (5 MB)
-  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-  if (file.size > MAX_SIZE) {
-    throw new Error(`Imagem muito grande. Máximo: 5 MB`);
-  }
-
-  // Gerar nome único
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  const fileName = `campaign-${timestamp}-${random}`;
-  const filePath = `campaigns/${fileName}`;
-
-  // Upload para Supabase Storage
-  const { data, error } = await supabase.storage
-    .from("public")
-    .upload(filePath, file);
-
-  if (error) {
-    console.error("Erro no upload:", error);
-    throw new Error("Erro ao fazer upload da imagem");
-  }
-
-  // Retornar URL pública
-  const { data: publicData } = supabase.storage
-    .from("public")
-    .getPublicUrl(filePath);
-
-  if (!publicData?.publicUrl) {
-    throw new Error("Erro ao gerar URL pública");
-  }
-
-  return publicData.publicUrl;
+  if (!isValidImageFile(file))
+    throw new Error("Formato não suportado. Use JPG, PNG, WebP ou GIF.");
+  if (file.size > MAX_SIZE)
+    throw new Error("Imagem muito grande. Máximo: 5 MB.");
+  return URL.createObjectURL(file);
 }
 
+/** Alias para campanhas */
+export const uploadCampaignImage = createImageUrl;
+
+/** Alias para foto de vendor/gestor */
+export const uploadVendorPhoto = createImageUrl;
+
 /**
- * Validar se arquivo é imagem
+ * Libera a memória da blob URL (chamar quando o componente desmontar
+ * ou quando a URL não for mais necessária).
+ * @param {string} url
+ */
+export function revokeImageUrl(url) {
+  if (url?.startsWith("blob:")) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch {
+      // silencioso
+    }
+  }
+}
+
+/** Aliases */
+export const deleteCampaignImage = revokeImageUrl;
+export const deleteVendorPhoto = (url) => {
+  revokeImageUrl(url);
+  return Promise.resolve();
+};
+
+/**
+ * Retorna true se o arquivo for uma imagem suportada.
+ * @param {File} file
  */
 export function isValidImageFile(file) {
-  const validTypes = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-    "image/svg+xml",
-  ];
-  return validTypes.includes(file.type);
-}
-
-/**
- * Deletar imagem do Supabase Storage
- */
-export async function deleteCampaignImage(imageUrl) {
-  if (!imageUrl) return;
-
-  try {
-    // Extrair caminho do arquivo da URL
-    // Formato: https://...supabase.co/storage/v1/object/public/public/campaigns/campaign-1234-5678
-    const urlParts = imageUrl.split("/public/");
-    if (urlParts.length < 2) return;
-
-    const filePath = urlParts[1];
-
-    await supabase.storage.from("public").remove([filePath]);
-  } catch (e) {
-    console.error("Erro ao deletar imagem:", e);
-    // Não lançar erro - logging apenas
-  }
+  return VALID_TYPES.includes(file?.type);
 }

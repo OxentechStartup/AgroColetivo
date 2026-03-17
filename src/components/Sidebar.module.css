@@ -1,131 +1,111 @@
 .sidebar {
-  width: var(--sidebar-w); min-height: 100dvh;
-  background: var(--surface); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  position: fixed; left: 0; top: 0; bottom: 0;
-  z-index: 200; transition: transform .22s ease;
+  width: var(--sidebar-w);
+  min-height: 100dvh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  z-index: 200;
+  transition: transform .22s ease;
 }
-.logo {
-  display: flex; align-items: center; gap: 10px;
-  padding: 16px 14px; border-bottom: 1px solid var(--border);
-  min-height: 56px;
-}
+
 .brandRow {
-  display: flex; align-items: center; gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 14px 12px 14px 14px;
   border-bottom: 1px solid var(--border);
   min-height: var(--topbar-h);
 }
-.brandIcon { font-size: 1.2rem; flex-shrink: 0; }
-.brandName { font-size: .9rem; font-weight: 700; color: var(--text); flex: 1; }
-.closeBtn  {
-  display: none; background: var(--surface3); border: 1px solid var(--border);
-  color: var(--text2); cursor: pointer; padding: 5px; border-radius: var(--r);
-  align-items: center; justify-content: center; flex-shrink: 0; width: 28px; height: 28px;
+.brandName {
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+.closeBtn {
+  display: none;
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: var(--r);
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
 }
 .closeBtn:hover { color: var(--text); background: var(--border); }
 
-/* role badge */
-.roleBadge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px; border-radius: 100px;
-  font-size: .6rem; font-weight: 600; margin-top: 3px;
-}
-.roleGestort  { background: var(--blue-dim);    color: var(--blue); }
-.roleAdmin  { background: var(--amber-dim);   color: var(--amber); }
-.roleVendor { background: var(--primary-dim); color: var(--primary); }
-
+/* ── Nav ── */
 .nav      { flex: 1; padding: 10px 8px; }
-.navLabel { font-size: .6rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); padding: 0 6px; margin-bottom: 4px; display: block; }
-
+.navLabel {
+  font-size: .6rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text3);
+  padding: 0 6px; margin-bottom: 4px; display: block;
+}
 .navItem {
   display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 10px 10px;
+  width: 100%; padding: 10px;
   border-radius: var(--r); background: none; border: none;
   color: var(--text2); font-size: .84rem; font-weight: 500;
-  cursor: pointer; transition: all .12s; text-align: left; margin-bottom: 1px;
-  position: relative; min-height: 42px;
+  cursor: pointer; transition: all .12s; text-align: left;
+  margin-bottom: 1px; position: relative; min-height: 42px;
 }
 .navItem:hover { background: var(--surface3); color: var(--text); }
 .navActive { background: var(--primary-dim) !important; color: var(--primary) !important; font-weight: 600; }
-.active    { background: var(--primary-dim) !important; color: var(--primary) !important; font-weight: 600; }
-.activeDot {
-  position: absolute; right: 8px; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--primary);
-}
+.navLocked { opacity: .45; cursor: not-allowed !important; }
+.navLocked:hover { background: none !important; color: var(--text2) !important; }
+.lockIcon { margin-left: auto; flex-shrink: 0; color: var(--text3); }
 
-.footer  { padding: 10px 14px; border-top: 1px solid var(--border); }
-.footerVersion { font-size: .62rem; color: var(--text3); }
-
-.overlay { display: none; }
-
-@media (max-width: 768px) {
-  .sidebar   { transform: translateX(-100%); width: min(280px, 85vw); box-shadow: none; }
-  .open      { transform: translateX(0); box-shadow: var(--shadow-lg); }
-  .closeBtn  { display: flex; }
-  .overlay   { display: block; position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 199; opacity: 0; pointer-events: none; transition: opacity .22s; }
-  .overlayOpen { opacity: 1; pointer-events: all; }
-  .userChip  { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-  /* bigger nav tap targets on mobile */
-  .navItem   { padding: 11px 10px; font-size: .88rem; }
-}
-
+/* ── User chip at bottom ── */
 .userChip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: flex; align-items: center; gap: 10px;
   padding: 10px 14px 12px;
   border-top: 1px solid var(--border);
   margin-top: auto;
 }
 .userAvatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: .75rem;
-  font-weight: 700;
-  flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .75rem; font-weight: 700; flex-shrink: 0;
 }
-.userName {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
+.userNameWrap {
+  display: flex; flex-direction: column; gap: 2px;
+  min-width: 0; flex: 1;
 }
 .userNameText {
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: .78rem; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .userRole {
-  display: inline-block;
-  font-size: .62rem;
-  font-weight: 600;
-  padding: 1px 7px;
-  border-radius: 99px;
-  width: fit-content;
+  display: inline-block; font-size: .62rem; font-weight: 600;
+  padding: 1px 7px; border-radius: 99px; width: fit-content;
 }
-.roleGestort  { background: var(--blue-dim);    color: var(--blue);    border: 1px solid var(--blue-border); }
+
+/* Role badge colors — corrigido: "Gestor" não "Gestort" */
+.roleGestor { background: var(--blue-dim);    color: var(--blue);    border: 1px solid var(--blue-border); }
 .roleAdmin  { background: var(--amber-dim);   color: var(--amber);   border: 1px solid var(--amber-border); }
 .roleVendor { background: var(--primary-dim); color: var(--primary); border: 1px solid var(--primary-border); }
 
-.navLocked {
-  opacity: .45;
-  cursor: not-allowed !important;
-}
-.navLocked:hover { background: none !important; color: var(--text2) !important; }
+.overlay { display: none; }
 
-.lockIcon {
-  margin-left: auto;
-  flex-shrink: 0;
-  color: var(--text3);
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .sidebar  { transform: translateX(-100%); width: min(280px, 85vw); box-shadow: none; }
+  .open     { transform: translateX(0); box-shadow: var(--shadow-lg); }
+  .closeBtn { display: flex; }
+  .overlay  {
+    display: block; position: fixed; inset: 0;
+    background: rgba(15,23,42,.4); z-index: 199;
+    opacity: 0; pointer-events: none; transition: opacity .22s;
+  }
+  .overlayOpen { opacity: 1; pointer-events: all; }
+  .navItem { padding: 11px 10px; font-size: .88rem; }
+  .userChip { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 }
