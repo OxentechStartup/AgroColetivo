@@ -778,7 +778,7 @@ export function ProducersPage({ campaigns, vendors, actions, user }) {
             showToast("Fornecedor removido com sucesso");
             setDeleteConfirm({ open: false, vendor: null, loading: false });
           } catch (err) {
-            showToast(err.message || "Erro ao remover fornecedor", "error");
+            showToast(err?.message || "Erro ao remover fornecedor", "error");
             setDeleteConfirm((prev) => ({ ...prev, loading: false }));
           }
         }}

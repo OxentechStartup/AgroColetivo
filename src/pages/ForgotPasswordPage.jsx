@@ -27,7 +27,7 @@ export function ForgotPasswordPage() {
       setScreen("sent");
       setPhone("");
     } catch (err) {
-      setError(err.message || "Erro ao processar requisição.");
+      setError(err?.message || "Erro ao processar requisição.");
       setScreen("error");
     } finally {
       setLoading(false);

@@ -59,7 +59,7 @@ export function ResetPasswordPage() {
       await updatePassword(password);
       setStatus("success");
     } catch (err) {
-      setError(err.message || "Erro ao atualizar senha.");
+      setError(err?.message || "Erro ao atualizar senha.");
       setLoading(false);
     }
   };

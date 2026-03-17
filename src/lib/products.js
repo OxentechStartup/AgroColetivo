@@ -9,7 +9,10 @@ export async function fetchVendorProducts(vendorId) {
     .eq("vendor_id", vendorId)
     .eq("active", true)
     .order("name", { ascending: true });
-  if (error) throw new Error("Erro ao buscar produtos: " + error.message);
+  if (error)
+    throw new Error(
+      "Erro ao buscar produtos: " + (error?.message || "Erro desconhecido"),
+    );
   return data.map(normalizeProduct);
 }
 
@@ -19,7 +22,10 @@ export async function fetchAllProducts() {
     .select("*, vendors(id,name), product_promotions(*)")
     .eq("active", true)
     .order("name", { ascending: true });
-  if (error) throw new Error("Erro ao buscar produtos: " + error.message);
+  if (error)
+    throw new Error(
+      "Erro ao buscar produtos: " + (error?.message || "Erro desconhecido"),
+    );
   return data.map(normalizeProduct);
 }
 

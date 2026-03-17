@@ -68,7 +68,7 @@ export function NewCampaignModal({ onClose, onSave }) {
       const imageUrl = await uploadCampaignImage(file);
       setForm((f) => ({ ...f, imageUrl, imageFile: file }));
     } catch (err) {
-      setError(err.message || "Erro ao fazer upload da imagem");
+      setError(err?.message || "Erro ao fazer upload da imagem");
       setImagePreview(null);
     } finally {
       setUploading(false);
