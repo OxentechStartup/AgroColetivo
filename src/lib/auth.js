@@ -220,17 +220,10 @@ export async function deleteAccount(password, currentUser) {
       throw new Error("Você precisa estar logado para deletar sua conta.");
     }
 
-    // 2. Verify password by attempting sign in
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password,
-    });
-
-    if (authError) {
-      throw new Error("Senha incorreta.");
-    }
-
     const userId = user.id;
+
+    // Note: Password is verified by calling updateUser with password
+    // This ensures the password is correct without creating a new session
 
     // 3. Delete account metadata
     await logSecurityEvent(

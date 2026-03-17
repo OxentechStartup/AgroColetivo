@@ -123,10 +123,7 @@ export default function App() {
         setShowDeleteModal(false);
         setPage("dashboard");
       } catch (err) {
-        console.error(
-          "Delete account error:",
-          err?.message || JSON.stringify(err),
-        );
+        // Error is already shown in the modal
       }
     },
     [deleteUserAccount],
