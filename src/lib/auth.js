@@ -37,15 +37,15 @@ export async function login(email, password) {
       null,
       "auth",
       null,
-      `email=${email} reason=${authError.message}`,
+      `email=${email} reason=${authError?.message || "unknown error"}`,
     );
 
     if (
-      authError.message.includes("Invalid login credentials") ||
-      authError.message.includes("Email not confirmed")
+      authError?.message?.includes("Invalid login credentials") ||
+      authError?.message?.includes("Email not confirmed")
     )
       throw new Error("Email ou senha incorretos.");
-    throw new Error(authError.message);
+    throw new Error(authError?.message || "Erro ao fazer login.");
   }
 
   const { data: userData, error: userError } = await supabase
@@ -152,10 +152,10 @@ export async function register(email, password, role, extra = {}) {
       null,
       "auth",
       null,
-      `email=${email} role=${role} reason=${authError.message}`,
+      `email=${email} role=${role} reason=${authError?.message || "unknown error"}`,
     );
 
-    if (authError.message.includes("already registered"))
+    if (authError?.message?.includes("already registered"))
       throw new Error("Este email já está cadastrado. Faça login.");
     throw new Error("Não foi possível criar a conta. Tente novamente.");
   }
@@ -242,7 +242,7 @@ export async function deleteAccount(password) {
       .delete()
       .eq("id", userId);
 
-    if (deleteUserError && !deleteUserError.message.includes("no rows")) {
+    if (deleteUserError && !deleteUserError?.message?.includes("no rows")) {
       throw new Error("Erro ao deletar dados da conta.");
     }
 
@@ -252,7 +252,7 @@ export async function deleteAccount(password) {
       .delete()
       .eq("user_id", userId);
 
-    if (deleteVendorError && !deleteVendorError.message.includes("no rows")) {
+    if (deleteVendorError && !deleteVendorError?.message?.includes("no rows")) {
       console.warn("Warning deleting vendors:", deleteVendorError);
     }
 
@@ -279,7 +279,7 @@ export async function deleteAccount(password) {
       null,
       "auth",
       null,
-      `error=${err.message}`,
+      `error=${err?.message || JSON.stringify(err)}`,
     );
     throw err;
   }
@@ -299,7 +299,7 @@ export async function updateUser(userId, updates) {
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error?.message || "Erro ao atualizar perfil");
 
     await logSecurityEvent(
       "user_profile_updated",

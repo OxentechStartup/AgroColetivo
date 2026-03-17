@@ -36,7 +36,10 @@ export async function fetchCampaigns(user) {
     }
 
     const { data, error } = await query;
-    if (error) throw new Error("Erro ao buscar cotações: " + error.message);
+    if (error)
+      throw new Error(
+        "Erro ao buscar cotações: " + (error?.message || "unknown error"),
+      );
     return data.map(normalizeCampaign);
   }
 
@@ -50,7 +53,10 @@ export async function fetchCampaigns(user) {
       .select("*")
       .eq("pivo_id", user.id)
       .order("created_at", { ascending: false });
-    if (error) throw new Error("Erro ao buscar cotações: " + error.message);
+    if (error)
+      throw new Error(
+        "Erro ao buscar cotações: " + (error?.message || "unknown error"),
+      );
     return data.map(normalizeCampaign);
   }
 
@@ -59,7 +65,10 @@ export async function fetchCampaigns(user) {
     .from("v_campaign_summary")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error) throw new Error("Erro ao buscar cotações: " + error.message);
+  if (error)
+    throw new Error(
+      "Erro ao buscar cotações: " + (error?.message || "unknown error"),
+    );
   return data.map(normalizeCampaign);
 }
 
@@ -111,9 +120,9 @@ export async function createCampaign(c, gestorId) {
     console.error("[createCampaign] erro completo:", error);
     throw new Error(
       "Erro ao criar cotação: " +
-        error.message +
+        (error?.message || "unknown error") +
         " (código " +
-        error.code +
+        (error?.code || "unknown") +
         ")",
     );
   }
@@ -137,7 +146,7 @@ export async function updateCampaignFinancials(
     .eq("id", campaignId)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao atualizar cotação");
   return data;
 }
 
@@ -153,7 +162,7 @@ export async function setCampaignStatus(campaignId, status) {
     .eq("id", campaignId)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao atualizar status");
   return data;
 }
 
@@ -168,7 +177,10 @@ export async function createOrder(
     .insert({ campaign_id: campaignId, buyer_id: buyerId, qty, status })
     .select()
     .single();
-  if (error) throw new Error("Erro ao criar pedido: " + error.message);
+  if (error)
+    throw new Error(
+      "Erro ao criar pedido: " + (error?.message || "unknown error"),
+    );
   return data;
 }
 
@@ -179,13 +191,13 @@ export async function updateOrderStatus(orderId, status) {
     .eq("id", orderId)
     .select()
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao atualizar pedido");
   return data;
 }
 
 export async function deleteOrder(orderId) {
   const { error } = await supabase.from("orders").delete().eq("id", orderId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao deletar pedido");
 }
 
 export async function markFeePaid(campaignId, adminName) {
@@ -196,7 +208,7 @@ export async function markFeePaid(campaignId, adminName) {
       fee_paid_by: adminName ?? "Admin",
     })
     .eq("id", campaignId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao registrar pagamento");
 }
 
 export async function deleteCampaign(campaignId) {
@@ -206,7 +218,7 @@ export async function deleteCampaign(campaignId) {
     .from("campaigns")
     .delete()
     .eq("id", campaignId);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(error?.message || "Erro ao deletar cotação");
 }
 
 function normalizeCampaign(row) {

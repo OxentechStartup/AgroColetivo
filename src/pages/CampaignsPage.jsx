@@ -318,94 +318,102 @@ function TabOrders({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {pending.length > 0 && campaign.status !== 'closed' && campaign.status !== 'finished' && (
-        <div>
-          <div
-            style={{
-              fontSize: ".75rem",
-              fontWeight: 700,
-              color: "var(--red)",
-              textTransform: "uppercase",
-              letterSpacing: ".08em",
-              marginBottom: 12,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <AlertCircle size={14} />
-            {pending.length} pendente{pending.length !== 1 ? "s" : ""} de
-            aprovação
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-            {pending.map((o) => (
-              <div
-                key={o.orderId}
-                style={{
-                  border: "1.5px solid var(--border)",
-                  borderRadius: "var(--r-lg)",
-                  padding: "16px",
-                  background: "var(--surface)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 16,
-                  transition: "all 0.2s",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      color: "var(--text)",
-                      fontSize: ".95rem",
-                    }}
-                  >
-                    {o.producerName}
-                  </div>
-                  {o.phone && (
+      {pending.length > 0 &&
+        campaign.status !== "closed" &&
+        campaign.status !== "finished" && (
+          <div>
+            <div
+              style={{
+                fontSize: ".75rem",
+                fontWeight: 700,
+                color: "var(--red)",
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+                marginBottom: 12,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <AlertCircle size={14} />
+              {pending.length} pendente{pending.length !== 1 ? "s" : ""} de
+              aprovação
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 10,
+              }}
+            >
+              {pending.map((o) => (
+                <div
+                  key={o.orderId}
+                  style={{
+                    border: "1.5px solid var(--border)",
+                    borderRadius: "var(--r-lg)",
+                    padding: "16px",
+                    background: "var(--surface)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 16,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
                     <div
                       style={{
-                        fontSize: ".75rem",
-                        color: "var(--text3)",
-                        marginTop: 4,
+                        fontWeight: 700,
+                        color: "var(--text)",
+                        fontSize: ".95rem",
                       }}
                     >
-                      {displayPhone(o.phone)}
+                      {o.producerName}
                     </div>
-                  )}
-                  <div
-                    style={{
-                      fontSize: ".88rem",
-                      color: "var(--primary)",
-                      marginTop: 8,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Qtd: {o.qty} {unit}
+                    {o.phone && (
+                      <div
+                        style={{
+                          fontSize: ".75rem",
+                          color: "var(--text3)",
+                          marginTop: 4,
+                        }}
+                      >
+                        {displayPhone(o.phone)}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        fontSize: ".88rem",
+                        color: "var(--primary)",
+                        marginTop: 8,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Qtd: {o.qty} {unit}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => onApprovePending(o.orderId, o)}
+                    >
+                      <CheckCircle size={13} /> Aprovar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onRejectPending(o.orderId)}
+                    >
+                      <XCircle size={13} />
+                    </Button>
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => onApprovePending(o.orderId, o)}
-                  >
-                    <CheckCircle size={13} /> Aprovar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRejectPending(o.orderId)}
-                  >
-                    <XCircle size={13} />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {orders.length > 0 && (
         <div>
@@ -440,8 +448,22 @@ function TabOrders({
                   gap: 12,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                  <span style={{ fontWeight: 600, color: "var(--text)", fontSize: ".88rem" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      color: "var(--text)",
+                      fontSize: ".88rem",
+                    }}
+                  >
                     {o.producerName}
                   </span>
                   {o.phone && (
@@ -450,7 +472,14 @@ function TabOrders({
                     </span>
                   )}
                 </div>
-                <span style={{ color: "var(--primary)", fontWeight: 700, fontSize: ".88rem", flexShrink: 0 }}>
+                <span
+                  style={{
+                    color: "var(--primary)",
+                    fontWeight: 700,
+                    fontSize: ".88rem",
+                    flexShrink: 0,
+                  }}
+                >
                   {o.qty} {unit}
                 </span>
               </div>
@@ -459,7 +488,7 @@ function TabOrders({
         </div>
       )}
 
-      {campaign.status !== 'closed' && campaign.status !== 'finished' && (
+      {campaign.status !== "closed" && campaign.status !== "finished" && (
         <Button
           variant="secondary"
           onClick={onNewOrder}
@@ -491,7 +520,7 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
     try {
       setOffers(await fetchOffers(campaign.id));
     } catch (e) {
-      setErr(e.message);
+      setErr(e?.message || "Erro ao carregar propostas");
       setOffers([]);
     } finally {
       setLoading(false);
@@ -890,7 +919,10 @@ function TabFinancial({
               borderTop: "none",
               borderLeft: "none",
               borderRight: "none",
-              borderBottom: tab === t.id ? "2px solid var(--primary)" : "2px solid transparent",
+              borderBottom:
+                tab === t.id
+                  ? "2px solid var(--primary)"
+                  : "2px solid transparent",
               color: tab === t.id ? "var(--primary)" : "var(--text2)",
               background: "transparent",
               cursor: "pointer",
@@ -1710,7 +1742,10 @@ function ModalFreight({ campaign, userName, onClose, onSave }) {
 
   return (
     <Modal onClose={onClose}>
-      <ModalHeader title={`Frete & Taxa de ${userName ?? "Gestor"}`} onClose={onClose} />
+      <ModalHeader
+        title={`Frete & Taxa de ${userName ?? "Gestor"}`}
+        onClose={onClose}
+      />
       <ModalBody>
         <div
           style={{
@@ -1819,7 +1854,7 @@ function ModalFreight({ campaign, userName, onClose, onSave }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === "admin";
   const {
     addCampaign,
     addOrder,
@@ -1841,7 +1876,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
   const { toast, showToast, clearToast } = useToast();
 
   const [selectedId, setSelectedId] = useState(null);
-  const [listSearch, setListSearch] = useState('');
+  const [listSearch, setListSearch] = useState("");
   const [mainTab, setMainTab] = useState("orders");
   const [showNew, setShowNew] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -1905,10 +1940,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
     return (
       <div className={`${styles.page} page-enter`}>
         <div className={styles.emptyPage}>
-          <ClipboardList size={36} style={{ opacity: 0.2 }}/>
+          <ClipboardList size={36} style={{ opacity: 0.2 }} />
           <p>Nenhuma cotação criada ainda.</p>
           <Button variant="primary" onClick={() => setShowNew(true)}>
-            <Plus size={14}/> Criar primeira cotação
+            <Plus size={14} /> Criar primeira cotação
           </Button>
         </div>
       </div>
@@ -1919,355 +1954,594 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
     return (
       <div className={`${styles.page} page-enter`}>
         <div className={styles.emptyPage}>
-          <ClipboardList size={36} style={{ opacity: 0.2 }}/>
+          <ClipboardList size={36} style={{ opacity: 0.2 }} />
           <p>Nenhuma cotação criada ainda.</p>
         </div>
-        <NewCampaignModal onClose={() => setShowNew(false)} onSave={async (data) => { await addCampaign(data); showToast('Cotação criada!'); }}/>
+        <NewCampaignModal
+          onClose={() => setShowNew(false)}
+          onSave={async (data) => {
+            await addCampaign(data);
+            showToast("Cotação criada!");
+          }}
+        />
       </div>
     );
   }
 
   return (
     <div className={`${styles.page} page-enter`}>
-
       {/* ── LAYOUT: lista + detalhe ── */}
-      <div className={`${styles.layout} ${mobileShowDetail ? styles.mobileDetail : ''}`}>
-
+      <div
+        className={`${styles.layout} ${mobileShowDetail ? styles.mobileDetail : ""}`}
+      >
         {/* LISTA LATERAL */}
-        <div className={`${styles.list} ${mobileShowDetail ? styles.listHidden : ''}`}>
+        <div
+          className={`${styles.list} ${mobileShowDetail ? styles.listHidden : ""}`}
+        >
           <div className={styles.listSearch}>
             <input
               className={styles.listSearchInput}
               placeholder="Buscar cotação…"
               value={listSearch}
-              onChange={e => setListSearch(e.target.value)}
+              onChange={(e) => setListSearch(e.target.value)}
             />
           </div>
           {campaigns.length === 0 ? (
-            <div className={styles.emptyList}>Nenhuma cotação criada ainda.</div>
-          ) : (() => {
-            const filtered = campaigns.filter(c =>
-              !listSearch || c.product.toLowerCase().includes(listSearch.toLowerCase())
-            )
-            if (filtered.length === 0) return (
-              <div className={styles.emptyList}>Nenhuma cotação encontrada.</div>
-            )
-            const active = filtered.filter(c => c.status !== 'finished')
-            const finished = filtered.filter(c => c.status === 'finished')
-            return (<>
-              {active.map(c => {
-                const ord = (c.orders ?? []).reduce((s, o) => s + o.qty, 0)
-                const pct = c.goalQty > 0 ? Math.min(100, Math.round(ord / c.goalQty * 100)) : 0
-                const pend = c.pendingOrders?.length ?? 0
+            <div className={styles.emptyList}>
+              Nenhuma cotação criada ainda.
+            </div>
+          ) : (
+            (() => {
+              const filtered = campaigns.filter(
+                (c) =>
+                  !listSearch ||
+                  c.product.toLowerCase().includes(listSearch.toLowerCase()),
+              );
+              if (filtered.length === 0)
                 return (
-                  <button
-                    key={c.id}
-                    className={`${styles.item} ${selectedId === c.id ? styles.itemActive : ''}`}
-                    onClick={() => { setSelectedId(c.id); setMainTab('orders'); setMobileShowDetail(true); }}
-                  >
-                    <div className={styles.itemTop}>
-                      <span className={styles.itemName}>{c.product}</span>
-                      <Badge status={c.status} style={{ flexShrink: 0 }}>{STATUS_LABEL[c.status]}</Badge>
-                    </div>
-                    <div className={styles.itemMeta}>
-                      <span>{c.orders?.length ?? 0} compradores</span>
-                      <span>{pct}% da meta</span>
-                      {pend > 0 && <span className={styles.pendTag}>{pend} pendente{pend > 1 ? 's' : ''}</span>}
-                    </div>
-                  </button>
-                )
-              })}
-              {finished.length > 0 && (
-                <>
-                  <div style={{ fontSize: '.68rem', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '10px 12px 4px', marginTop: 4, borderTop: '1px solid var(--border)' }}>
-                    Histórico
+                  <div className={styles.emptyList}>
+                    Nenhuma cotação encontrada.
                   </div>
-                  {finished.map(c => (
-                    <button
-                      key={c.id}
-                      className={`${styles.item} ${selectedId === c.id ? styles.itemActive : ''}`}
-                      style={{ opacity: .6 }}
-                      onClick={() => { setSelectedId(c.id); setMainTab('orders'); setMobileShowDetail(true); }}
-                    >
-                      <div className={styles.itemTop}>
-                        <span className={styles.itemName}>{c.product}</span>
-                        <Badge status={c.status}>{STATUS_LABEL[c.status]}</Badge>
+                );
+              const active = filtered.filter((c) => c.status !== "finished");
+              const finished = filtered.filter((c) => c.status === "finished");
+              return (
+                <>
+                  {active.map((c) => {
+                    const ord = (c.orders ?? []).reduce((s, o) => s + o.qty, 0);
+                    const pct =
+                      c.goalQty > 0
+                        ? Math.min(100, Math.round((ord / c.goalQty) * 100))
+                        : 0;
+                    const pend = c.pendingOrders?.length ?? 0;
+                    return (
+                      <button
+                        key={c.id}
+                        className={`${styles.item} ${selectedId === c.id ? styles.itemActive : ""}`}
+                        onClick={() => {
+                          setSelectedId(c.id);
+                          setMainTab("orders");
+                          setMobileShowDetail(true);
+                        }}
+                      >
+                        <div className={styles.itemTop}>
+                          <span className={styles.itemName}>{c.product}</span>
+                          <Badge status={c.status} style={{ flexShrink: 0 }}>
+                            {STATUS_LABEL[c.status]}
+                          </Badge>
+                        </div>
+                        <div className={styles.itemMeta}>
+                          <span>{c.orders?.length ?? 0} compradores</span>
+                          <span>{pct}% da meta</span>
+                          {pend > 0 && (
+                            <span className={styles.pendTag}>
+                              {pend} pendente{pend > 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {finished.length > 0 && (
+                    <>
+                      <div
+                        style={{
+                          fontSize: ".68rem",
+                          fontWeight: 700,
+                          color: "var(--text3)",
+                          textTransform: "uppercase",
+                          letterSpacing: ".06em",
+                          padding: "10px 12px 4px",
+                          marginTop: 4,
+                          borderTop: "1px solid var(--border)",
+                        }}
+                      >
+                        Histórico
                       </div>
-                      <div className={styles.itemMeta}>
-                        <span>{c.orders?.length ?? 0} compradores</span>
-                      </div>
-                    </button>
-                  ))}
+                      {finished.map((c) => (
+                        <button
+                          key={c.id}
+                          className={`${styles.item} ${selectedId === c.id ? styles.itemActive : ""}`}
+                          style={{ opacity: 0.6 }}
+                          onClick={() => {
+                            setSelectedId(c.id);
+                            setMainTab("orders");
+                            setMobileShowDetail(true);
+                          }}
+                        >
+                          <div className={styles.itemTop}>
+                            <span className={styles.itemName}>{c.product}</span>
+                            <Badge status={c.status}>
+                              {STATUS_LABEL[c.status]}
+                            </Badge>
+                          </div>
+                          <div className={styles.itemMeta}>
+                            <span>{c.orders?.length ?? 0} compradores</span>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
                 </>
-              )}
-            </>)
-          })()}
+              );
+            })()
+          )}
 
           {/* Botão flutuante Nova cotação — oculto para admin */}
           {!isAdmin && (
             <div className={styles.listFab}>
-              <button className={styles.fabBtn} onClick={() => setShowNew(true)}>
-                <Plus size={15}/> Nova cotação
+              <button
+                className={styles.fabBtn}
+                onClick={() => setShowNew(true)}
+              >
+                <Plus size={15} /> Nova cotação
               </button>
             </div>
           )}
         </div>
 
         {/* DETALHE */}
-        <div className={`${styles.detail} ${mobileShowDetail ? styles.detailVisible : ''}`}>
-
+        <div
+          className={`${styles.detail} ${mobileShowDetail ? styles.detailVisible : ""}`}
+        >
           {/* Botão voltar - mobile */}
-          <button className={styles.backBtn} onClick={() => { setMobileShowDetail(false); setSelectedId(null); }}>
+          <button
+            className={styles.backBtn}
+            onClick={() => {
+              setMobileShowDetail(false);
+              setSelectedId(null);
+            }}
+          >
             ← Voltar
           </button>
 
           {!active ? (
-            <div className={styles.noSel}>Selecione uma cotação para ver os detalhes</div>
-          ) : (<>
+            <div className={styles.noSel}>
+              Selecione uma cotação para ver os detalhes
+            </div>
+          ) : (
+            <>
+              {/* ── CABEÇALHO DO DETALHE ── */}
+              <div className={styles.detailHead}>
+                <div className={styles.detailHeadLeft}>
+                  <h2 className={styles.detailTitle}>{active.product}</h2>
+                  <div className={styles.detailMeta}>
+                    <Badge status={active.status}>
+                      {STATUS_LABEL[active.status]}
+                    </Badge>
+                    {active.goalQty > 0 && (
+                      <span
+                        style={{ fontSize: ".8rem", color: "var(--text3)" }}
+                      >
+                        Meta:{" "}
+                        <strong>
+                          {active.goalQty} {active.unit}
+                        </strong>
+                      </span>
+                    )}
+                    {active.deadline && (
+                      <span
+                        style={{ fontSize: ".8rem", color: "var(--text3)" }}
+                      >
+                        Prazo: <strong>{fmtDate(active.deadline)}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-            {/* ── CABEÇALHO DO DETALHE ── */}
-            <div className={styles.detailHead}>
-              <div className={styles.detailHeadLeft}>
-                <h2 className={styles.detailTitle}>{active.product}</h2>
-                <div className={styles.detailMeta}>
-                  <Badge status={active.status}>{STATUS_LABEL[active.status]}</Badge>
-                  {active.goalQty > 0 && (
-                    <span style={{ fontSize: '.8rem', color: 'var(--text3)' }}>
-                      Meta: <strong>{active.goalQty} {active.unit}</strong>
-                    </span>
+                {/* AÇÕES */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexShrink: 0,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  {/* Aberta: Publicar + Parar */}
+                  {active.status === "open" && (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setShowPublish(true)}
+                      >
+                        <Send size={13} /> Publicar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setConfirmAction({ type: "stop", id: active.id })
+                        }
+                      >
+                        <Lock size={13} /> Parar cotação
+                      </Button>
+                    </>
                   )}
-                  {active.deadline && (
-                    <span style={{ fontSize: '.8rem', color: 'var(--text3)' }}>
-                      Prazo: <strong>{fmtDate(active.deadline)}</strong>
-                    </span>
+
+                  {/* Negociando: Publicado (inativo) + Parar */}
+                  {active.status === "negotiating" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        style={{ opacity: 0.5, cursor: "default" }}
+                      >
+                        <Check size={13} /> Publicado
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setConfirmAction({ type: "stop", id: active.id })
+                        }
+                      >
+                        <Lock size={13} /> Parar cotação
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Pausada: Encerrar cotação (definitivo) + Reabrir */}
+                  {active.status === "closed" && (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() =>
+                          setConfirmAction({ type: "finish", id: active.id })
+                        }
+                      >
+                        <CheckCircle size={13} /> Encerrar cotação
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setConfirmAction({ type: "reopen", id: active.id })
+                        }
+                      >
+                        <Unlock size={13} /> Reabrir
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Encerrada: permanente — sem ações */}
+
+                  {/* Apagar: visível em open, negotiating e closed apenas */}
+                  {active.status !== "finished" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setConfirmAction({ type: "delete", id: active.id })
+                      }
+                      style={{
+                        color: "var(--red)",
+                        borderColor: "var(--red-border)",
+                        background: "var(--red-dim)",
+                      }}
+                    >
+                      <Trash2 size={13} /> Apagar
+                    </Button>
                   )}
                 </div>
               </div>
 
-              {/* AÇÕES */}
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* ── BANNER PAUSADA ── */}
+              {active.status === "closed" && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 14px",
+                    background: "var(--amber-dim,#fffbeb)",
+                    border: "1px solid var(--amber-border,#fbbf24)",
+                    borderRadius: "var(--r-lg)",
+                    fontSize: ".82rem",
+                    color: "var(--amber,#b45309)",
+                  }}
+                >
+                  <Lock size={14} style={{ flexShrink: 0 }} />
+                  <span>
+                    Cotação <strong>pausada</strong> — não aceita novos pedidos.
+                    Reabra para continuar ou clique em{" "}
+                    <strong>Encerrar cotação</strong> para finalizar
+                    definitivamente.
+                  </span>
+                </div>
+              )}
 
-                {/* Aberta: Publicar + Parar */}
-                {active.status === 'open' && (<>
-                  <Button variant="primary" size="sm" onClick={() => setShowPublish(true)}>
-                    <Send size={13}/> Publicar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setConfirmAction({ type: 'stop', id: active.id })}>
-                    <Lock size={13}/> Parar cotação
-                  </Button>
-                </>)}
+              {/* ── BANNER ENCERRADA (histórico) ── */}
+              {active.status === "finished" && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 14px",
+                    background: "var(--surface3)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--r-lg)",
+                    fontSize: ".82rem",
+                    color: "var(--text2)",
+                  }}
+                >
+                  <CheckCircle
+                    size={14}
+                    style={{ color: "var(--primary)", flexShrink: 0 }}
+                  />
+                  <span>
+                    Cotação <strong>encerrada definitivamente</strong> —
+                    disponível apenas no relatório. Esta ação não pode ser
+                    desfeita.
+                  </span>
+                </div>
+              )}
 
-                {/* Negociando: Publicado (inativo) + Parar */}
-                {active.status === 'negotiating' && (<>
-                  <Button variant="outline" size="sm" disabled style={{ opacity: .5, cursor: 'default' }}>
-                    <Check size={13}/> Publicado
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setConfirmAction({ type: 'stop', id: active.id })}>
-                    <Lock size={13}/> Parar cotação
-                  </Button>
-                </>)}
+              {/* ── SUMMARY BAR ── */}
+              <SummaryBar campaign={active} stats={stats} />
 
-                {/* Pausada: Encerrar cotação (definitivo) + Reabrir */}
-                {active.status === 'closed' && (<>
-                  <Button variant="primary" size="sm" onClick={() => setConfirmAction({ type: 'finish', id: active.id })}>
-                    <CheckCircle size={13}/> Encerrar cotação
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setConfirmAction({ type: 'reopen', id: active.id })}>
-                    <Unlock size={13}/> Reabrir
-                  </Button>
-                </>)}
-
-                {/* Encerrada: permanente — sem ações */}
-
-                {/* Apagar: visível em open, negotiating e closed apenas */}
-                {active.status !== 'finished' && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setConfirmAction({ type: 'delete', id: active.id })}
-                    style={{ color: 'var(--red)', borderColor: 'var(--red-border)', background: 'var(--red-dim)' }}
+              {/* ── TABS ── */}
+              <div className={styles.tabs}>
+                {[
+                  {
+                    id: "orders",
+                    label: "Pedidos",
+                    icon: Users,
+                    badge: active.pendingOrders?.length,
+                  },
+                  {
+                    id: "offers",
+                    label: "Propostas",
+                    icon: Building2,
+                    badge: active.lots?.length,
+                  },
+                  { id: "financial", label: "Financeiro", icon: DollarSign },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    className={`${styles.tab} ${mainTab === t.id ? styles.tabOn : ""}`}
+                    onClick={() => setMainTab(t.id)}
                   >
-                    <Trash2 size={13}/> Apagar
-                  </Button>
+                    <t.icon size={13} />
+                    {t.label}
+                    {t.badge > 0 && (
+                      <span
+                        className={
+                          t.id === "offers"
+                            ? styles.lotsBadge
+                            : styles.pendBadge
+                        }
+                      >
+                        {t.badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── TAB CONTENT ── */}
+              <div style={{ paddingTop: 16 }}>
+                {mainTab === "orders" && (
+                  <TabOrders
+                    campaign={active}
+                    actions={actions}
+                    onApprovePending={handleApprove}
+                    onRejectPending={(id) =>
+                      rejectPending(active.id, id).then(() =>
+                        showToast("Recusado"),
+                      )
+                    }
+                    onNewOrder={() => setShowOrder(true)}
+                  />
+                )}
+                {mainTab === "offers" && (
+                  <TabOffers
+                    campaign={active}
+                    onAccepted={() => {
+                      showToast("Proposta aceita!");
+                      reloadCampaign(active.id);
+                      setMainTab("financial");
+                    }}
+                    onCancelled={() => {
+                      showToast("Cancelado");
+                      reloadCampaign(active.id);
+                    }}
+                  />
+                )}
+                {mainTab === "financial" && (
+                  <TabFinancial
+                    campaign={active}
+                    stats={stats}
+                    user={user}
+                    onAddLot={run(addLot, "Lote adicionado!")}
+                    onRemoveLot={run(removeLot, "Removido")}
+                    onSaveFreight={handleSaveFreight}
+                  />
                 )}
               </div>
-            </div>
-
-            {/* ── BANNER PAUSADA ── */}
-            {active.status === 'closed' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 14px',
-                background: 'var(--amber-dim,#fffbeb)',
-                border: '1px solid var(--amber-border,#fbbf24)',
-                borderRadius: 'var(--r-lg)',
-                fontSize: '.82rem', color: 'var(--amber,#b45309)',
-              }}>
-                <Lock size={14} style={{ flexShrink: 0 }}/>
-                <span>Cotação <strong>pausada</strong> — não aceita novos pedidos. Reabra para continuar ou clique em <strong>Encerrar cotação</strong> para finalizar definitivamente.</span>
-              </div>
-            )}
-
-            {/* ── BANNER ENCERRADA (histórico) ── */}
-            {active.status === 'finished' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 14px',
-                background: 'var(--surface3)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--r-lg)',
-                fontSize: '.82rem', color: 'var(--text2)',
-              }}>
-                <CheckCircle size={14} style={{ color: 'var(--primary)', flexShrink: 0 }}/>
-                <span>Cotação <strong>encerrada definitivamente</strong> — disponível apenas no relatório. Esta ação não pode ser desfeita.</span>
-              </div>
-            )}
-
-            {/* ── SUMMARY BAR ── */}
-            <SummaryBar campaign={active} stats={stats}/>
-
-            {/* ── TABS ── */}
-            <div className={styles.tabs}>
-              {[
-                { id: 'orders',    label: 'Pedidos',    icon: Users,      badge: active.pendingOrders?.length },
-                { id: 'offers',    label: 'Propostas',  icon: Building2,  badge: active.lots?.length },
-                { id: 'financial', label: 'Financeiro', icon: DollarSign },
-              ].map(t => (
-                <button
-                  key={t.id}
-                  className={`${styles.tab} ${mainTab === t.id ? styles.tabOn : ''}`}
-                  onClick={() => setMainTab(t.id)}
-                >
-                  <t.icon size={13}/>
-                  {t.label}
-                  {t.badge > 0 && <span className={t.id === 'offers' ? styles.lotsBadge : styles.pendBadge}>{t.badge}</span>}
-                </button>
-              ))}
-            </div>
-
-            {/* ── TAB CONTENT ── */}
-            <div style={{ paddingTop: 16 }}>
-              {mainTab === 'orders' && (
-                <TabOrders
-                  campaign={active}
-                  actions={actions}
-                  onApprovePending={handleApprove}
-                  onRejectPending={id => rejectPending(active.id, id).then(() => showToast('Recusado'))}
-                  onNewOrder={() => setShowOrder(true)}
-                />
-              )}
-              {mainTab === 'offers' && (
-                <TabOffers
-                  campaign={active}
-                  onAccepted={() => { showToast('Proposta aceita!'); reloadCampaign(active.id); setMainTab('financial'); }}
-                  onCancelled={() => { showToast('Cancelado'); reloadCampaign(active.id); }}
-                />
-              )}
-              {mainTab === 'financial' && (
-                <TabFinancial
-                  campaign={active}
-                  stats={stats}
-                  user={user}
-                  onAddLot={run(addLot, 'Lote adicionado!')}
-                  onRemoveLot={run(removeLot, 'Removido')}
-                  onSaveFreight={handleSaveFreight}
-                />
-              )}
-            </div>
-          </>)}
+            </>
+          )}
         </div>
       </div>
 
       {/* MODAL DE CONFIRMAÇÃO */}
-      {confirmAction && (() => {
-        const cfg = {
-          stop: {
-            title: 'Parar cotação',
-            body: 'A cotação será pausada e não aceitará novos pedidos. Você poderá reabri-la a qualquer momento.',
-            confirmLabel: 'Parar',
-            confirmVariant: 'primary',
-            onConfirm: async () => { await run(closeCampaign, 'Cotação pausada!')(confirmAction.id); setConfirmAction(null); },
-          },
-          finish: {
-            title: 'Encerrar cotação definitivamente',
-            body: 'A cotação será encerrada e irá para o relatório histórico. Ela não aparecerá mais em nenhuma lista ativa e esta ação NÃO pode ser desfeita.',
-            confirmLabel: 'Encerrar definitivamente',
-            confirmVariant: 'danger',
-            onConfirm: async () => { await run(finishCampaign, 'Cotação encerrada!')(confirmAction.id); setConfirmAction(null); },
-          },
-          reopen: {
-            title: 'Reabrir cotação',
-            body: 'A cotação voltará ao status "Aberta" e poderá receber novos pedidos. Deseja continuar?',
-            confirmLabel: 'Reabrir',
-            confirmVariant: 'primary',
-            onConfirm: async () => { await run(reopenCampaign, 'Cotação reaberta!')(confirmAction.id); setConfirmAction(null); },
-          },
-          delete: {
-            title: 'Apagar cotação',
-            body: 'Esta ação é permanente e não pode ser desfeita. Todos os pedidos e lotes associados serão excluídos do banco de dados. Tem certeza?',
-            confirmLabel: 'Apagar definitivamente',
-            confirmVariant: 'danger',
-            onConfirm: async () => {
-              const id = confirmAction.id;
-              setConfirmAction(null);
-              setSelectedId(null);
-              await run(deleteCampaign, 'Cotação apagada')(id);
+      {confirmAction &&
+        (() => {
+          const cfg = {
+            stop: {
+              title: "Parar cotação",
+              body: "A cotação será pausada e não aceitará novos pedidos. Você poderá reabri-la a qualquer momento.",
+              confirmLabel: "Parar",
+              confirmVariant: "primary",
+              onConfirm: async () => {
+                await run(closeCampaign, "Cotação pausada!")(confirmAction.id);
+                setConfirmAction(null);
+              },
             },
-          },
-        }[confirmAction.type]
-        if (!cfg) return null
-        return (
-          <Modal onClose={() => setConfirmAction(null)}>
-            <ModalHeader title={cfg.title} onClose={() => setConfirmAction(null)}/>
-            <ModalBody>
-              <p style={{ fontSize: '.88rem', color: 'var(--text2)', lineHeight: 1.6, margin: 0 }}>
-                {cfg.body}
-              </p>
-              {confirmAction.type === 'delete' && (
-                <div style={{
-                  marginTop: 12, padding: '10px 14px',
-                  background: 'var(--red-dim)', border: '1px solid var(--red-border)',
-                  borderRadius: 'var(--r)', fontSize: '.82rem', color: 'var(--red)',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <AlertCircle size={14}/> Esta ação não pode ser desfeita.
-                </div>
-              )}
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="outline" onClick={() => setConfirmAction(null)}>Cancelar</Button>
-              <Button
-                variant={cfg.confirmVariant === 'danger' ? 'outline' : cfg.confirmVariant}
-                style={cfg.confirmVariant === 'danger' ? {
-                  background: 'var(--red)', color: '#fff', borderColor: 'var(--red)',
-                } : {}}
-                onClick={cfg.onConfirm}
-              >
-                {cfg.confirmLabel}
-              </Button>
-            </ModalFooter>
-          </Modal>
-        )
-      })()}
+            finish: {
+              title: "Encerrar cotação definitivamente",
+              body: "A cotação será encerrada e irá para o relatório histórico. Ela não aparecerá mais em nenhuma lista ativa e esta ação NÃO pode ser desfeita.",
+              confirmLabel: "Encerrar definitivamente",
+              confirmVariant: "danger",
+              onConfirm: async () => {
+                await run(
+                  finishCampaign,
+                  "Cotação encerrada!",
+                )(confirmAction.id);
+                setConfirmAction(null);
+              },
+            },
+            reopen: {
+              title: "Reabrir cotação",
+              body: 'A cotação voltará ao status "Aberta" e poderá receber novos pedidos. Deseja continuar?',
+              confirmLabel: "Reabrir",
+              confirmVariant: "primary",
+              onConfirm: async () => {
+                await run(
+                  reopenCampaign,
+                  "Cotação reaberta!",
+                )(confirmAction.id);
+                setConfirmAction(null);
+              },
+            },
+            delete: {
+              title: "Apagar cotação",
+              body: "Esta ação é permanente e não pode ser desfeita. Todos os pedidos e lotes associados serão excluídos do banco de dados. Tem certeza?",
+              confirmLabel: "Apagar definitivamente",
+              confirmVariant: "danger",
+              onConfirm: async () => {
+                const id = confirmAction.id;
+                setConfirmAction(null);
+                setSelectedId(null);
+                await run(deleteCampaign, "Cotação apagada")(id);
+              },
+            },
+          }[confirmAction.type];
+          if (!cfg) return null;
+          return (
+            <Modal onClose={() => setConfirmAction(null)}>
+              <ModalHeader
+                title={cfg.title}
+                onClose={() => setConfirmAction(null)}
+              />
+              <ModalBody>
+                <p
+                  style={{
+                    fontSize: ".88rem",
+                    color: "var(--text2)",
+                    lineHeight: 1.6,
+                    margin: 0,
+                  }}
+                >
+                  {cfg.body}
+                </p>
+                {confirmAction.type === "delete" && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: "10px 14px",
+                      background: "var(--red-dim)",
+                      border: "1px solid var(--red-border)",
+                      borderRadius: "var(--r)",
+                      fontSize: ".82rem",
+                      color: "var(--red)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <AlertCircle size={14} /> Esta ação não pode ser desfeita.
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmAction(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant={
+                    cfg.confirmVariant === "danger"
+                      ? "outline"
+                      : cfg.confirmVariant
+                  }
+                  style={
+                    cfg.confirmVariant === "danger"
+                      ? {
+                          background: "var(--red)",
+                          color: "#fff",
+                          borderColor: "var(--red)",
+                        }
+                      : {}
+                  }
+                  onClick={cfg.onConfirm}
+                >
+                  {cfg.confirmLabel}
+                </Button>
+              </ModalFooter>
+            </Modal>
+          );
+        })()}
 
       {/* MODALS */}
       {showNew && (
-        <NewCampaignModal onClose={() => setShowNew(false)} onSave={run(addCampaign, 'Cotação criada!')}/>
+        <NewCampaignModal
+          onClose={() => setShowNew(false)}
+          onSave={run(addCampaign, "Cotação criada!")}
+        />
       )}
       {showPublish && active && (
         <PublishToVendorsModal
-          campaign={active} vendors={vendors}
+          campaign={active}
+          vendors={vendors}
           onClose={() => setShowPublish(false)}
-          onPublish={() => { run(publishToVendors(active.id), 'Publicada!'); setShowPublish(false); }}
+          onPublish={() => {
+            run(publishToVendors(active.id), "Publicada!");
+            setShowPublish(false);
+          }}
         />
       )}
       {showOrder && active && (
         <ProducerOrderModal
-          campaign={active} onClose={() => setShowOrder(false)}
-          onSave={run((qty, name, phone) => addOrder(active.id, { qty, producerName: name, phone }), 'Pedido adicionado!')}
+          campaign={active}
+          onClose={() => setShowOrder(false)}
+          onSave={run(
+            (qty, name, phone) =>
+              addOrder(active.id, { qty, producerName: name, phone }),
+            "Pedido adicionado!",
+          )}
         />
       )}
-      {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast}/>}
+      {toast && (
+        <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
+      )}
     </div>
   );
 }

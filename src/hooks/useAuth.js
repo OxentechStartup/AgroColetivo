@@ -90,7 +90,7 @@ export function useAuth() {
       clearSession();
       setUser(null);
     } catch (err) {
-      setError(err.message);
+      setError(err?.message || "Erro ao deletar conta");
       throw err;
     } finally {
       setLoading(false);

@@ -21,7 +21,7 @@ export function DeleteAccountModal({ user, onDelete, onCancel, loading }) {
     try {
       await onDelete(password);
     } catch (err) {
-      setError(err.message || "Erro ao deletar conta.");
+      setError(err?.message || "Erro ao deletar conta.");
     } finally {
       setDeleting(false);
     }
