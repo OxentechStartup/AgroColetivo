@@ -413,7 +413,7 @@ create policy "le users" on users for select to authenticated
   using (
     id = auth.uid() OR  -- seu próprio perfil
     role = 'vendor' OR  -- dados de vendor (público)
-    (select role from users where id = auth.uid()) = 'admin'  -- admin vê tudo
+    auth_role() = 'admin'  -- admin vê tudo
   );
 create policy "edita proprio"   on users for update to authenticated using (id = auth.uid());
 create policy "admin edita"     on users for update to authenticated using (auth_role() = 'admin');
@@ -428,7 +428,7 @@ create policy "anon le buyer"      on buyers for select to anon using (true);
 create policy "le vendors" on vendors for select to authenticated 
   using (
     user_id = auth.uid() OR  -- seu próprio vendor
-    (select count(*) from public.users where id = auth.uid() and role = 'admin') > 0  -- admin vê tudo
+    is_gestor_or_admin()  -- admin vê tudo
   );
 create policy "vendor edita proprio"   on vendors for update to authenticated using (user_id = auth.uid());
 create policy "gestor insere vendor"   on vendors for insert to authenticated
@@ -444,7 +444,7 @@ create policy "le products" on products for select to authenticated using (
     select v.id from vendors v
     where 
       v.user_id = auth.uid() OR  -- seu próprio vendor
-      (select count(*) from public.users where id = auth.uid() and role = 'admin') > 0  -- admin
+      is_gestor_or_admin()  -- admin
   )
 );
 create policy "vendor gerencia produtos" on products for all to authenticated
@@ -460,7 +460,7 @@ create policy "vendor le campaigns" on campaigns for select to authenticated
   using (
     pivo_id = auth.uid() OR  -- é o seu próprio campaign
     status in ('open', 'negotiating') OR  -- públicos
-    (select count(*) from public.users where id = auth.uid() and role = 'admin') > 0 OR  -- admin
+    is_gestor_or_admin() OR  -- admin
     id in (
       select campaign_id from campaign_lots cl
       join vendors v on v.id = cl.vendor_id
