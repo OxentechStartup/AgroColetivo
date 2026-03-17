@@ -123,7 +123,10 @@ export default function App() {
         setShowDeleteModal(false);
         setPage("dashboard");
       } catch (err) {
-        console.error("Delete account error:", err.message);
+        console.error(
+          "Delete account error:",
+          err?.message || JSON.stringify(err),
+        );
       }
     },
     [deleteUserAccount],
@@ -337,8 +340,8 @@ export default function App() {
         return (
           <PivoProfilePage
             user={user}
-            onSaved={(updatedUser) => {
-              setUser(updatedUser);
+            onSaved={() => {
+              reload();
             }}
             onDeleteAccount={() => setShowDeleteModal(true)}
           />
