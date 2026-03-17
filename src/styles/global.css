@@ -63,12 +63,14 @@
   :root {
     --page-pad: 14px;
     --topbar-h: 52px;
+    font-size: 14px;
   }
 }
 @media (max-width: 480px) {
   :root {
     --page-pad: 12px;
-    --topbar-h: 50px;
+    --topbar-h: 48px;
+    font-size: 13px;
   }
 }
 
