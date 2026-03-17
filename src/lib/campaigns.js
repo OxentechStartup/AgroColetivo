@@ -41,6 +41,10 @@ export async function fetchCampaigns(user) {
   }
 
   if (role === ROLES.GESTOR) {
+    // Valida se user.id existe
+    if (!user?.id) {
+      return [];
+    }
     const { data, error } = await supabase
       .from("v_campaign_summary")
       .select("*")
@@ -94,6 +98,7 @@ export async function createCampaign(c, gestorId) {
     deadline: c.deadline || null,
     status: "open",
     pivo_id: validGestorId,
+    image_url: c.imageUrl || null,
   };
 
   const { data, error } = await supabase

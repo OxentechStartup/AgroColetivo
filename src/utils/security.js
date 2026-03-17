@@ -1,10 +1,35 @@
 /**
  * Módulo de segurança - validações, sanitização e rate limiting
  */
+import DOMPurify from "dompurify";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VALIDAÇÕES
 // ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Valida e-mail
+ * @param {string} email - Email a validar
+ * @returns {object} { valid: boolean, clean: string, error?: string }
+ */
+export function validateEmail(email) {
+  if (!email || typeof email !== "string") {
+    return { valid: false, clean: "", error: "Email inválido" };
+  }
+
+  const clean = email.trim().toLowerCase();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(clean)) {
+    return {
+      valid: false,
+      clean: "",
+      error: "Email deve estar no formato válido (ex: usuario@exemplo.com)",
+    };
+  }
+
+  return { valid: true, clean, error: null };
+}
 
 /**
  * Valida e sanitiza número de telefone
@@ -70,17 +95,21 @@ export function validatePassword(password) {
 }
 
 /**
- * Valida email
- * @param {string} email - Email a validar
- * @returns {boolean}
+ * Sanitiza string para evitar XSS com DOMPurify (robusto)
+ * @param {string} str - String a sanitizar
+ * @returns {string}
  */
-export function validateEmail(email) {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(email);
+export function sanitizeHTML(str) {
+  if (typeof str !== "string") return "";
+
+  return DOMPurify.sanitize(str, {
+    ALLOWED_TAGS: ["b", "i", "em", "strong", "br", "p"],
+    ALLOWED_ATTR: [],
+  });
 }
 
 /**
- * Sanitiza string para evitar XSS
+ * Sanitiza string para evitar XSS (method simples, mantido para compatibilidade)
  * @param {string} str - String a sanitizar
  * @returns {string}
  */
@@ -297,10 +326,117 @@ export function detectXSS(input) {
   return xssPatterns.some((pattern) => pattern.test(input));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// RATE LIMITING DISTRIBUÍDO (usando Supabase)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Registra tentativa de autenticação/ação no Supabase para rate limiting
+ * Este é um exemplo de como você poderia usar Supabase para rate limiting distribuído.
+ * Para usar isso, você precisaria:
+ *
+ * 1. Criar uma tabela 'rate_limit_logs' no Supabase:
+ *    CREATE TABLE rate_limit_logs (
+ *      id BIGSERIAL PRIMARY KEY,
+ *      identifier VARCHAR(255) NOT NULL,
+ *      action VARCHAR(50) NOT NULL,
+ *      attempted_at TIMESTAMP DEFAULT NOW(),
+ *      ip_address VARCHAR(45),
+ *      user_agent TEXT
+ *    );
+ *
+ * 2. Adicionar índice para performance:
+ *    CREATE INDEX idx_rate_limit_logs_identifier_action
+ *    ON rate_limit_logs(identifier, action, attempted_at DESC);
+ *
+ * 3. Habilitar Row Level Security (RLS) com política pública (apenas insert):
+ *    CREATE POLICY "Allow insertion for rate limiting"
+ *    ON rate_limit_logs FOR INSERT TO anon, authenticated
+ *    WITH CHECK (true);
+ *
+ * Exemplo de uso em auth.js:
+ *    import { checkDistributedRateLimit } from '../utils/security.js';
+ *
+ *    const limiter = await checkDistributedRateLimit(phone, 'login', 5, 15*60);
+ *    if (!limiter.allowed) {
+ *      throw new Error(`Muitas tentativas. Tente novamente em ${limiter.retryAfter}s`);
+ *    }
+ *
+ * @param {string} identifier - Telefone, email ou IP para identificar o usuário
+ * @param {string} action - Tipo de ação ('login', 'register', 'password_reset')
+ * @param {number} maxAttempts - Máximo de tentativas permitidas
+ * @param {number} windowSeconds - Janela de tempo em segundos
+ * @param {object} supabase - Cliente Supabase
+ * @returns {Promise<object>} { allowed: boolean, remaining: number, retryAfter?: number }
+ */
+export async function checkDistributedRateLimit(
+  identifier,
+  action,
+  maxAttempts,
+  windowSeconds,
+  supabase,
+) {
+  try {
+    // Se supabase não for fornecido, retorna permitido (fallback)
+    if (!supabase) {
+      return { allowed: true, remaining: maxAttempts };
+    }
+
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - windowSeconds * 1000);
+
+    // Conta tentativas recentes
+    const { count, error: countError } = await supabase
+      .from("rate_limit_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("identifier", identifier)
+      .eq("action", action)
+      .gte("attempted_at", windowStart.toISOString());
+
+    if (countError) {
+      // Se houver erro na query, permite a requisição (fallback seguro)
+      console.warn("Rate limit check failed:", countError);
+      return { allowed: true, remaining: maxAttempts };
+    }
+
+    const attempts = count || 0;
+
+    if (attempts >= maxAttempts) {
+      // Bloqueia requisição
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfter: Math.ceil(windowSeconds),
+      };
+    }
+
+    // Log tentativa bem-sucedida
+    await supabase.from("rate_limit_logs").insert({
+      identifier,
+      action,
+      attempted_at: now.toISOString(),
+      ip_address:
+        typeof window !== "undefined"
+          ? window.navigator?.connection?.localAddress
+          : null,
+    });
+
+    return {
+      allowed: true,
+      remaining: maxAttempts - attempts - 1,
+    };
+  } catch (error) {
+    // Em caso de erro, permite a requisição (fallback seguro)
+    console.warn("Distributed rate limit check error:", error);
+    return { allowed: true, remaining: maxAttempts };
+  }
+}
+
 export default {
   validatePhone,
   validatePassword,
   validateEmail,
+  sanitizeHTML,
   sanitizeString,
   validateInput,
   loginLimiter,
@@ -310,4 +446,5 @@ export default {
   isOriginAllowed,
   detectSQLInjection,
   detectXSS,
+  checkDistributedRateLimit,
 };

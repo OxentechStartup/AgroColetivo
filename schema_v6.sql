@@ -9,6 +9,7 @@ drop view     if exists v_producer_costs        cascade;
 drop view     if exists v_campaign_summary      cascade;
 drop table    if exists campaign_events         cascade;
 drop table    if exists audit_logs              cascade;
+drop table    if exists portal_rate_limit       cascade;
 drop table    if exists orders                  cascade;
 drop table    if exists campaign_lots           cascade;
 drop table    if exists vendor_campaign_offers  cascade;
@@ -43,25 +44,29 @@ create type promo_type      as enum ('fixed_discount','percent_discount','fixed_
 -- ── users ─────────────────────────────────────────────────────
 create table users (
   id            uuid        primary key references auth.users(id) on delete cascade,
+  email         text        unique not null,
   name          text        not null,
-  phone         text        unique not null,
+  phone         text,
   role          user_role   not null default 'vendor',
   city          text,
   notes         text,
   active        boolean     not null default true,
   created_at    timestamptz not null default now()
 );
+create index users_email_idx on users(email);
 create index users_phone_idx on users(phone);
 
 -- ── buyers ────────────────────────────────────────────────────
 create table buyers (
   id         uuid        primary key default gen_random_uuid(),
   name       text        not null,
-  phone      text        unique not null,
+  email      text        unique,
+  phone      text,
   city       text,
   notes      text,
   created_at timestamptz not null default now()
 );
+create index buyers_email_idx on buyers(email);
 create index buyers_phone_idx on buyers(phone);
 
 -- ── vendors ───────────────────────────────────────────────────
@@ -116,6 +121,7 @@ create table campaigns (
   price_per_unit numeric(12,2),
   freight_total  numeric(12,2),
   markup_total   numeric(12,2),
+  image_url      text,
   status         campaign_status not null default 'open',
   deadline       date,
   closed_at      timestamptz,
@@ -327,21 +333,19 @@ returns trigger language plpgsql security definer
 set search_path = public
 as $$
 declare
+  v_email text := new.email;
   v_phone text := (new.raw_user_meta_data->>'phone');
   v_name  text := coalesce(new.raw_user_meta_data->>'name', 'Usuario');
   v_role  text := coalesce(new.raw_user_meta_data->>'role', 'vendor');
   v_city  text := new.raw_user_meta_data->>'city';
   v_notes text := new.raw_user_meta_data->>'notes';
 begin
-  -- Remove linha orfa com mesmo phone e id diferente (evita UNIQUE violation)
-  delete from public.users
-  where phone = v_phone and id <> new.id;
-
   -- Upsert em public.users
-  insert into public.users (id, name, phone, role, city, notes)
-  values (new.id, v_name, v_phone, v_role::user_role, v_city, v_notes)
+  insert into public.users (id, email, name, phone, role, city, notes)
+  values (new.id, v_email, v_name, v_phone, v_role::user_role, v_city, v_notes)
   on conflict (id) do update
-    set name  = excluded.name,
+    set email = excluded.email,
+        name  = excluded.name,
         phone = excluded.phone,
         role  = excluded.role,
         city  = excluded.city,
@@ -409,10 +413,15 @@ create policy "anon insere buyer"  on buyers for insert to anon with check (true
 create policy "anon le buyer"      on buyers for select to anon using (true);
 
 -- vendors
-create policy "le vendors"           on vendors for select to authenticated using (true);
-create policy "vendor edita proprio" on vendors for update to authenticated using (user_id = auth.uid());
-create policy "gestor gerencia"      on vendors for all to authenticated
-  using (is_gestor_or_admin()) with check (is_gestor_or_admin());
+-- CORRECAO: policies granulares por operacao (FOR ALL conflitava com SELECT)
+create policy "le vendors"             on vendors for select to authenticated using (true);
+create policy "vendor edita proprio"   on vendors for update to authenticated using (user_id = auth.uid());
+create policy "gestor insere vendor"   on vendors for insert to authenticated
+  with check (is_gestor_or_admin());
+create policy "gestor atualiza vendor" on vendors for update to authenticated
+  using (is_gestor_or_admin());
+create policy "gestor deleta vendor"   on vendors for delete to authenticated
+  using (is_gestor_or_admin());
 
 -- products
 create policy "le products" on products for select to authenticated using (true);
@@ -427,7 +436,7 @@ create policy "auth acessa promotions" on product_promotions for all to authenti
 -- campaigns
 create policy "vendor le campaigns" on campaigns for select to authenticated
   using (
-    auth_role() != 'vendor'
+    coalesce(auth_role(), 'vendor') != 'vendor'
     or status in ('open', 'negotiating')
     or id in (
       select campaign_id from campaign_lots cl
@@ -467,6 +476,9 @@ create policy "anon le order" on orders for select to anon
 -- campaign_events
 create policy "auth acessa events" on campaign_events for all to authenticated
   using (true) with check (true);
+-- CORRECAO: anon (portal) pode inserir eventos de pedido publico
+create policy "anon insere event" on campaign_events for insert to anon
+  with check (actor_id is null);
 
 -- audit_logs: apenas admin le, qualquer um (inclusive anon) insere via RPC
 create policy "admin le audit"   on audit_logs for select to authenticated
@@ -486,12 +498,16 @@ grant all    on all sequences in schema public to authenticated;
 grant select, insert on buyers            to anon;
 grant select, insert on orders            to anon;
 grant select, insert on portal_rate_limit to anon;
--- Permite anon chamar o RPC de log e find_or_create_buyer
-grant execute on function log_security_event  to anon, authenticated;
-grant execute on function find_or_create_buyer to anon, authenticated;
+-- Permite anon e authenticated chamar funcoes publicas via RPC
+grant execute on function log_security_event(text,uuid,text,text,text,text,text,text) to anon, authenticated;
+grant execute on function find_or_create_buyer(text,text) to anon, authenticated;
+-- CORRECAO: grant no schema para RPC funcionar sem autenticacao (anon)
+grant usage on schema public to anon;
 
--- Permite admin ver audit_logs
+-- Permite admin e authenticated ver audit_logs
 grant select on audit_logs to authenticated;
+-- CORRECAO: anon precisa de permissao de INSERT em audit_logs para o RPC funcionar
+grant insert on audit_logs to anon;
 
 -- ── CONSTRAINT: 1 pedido pendente por buyer+campaign ──────────
 -- SEGURANCA: impede que o mesmo telefone envie multiplos pedidos
@@ -501,80 +517,51 @@ alter table orders
   unique (buyer_id, campaign_id);
 
 -- ═══════════════════════════════════════════════════════════════
--- CRIAR ADMIN
+-- CRIAR ADMIN MANUALMENTE
 -- ═══════════════════════════════════════════════════════════════
--- Telefone : (00) 00000-0000
--- Senha    : definida na variavel ADMIN_PASSWORD abaixo
+-- 
+-- NÃO é possível criar usuários em auth.users via SQL direto.
+-- Siga estes passos para criar o admin:
 --
--- ATENCAO: troque a senha antes de ir a producao!
--- Use uma senha forte: minimo 12 chars, maiusculas, numeros, simbolos
--- ═══════════════════════════════════════════════════════════════
-
-do $$
-declare
-  v_uid   uuid;
-  v_email text := '00000000000@agrocoletivo.app';
-  v_phone text := '00000000000';
-  v_name  text := 'Admin OxenTech';
-  -- TROCAR ANTES DE IR A PRODUCAO
-  v_pass  text := 'oxentech@8734';
-begin
-  delete from public.users where phone = v_phone;
-  delete from auth.users
-  where email in (v_email, 'oxentech.startup@gmail.com');
-
-  insert into auth.users (
-    instance_id, id, aud, role,
-    email, encrypted_password,
-    email_confirmed_at,
-    raw_app_meta_data, raw_user_meta_data,
-    is_super_admin, is_sso_user,
-    created_at, updated_at,
-    confirmation_token, recovery_token,
-    email_change_token_new, email_change
-  ) values (
-    '00000000-0000-0000-0000-000000000000',
-    gen_random_uuid(),
-    'authenticated', 'authenticated',
-    v_email,
-    crypt(v_pass, gen_salt('bf')),
-    now(),
-    '{"provider":"email","providers":["email"]}',
-    jsonb_build_object('name', v_name, 'phone', v_phone, 'role', 'admin'),
-    false, false,
-    now(), now(),
-    '', '', '', ''
-  )
-  returning id into v_uid;
-
-  insert into public.users (id, name, phone, role, city, notes, active)
-  values (v_uid, v_name, v_phone, 'admin', null, 'Administrador do sistema', true)
-  on conflict (id) do update
-    set role = 'admin', active = true, name = excluded.name;
-
-  raise notice 'Admin criado! ID: %', v_uid;
-end $$;
-
--- ═══════════════════════════════════════════════════════════════
--- VERIFICACAO pos-execucao:
+-- 1. Abra: https://app.supabase.com/project/iepgeibcwthilohdlfse/auth/users
+-- 2. Clique "Add user" (botão verde)
+-- 3. Preencha:
+--    - Email: oxentech.startup@gmail.com
+--    - Password: oxentech@8734
+--    - Auto generate password: desmarque
+-- 4. Clique "Create user"
+-- 5. Logo depois, execute esta query para completar o registro em public.users:
 --
---   select a.id, a.email, u.phone, u.role, u.active
---   from auth.users a join public.users u on u.id = a.id
---   where a.email = '00000000000@agrocoletivo.app';
+--   INSERT INTO public.users (id, email, name, role, city, notes, active)
+--   SELECT id, email, 'Admin OxenTech', 'admin', NULL, 'Administrador do sistema', true
+--   FROM auth.users
+--   WHERE email = 'oxentech.startup@gmail.com'
+--   ON CONFLICT (id) DO UPDATE
+--   SET role = 'admin', active = true, name = 'Admin OxenTech';
 --
 -- ═══════════════════════════════════════════════════════════════
-
+-- VERIFICACAO pos-admin criado:
+--
+--   SELECT a.id, a.email, u.email, u.phone, u.role, u.active
+--   FROM auth.users a
+--   JOIN public.users u ON u.id = a.id
+--   WHERE a.email = 'oxentech.startup@gmail.com';
+--
 -- ═══════════════════════════════════════════════════════════════
--- CHECKLIST DE SEGURANCA PARA PRODUCAO:
+-- CHECKLIST DE SEGURANCA PARA DEV/PRODUCAO:
 --
--- [1] Supabase > Authentication > Settings
---     Habilitar: "Enable rate limiting" (proteção server-side brute force)
---     Configurar: max 5 tentativas / 15 min por IP
+-- [1] ✅ Email confirmations: desabilitado (já feito)
 --
--- [2] Trocar a senha admin no bloco acima (v_pass)
---     Use senha forte: ex: Agro@2024#Oxen!
+-- [2] Admin criado: oxentech.startup@gmail.com / oxentech@8734
 --
--- [3] Supabase > Authentication > Settings
---     Desmarque "Enable email confirmations"
+-- [3] Antes de produção:
+--     - Trocar senha admin para algo mais forte (12+ chars, maiúsculas, números, símbolos)
+--     - Exemplo: Agro@2024#Oxen!Segura42
+--
+-- [4] Configurar SMTP para emails de confirmação (se habilitar no futuro)
+--
+-- [5] Rate limiting no Supabase > Authentication > Settings:
+--     - Enable rate limiting
+--     - Max 5 tentativas / 15 min por IP
 --
 -- ═══════════════════════════════════════════════════════════════

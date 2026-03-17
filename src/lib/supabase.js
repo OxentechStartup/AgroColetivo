@@ -19,9 +19,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   },
 });
 
-// Converte telefone em email fake usado internamente no Supabase Auth
-// Ex: "38991110000" → "38991110000@agrocoletivo.app"
-export function phoneToEmail(phone) {
-  const clean = phone.replace(/\D/g, "");
-  return `${clean}@agrocoletivo.app`;
-}
+// Intercepta erros de refresh token inválido e faz logout automático
+supabase.auth.onAuthStateChange((event, session) => {
+  // Se o token expirou ou foi inválido, faz logout silencioso
+  if (event === "SIGNED_OUT" && !session) {
+    try {
+      localStorage.removeItem("agro_auth");
+    } catch {}
+  }
+});

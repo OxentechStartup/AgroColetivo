@@ -1,18 +1,11 @@
 import { useState, useEffect } from "react";
-import {
-  LayoutDashboard,
-  ClipboardList,
-  Store,
-  Users,
-  ShieldCheck,
-  Send,
-  UserSquare2,
-  Package,
-} from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { LoadingScreen, ErrorScreen } from "./components/LoadingScreen";
 import { LoginPage } from "./pages/LoginPage";
+import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignsPage } from "./pages/CampaignsPage";
 import { ProducersPage } from "./pages/ProducersPage";
@@ -22,7 +15,6 @@ import { VendorDashboardPage } from "./pages/VendorDashboardPage";
 import { VendorProductsPage } from "./pages/VendorProductsPage";
 import { VendorProfilePage } from "./pages/VendorProfilePage";
 import { VendorPivosPage } from "./pages/VendorPivosPage";
-import { VendorsPage } from "./pages/VendorsPage";
 import { ProducerPortalPage } from "./pages/ProducerPortalPage";
 import { useCampaigns } from "./hooks/useCampaigns";
 import { useVendorProducts } from "./hooks/useVendorProducts";
@@ -35,6 +27,18 @@ const isPortalRoute = () =>
   window.location.pathname === "/portalforms" ||
   window.location.hash === "#/portalforms";
 
+const isConfirmEmailRoute = () =>
+  window.location.pathname === "/auth/confirmar-email" ||
+  window.location.hash === "#/auth/confirmar-email";
+
+const isForgotPasswordRoute = () =>
+  window.location.pathname === "/auth/recuperar-senha" ||
+  window.location.hash === "#/auth/recuperar-senha";
+
+const isResetPasswordRoute = () =>
+  window.location.pathname === "/auth/resetar-senha" ||
+  window.location.hash === "#/auth/resetar-senha";
+
 function defaultPageForRole(role) {
   if (role === ROLES.VENDOR) return "vendor-dashboard";
   if (role === ROLES.ADMIN) return "admin";
@@ -42,16 +46,20 @@ function defaultPageForRole(role) {
 }
 
 const ALLOWED = {
-  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "vendors", "financial"],
-  [ROLES.VENDOR]: ["vendor-dashboard", "vendor-profile", "vendor-products", "vendor-pivos"],
-  [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "vendors", "financial"],
+  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "financial"],
+  [ROLES.VENDOR]: [
+    "vendor-dashboard",
+    "vendor-profile",
+    "vendor-products",
+    "vendor-pivos",
+  ],
+  [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "financial"],
 };
 
 const PAGE_TITLES = {
   dashboard: "Dashboard",
   campaigns: "Cotações",
-  producers: "Compradores",
-  vendors: "Fornecedores",
+  producers: "Parceiros",
   admin: "Monitoramento Financeiro",
   financial: "Financeiro",
   "vendor-dashboard": "Propostas",
@@ -60,53 +68,33 @@ const PAGE_TITLES = {
   "vendor-pivos": "Gestores",
 };
 
-// ── Bottom Navigation (mobile only) ───────────────────────────────────────
-function BottomNav({ page, setPage, role, blocked }) {
-  const items =
-    role === ROLES.VENDOR
-      ? [
-          { id: "vendor-dashboard", label: "Propostas", Icon: Send },
-          { id: "vendor-products", label: "Produtos", Icon: Package },
-          { id: "vendor-profile", label: "Perfil", Icon: UserSquare2 },
-          { id: "vendor-pivos", label: "Gestores", Icon: Users },
-        ]
-      : role === ROLES.ADMIN
-        ? [
-            { id: "dashboard", label: "Início", Icon: LayoutDashboard },
-            { id: "campaigns", label: "Cotações", Icon: ClipboardList },
-            { id: "vendors", label: "Fornecedores", Icon: Store },
-            { id: "producers", label: "Compradores", Icon: Users },
-            { id: "admin", label: "Admin", Icon: ShieldCheck },
-          ]
-        : [
-            { id: "dashboard", label: "Início", Icon: LayoutDashboard },
-            { id: "campaigns", label: "Cotações", Icon: ClipboardList },
-            { id: "vendors", label: "Fornecedores", Icon: Store },
-            { id: "producers", label: "Compradores", Icon: Users },
-          ];
-
+// ── Sidebar Mobile ───────────────────────────────────────────────────────────
+function SidebarMobile({ page, setPage, user }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const h = () => setOpen(true);
+    document.addEventListener("open-sidebar", h);
+    return () => document.removeEventListener("open-sidebar", h);
+  }, []);
   return (
-    <nav className="bottomNav">
-      {items.map(({ id, label, Icon }) => {
-        const isLocked = blocked && id !== "dashboard";
-        return (
-          <button
-            key={id}
-            className={`bottomNavItem ${page === id ? "active" : ""}`}
-            onClick={() => !isLocked && setPage(id)}
-            disabled={isLocked}
-          >
-            <Icon size={20} />
-            {label}
-          </button>
-        );
-      })}
-    </nav>
+    <Sidebar
+      page={page}
+      setPage={setPage}
+      open={open}
+      onClose={() => setOpen(false)}
+      user={user}
+      blocked={user?.blocked}
+    />
   );
 }
 
 export default function App() {
   const [isPortal, setIsPortal] = useState(isPortalRoute);
+  const [isConfirmEmail, setIsConfirmEmail] = useState(isConfirmEmailRoute);
+  const [isForgotPassword, setIsForgotPassword] = useState(
+    isForgotPasswordRoute,
+  );
+  const [isResetPassword, setIsResetPassword] = useState(isResetPasswordRoute);
   const {
     user,
     loading: authLoading,
@@ -171,7 +159,12 @@ export default function App() {
 
   // listeners de rota
   useEffect(() => {
-    const check = () => setIsPortal(isPortalRoute());
+    const check = () => {
+      setIsPortal(isPortalRoute());
+      setIsConfirmEmail(isConfirmEmailRoute());
+      setIsForgotPassword(isForgotPasswordRoute());
+      setIsResetPassword(isResetPasswordRoute());
+    };
     window.addEventListener("hashchange", check);
     window.addEventListener("popstate", check);
     return () => {
@@ -204,6 +197,9 @@ export default function App() {
   };
 
   if (isPortal) return <ProducerPortalPage onSubmit={addPendingOrder} />;
+  if (isConfirmEmail) return <ConfirmEmailPage />;
+  if (isForgotPassword) return <ForgotPasswordPage />;
+  if (isResetPassword) return <ResetPasswordPage />;
   if (!user)
     return (
       <LoginPage
@@ -261,13 +257,10 @@ export default function App() {
         );
 
       case "producers":
-        return <ProducersPage campaigns={campaigns} user={user} />;
-
-      case "vendors":
         return (
-          <VendorsPage
-            vendors={vendors}
+          <ProducersPage
             campaigns={campaigns}
+            vendors={vendors}
             actions={campaignActions}
             user={user}
           />
@@ -325,12 +318,7 @@ export default function App() {
         );
 
       case "vendor-pivos":
-        return (
-          <VendorPivosPage
-            pivos={gestores}
-            loading={gestoresLoading}
-          />
-        );
+        return <VendorPivosPage pivos={gestores} loading={gestoresLoading} />;
 
       default:
         return (
@@ -350,7 +338,7 @@ export default function App() {
         blocked={user?.blocked}
       />
       <SidebarMobile page={page} setPage={navigate} user={user} />
-      <div className={`${styles.main} mainWithBottomNav`}>
+      <div className={styles.main}>
         <Topbar
           title={PAGE_TITLES[page] ?? ""}
           onMenuClick={() => document.dispatchEvent(new Event("open-sidebar"))}
@@ -361,31 +349,6 @@ export default function App() {
         />
         <div className={styles.content}>{renderPage()}</div>
       </div>
-      <BottomNav
-        page={page}
-        setPage={navigate}
-        role={user?.role ?? ROLES.GESTOR}
-        blocked={user?.blocked}
-      />
     </div>
-  );
-}
-
-function SidebarMobile({ page, setPage, user }) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const h = () => setOpen(true);
-    document.addEventListener("open-sidebar", h);
-    return () => document.removeEventListener("open-sidebar", h);
-  }, []);
-  return (
-    <Sidebar
-      page={page}
-      setPage={setPage}
-      open={open}
-      onClose={() => setOpen(false)}
-      user={user}
-      blocked={user?.blocked}
-    />
   );
 }

@@ -17,6 +17,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "../components/Modal";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 import { Toast } from "../components/Toast";
 import { useToast } from "../hooks/useToast";
 import { buildWhatsAppMsg } from "../utils/data";
@@ -220,6 +221,11 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
   const { toast, showToast, clearToast } = useToast();
   const [showAdd, setShowAdd] = useState(false);
   const [sendTo, setSendTo] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    open: false,
+    vendor: null,
+    loading: false,
+  });
 
   const canDelete = (vendor) => {
     // Admin pode deletar qualquer um
@@ -231,6 +237,13 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
 
   return (
     <div className={`${styles.page} page-enter`}>
+      <Button
+        className={styles.addBtn}
+        variant="primary"
+        onClick={() => setShowAdd(true)}
+      >
+        <Plus size={15} /> Cadastrar Fornecedor
+      </Button>
       <div className={styles.header}>
         <div>
           <h1 className={styles.pageTitle}>
@@ -240,9 +253,6 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
             Cadastre e gerencie os fornecedores que receberão suas cotações
           </p>
         </div>
-        <Button variant="primary" onClick={() => setShowAdd(true)}>
-          <Plus size={15} /> Cadastrar Fornecedor
-        </Button>
       </div>
 
       {vendors.length === 0 ? (
@@ -256,17 +266,16 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
           >
             Nenhum fornecedor cadastrado
           </p>
-          <p style={{ fontSize: ".82rem", color: "var(--text3)" }}>
-            Adicione fornecedores para poder enviar cotações e receber
-            propostas.
-          </p>
-          <Button
-            variant="primary"
-            style={{ marginTop: 12 }}
-            onClick={() => setShowAdd(true)}
+          <p
+            style={{
+              fontSize: ".82rem",
+              color: "var(--text3)",
+              lineHeight: 1.5,
+            }}
           >
-            <Plus size={14} /> Cadastrar primeiro fornecedor
-          </Button>
+            Use o botão no topo para adicionar fornecedores e poder enviar
+            cotações e receber propostas.
+          </p>
         </div>
       ) : (
         <div className={styles.grid}>
@@ -284,11 +293,13 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
                 {canDelete(v) && (
                   <button
                     className={styles.delBtn}
-                    onClick={async () => {
-                      if (!confirm(`Remover ${v.name}?`)) return;
-                      await removeVendor(v.id);
-                      showToast("Fornecedor removido");
-                    }}
+                    onClick={() =>
+                      setDeleteConfirm({
+                        open: true,
+                        vendor: v,
+                        loading: false,
+                      })
+                    }
                     title="Remover"
                   >
                     <Trash2 size={14} />
@@ -337,6 +348,31 @@ export function VendorsPage({ vendors, campaigns, actions, user }) {
           onClose={() => setSendTo(null)}
         />
       )}
+
+      <ConfirmationModal
+        open={deleteConfirm.open}
+        title="Remover fornecedor"
+        message={`Tem certeza que deseja remover "${deleteConfirm.vendor?.name}"? Esta ação não pode ser desfeita.`}
+        confirmText="Remover"
+        cancelText="Cancelar"
+        isDestructive={true}
+        loading={deleteConfirm.loading}
+        onConfirm={async () => {
+          setDeleteConfirm((prev) => ({ ...prev, loading: true }));
+          try {
+            await removeVendor(deleteConfirm.vendor.id);
+            showToast("Fornecedor removido com sucesso");
+            setDeleteConfirm({ open: false, vendor: null, loading: false });
+          } catch (err) {
+            showToast(err.message || "Erro ao remover fornecedor", "error");
+            setDeleteConfirm((prev) => ({ ...prev, loading: false }));
+          }
+        }}
+        onCancel={() =>
+          setDeleteConfirm({ open: false, vendor: null, loading: false })
+        }
+      />
+
       {toast && (
         <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
       )}
