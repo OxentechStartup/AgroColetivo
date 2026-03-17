@@ -92,7 +92,7 @@ export function Topbar({
                 marginTop: 4,
               }}
             >
-              {role === ROLES.VENDOR && (
+              {(role === ROLES.VENDOR || role === ROLES.GESTOR) && (
                 <button
                   onClick={() => {
                     setMenuOpen(false);

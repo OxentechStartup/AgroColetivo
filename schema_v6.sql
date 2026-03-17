@@ -43,15 +43,16 @@ create type promo_type      as enum ('fixed_discount','percent_discount','fixed_
 
 -- ── users ─────────────────────────────────────────────────────
 create table users (
-  id            uuid        primary key references auth.users(id) on delete cascade,
-  email         text        unique not null,
-  name          text        not null,
-  phone         text,
-  role          user_role   not null default 'vendor',
-  city          text,
-  notes         text,
-  active        boolean     not null default true,
-  created_at    timestamptz not null default now()
+  id                 uuid        primary key references auth.users(id) on delete cascade,
+  email              text        unique not null,
+  name               text        not null,
+  phone              text,
+  role               user_role   not null default 'vendor',
+  city               text,
+  notes              text,
+  profile_photo_url  text,
+  active             boolean     not null default true,
+  created_at         timestamptz not null default now()
 );
 create index users_email_idx on users(email);
 create index users_phone_idx on users(phone);

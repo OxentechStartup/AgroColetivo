@@ -84,11 +84,11 @@ export function validatePassword(password) {
 
   // Rejeita padrões muito comuns/fracos
   const commonPatterns = [
-    /^(.)\1+$/,  // "aaaaaaa" (repetição)
-    /^[0-9]{8,}$/,  // "12345678" (só números)
-    /^[a-z]{8,}$/,  // "abcdefgh" (só letras minúsculas)
-    /^[A-Z]{8,}$/,  // "ABCDEFGH" (só letras maiúsculas)
-    /^(123|234|345|456|567|678|789|890|qwerty|asdfgh|zxcvbn)/i,  // padrões de teclado
+    /^(.)\1+$/, // "aaaaaaa" (repetição)
+    /^[0-9]{8,}$/, // "12345678" (só números)
+    /^[a-z]{8,}$/, // "abcdefgh" (só letras minúsculas)
+    /^[A-Z]{8,}$/, // "ABCDEFGH" (só letras maiúsculas)
+    /^(123|234|345|456|567|678|789|890|qwerty|asdfgh|zxcvbn)/i, // padrões de teclado
   ];
 
   for (const pattern of commonPatterns) {
@@ -102,7 +102,10 @@ export function validatePassword(password) {
   if (errors.length === 0) {
     strength = "medium"; // Atendeu requisitos mínimos
     // Strong se tem caracteres especiais + 12+ chars
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) && password.length >= 12) {
+    if (
+      /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) &&
+      password.length >= 12
+    ) {
       strength = "strong";
     }
   }
@@ -110,7 +113,7 @@ export function validatePassword(password) {
   return {
     valid: errors.length === 0,
     strength,
-    errors: errors.slice(0, 3),  // Retorna até 3 erros
+    errors: errors.slice(0, 3), // Retorna até 3 erros
   };
 }
 
@@ -345,24 +348,24 @@ export function detectXSS(input) {
     /<iframe[^>]*>.*?<\/iframe>/gi,
     /<embed[^>]*>/gi,
     /<object[^>]*>/gi,
-    
+
     // Event handlers (on*)
     /on(load|error|click|focus|blur|change|submit|keydown|keyup|mouseover|mouseout)\s*=/gi,
     /javascript\s*:/gi,
-    
+
     // Data URIs (HTML/SVG)
     /data:text\/html/gi,
     /data:application\/x-javascript/gi,
     /data:image\/svg\+xml/gi,
-    
+
     // Encoded attacks (unicode, hex, etc)
-    /&#\d{4,5};/g,  // numeric entities
-    /\\x[0-9a-f]{2,4}/gi,  // hex encoding
-    /\\u[0-9a-f]{4}/gi,  // unicode
-    
+    /&#\d{4,5};/g, // numeric entities
+    /\\x[0-9a-f]{2,4}/gi, // hex encoding
+    /\\u[0-9a-f]{4}/gi, // unicode
+
     // SVG attacks
     /<svg[^>]*on/gi,
-    
+
     // STYLE attacks
     /<style[^>]*>.*?<\/style>/gi,
     /expression\s*\(/gi,

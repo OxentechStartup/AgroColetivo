@@ -284,6 +284,36 @@ export async function deleteAccount(password) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// UPDATE USER PROFILE
+// ─────────────────────────────────────────────────────────────────────────────
+export async function updateUser(userId, updates) {
+  if (!userId) throw new Error("ID do usuário é obrigatório");
+
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .update(updates)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    await logSecurityEvent(
+      "user_profile_updated",
+      { id: userId },
+      "users",
+      userId,
+      `Updated fields: ${Object.keys(updates).join(", ")}`,
+    );
+
+    return data;
+  } catch (err) {
+    throw err;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RECUPERAÇÃO DE SENHA
 // ─────────────────────────────────────────────────────────────────────────────
 export async function resetPassword(phone) {

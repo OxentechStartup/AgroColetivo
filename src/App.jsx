@@ -15,6 +15,7 @@ import { FinancialPage } from "./pages/FinancialPage";
 import { VendorDashboardPage } from "./pages/VendorDashboardPage";
 import { VendorProductsPage } from "./pages/VendorProductsPage";
 import { VendorProfilePage } from "./pages/VendorProfilePage";
+import { PivoProfilePage } from "./pages/PivoProfilePage";
 import { VendorPivosPage } from "./pages/VendorPivosPage";
 import { ProducerPortalPage } from "./pages/ProducerPortalPage";
 import { useCampaigns } from "./hooks/useCampaigns";
@@ -47,7 +48,7 @@ function defaultPageForRole(role) {
 }
 
 const ALLOWED = {
-  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "financial"],
+  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "financial", "pivo-profile"],
   [ROLES.VENDOR]: [
     "vendor-dashboard",
     "vendor-profile",
@@ -67,6 +68,7 @@ const PAGE_TITLES = {
   "vendor-profile": "Meu Perfil",
   "vendor-products": "Meus Produtos",
   "vendor-pivos": "Gestores",
+  "pivo-profile": "Meu Perfil",
 };
 
 // ── Sidebar Mobile ───────────────────────────────────────────────────────────
@@ -325,6 +327,16 @@ export default function App() {
           />
         );
 
+      case "pivo-profile":
+        return (
+          <PivoProfilePage
+            user={user}
+            onSaved={(updatedUser) => {
+              setUser(updatedUser);
+            }}
+          />
+        );
+
       case "financial":
         return (
           <FinancialPage
@@ -362,7 +374,13 @@ export default function App() {
           onPortalClick={() => window.open("/portalforms", "_blank")}
           user={user}
           onLogout={signOut}
-          onProfile={() => navigate("vendor-profile")}
+          onProfile={() => {
+            if (user?.role === ROLES.GESTOR) {
+              navigate("pivo-profile");
+            } else {
+              navigate("vendor-profile");
+            }
+          }}
         />
         <div className={styles.content}>{renderPage()}</div>
       </div>
