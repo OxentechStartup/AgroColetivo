@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { User, Phone, MapPin, Save, Trash2, Camera, X } from "lucide-react";
 import { updateUser } from "../lib/auth";
-import { createImageUrl, isValidImageFile, revokeImageUrl } from "../lib/imageUpload";
+import { createImageUrl, isValidImageFile } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { Button } from "../components/Button";
 import { Toast } from "../components/Toast";
@@ -39,7 +39,6 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
     }
 
     try {
-      revokeImageUrl(photoUrl);
       const url = await createImageUrl(file);
       setPhotoUrl(url);
       showToast("Foto selecionada!");
@@ -49,7 +48,6 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
   };
 
   const handleRemovePhoto = () => {
-    revokeImageUrl(photoUrl);
     setPhotoUrl("");
     showToast("Foto removida.");
   };

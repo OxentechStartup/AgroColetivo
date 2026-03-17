@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { ROLES } from "../constants/roles";
-// As funções de imagem foram centralizadas em imageUpload.js
-export { uploadVendorPhoto, deleteVendorPhoto } from "./imageUpload";
+// Função de imagem centralizada em imageUpload.js
+export { uploadVendorPhoto } from "./imageUpload";
 
 // Busca fornecedores conforme o papel do usuário:
 // - admin: todos os fornecedores

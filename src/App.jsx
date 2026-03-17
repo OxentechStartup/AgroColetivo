@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { TestPage } from "./pages/TestPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignsPage } from "./pages/CampaignsPage";
 import { ProducersPage } from "./pages/ProducersPage";
@@ -31,6 +32,7 @@ const matchRoute = (paths) =>
     (p) => window.location.pathname === p || window.location.hash === `#${p}`
   );
 
+const isTestRoute          = () => matchRoute(["/test", "/test/"]);
 const isPortalRoute        = () => matchRoute(["/portalforms"]);
 const isConfirmEmailRoute  = () => matchRoute(["/auth/confirmar-email"]);
 const isForgotPasswordRoute= () => matchRoute(["/auth/recuperar-senha"]);
@@ -85,6 +87,7 @@ function SidebarMobile({ page, setPage, user }) {
 
 // ── App principal ─────────────────────────────────────────────────────────────
 export default function App() {
+  const [isTest,           setIsTest]           = useState(isTestRoute);
   const [isPortal,         setIsPortal]         = useState(isPortalRoute);
   const [isConfirmEmail,   setIsConfirmEmail]   = useState(isConfirmEmailRoute);
   const [isForgotPassword, setIsForgotPassword] = useState(isForgotPasswordRoute);
@@ -119,6 +122,7 @@ export default function App() {
   // ── Listeners de rota ──────────────────────────────────────────────────────
   useEffect(() => {
     const check = () => {
+      setIsTest(isTestRoute());
       setIsPortal(isPortalRoute());
       setIsConfirmEmail(isConfirmEmailRoute());
       setIsForgotPassword(isForgotPasswordRoute());
@@ -168,6 +172,7 @@ export default function App() {
   );
 
   // ── Rotas especiais ────────────────────────────────────────────────────────
+  if (isTest)           return <TestPage />;
   if (isPortal)         return <ProducerPortalPage onSubmit={addPendingOrder} />;
   if (isConfirmEmail)   return <ConfirmEmailPage />;
   if (isForgotPassword) return <ForgotPasswordPage />;
