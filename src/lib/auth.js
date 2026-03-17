@@ -319,14 +319,37 @@ export async function updateUser(userId, updates) {
 // ─────────────────────────────────────────────────────────────────────────────
 // RECUPERAÇÃO DE SENHA
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Busca email do usuário pelo telefone
+ */
+async function getEmailByPhone(phone) {
+  const { data } = await supabase
+    .from("users")
+    .select("email")
+    .eq("phone", phone)
+    .maybeSingle();
+  return data?.email || null;
+}
+
 export async function resetPassword(phone) {
   const phoneValidation = validatePhone(phone);
   if (!phoneValidation.valid) throw new Error(phoneValidation.error);
 
   const clean = phoneValidation.clean;
-  const email = phoneToEmail(clean);
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  // Busca o email associado ao telefone
+  const userEmail = await getEmailByPhone(clean);
+
+  // Se não encontrar, ainda retorna mensagem positiva (segurança)
+  if (!userEmail) {
+    return {
+      message:
+        "Se o telefone estiver cadastrado, você receberá um email de recuperação.",
+    };
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
     redirectTo: `${window.location.origin}/auth/resetar-senha`,
   });
 
@@ -341,6 +364,32 @@ export async function resetPassword(phone) {
   return {
     message:
       "Se o telefone estiver cadastrado, você receberá um email de recuperação.",
+  };
+}
+
+/**
+ * Reset password by email (alternative method)
+ */
+export async function resetPasswordByEmail(email) {
+  if (!email || !email.includes("@")) {
+    throw new Error("Email inválido");
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/auth/resetar-senha`,
+  });
+
+  if (error) {
+    // Não revela se o email existe ou não (segurança)
+    throw new Error(
+      "Se este email estiver cadastrado, você receberá um link de recuperação.",
+    );
+  }
+
+  // Mesmo que o email não exista, retorna mensagem positiva
+  return {
+    message:
+      "Se este email estiver cadastrado, você receberá um link de recuperação.",
   };
 }
 

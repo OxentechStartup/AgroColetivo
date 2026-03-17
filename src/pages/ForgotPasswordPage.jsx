@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { ArrowLeft, Loader, CheckCircle, AlertCircle } from "lucide-react";
-import { resetPassword } from "../lib/auth";
+import { resetPassword, resetPasswordByEmail } from "../lib/auth";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import styles from "./ForgotPasswordPage.module.css";
 
 export function ForgotPasswordPage() {
   const [screen, setScreen] = useState("request"); // request | sent | error
+  const [tab, setTab] = useState("phone"); // phone | email
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,16 +18,25 @@ export function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const clean = unmaskPhone(phone);
-      if (clean.length < 10) {
-        setError("Informe um telefone válido.");
-        setLoading(false);
-        return;
+      if (tab === "phone") {
+        const clean = unmaskPhone(phone);
+        if (clean.length < 10) {
+          setError("Informe um telefone válido.");
+          setLoading(false);
+          return;
+        }
+        await resetPassword(clean);
+      } else {
+        if (!email || !email.includes("@")) {
+          setError("Informe um email válido.");
+          setLoading(false);
+          return;
+        }
+        await resetPasswordByEmail(email);
       }
-
-      await resetPassword(clean);
       setScreen("sent");
       setPhone("");
+      setEmail("");
     } catch (err) {
       setError(err?.message || "Erro ao processar requisição.");
       setScreen("error");
@@ -52,27 +63,88 @@ export function ForgotPasswordPage() {
             </div>
 
             <p className={styles.subtitle}>
-              Informe o telefone associado à sua conta e enviaremos um link de
-              recuperação.
+              Escolha como deseja recuperar sua senha:
             </p>
 
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 20,
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setTab("phone")}
+                style={{
+                  padding: "8px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom:
+                    tab === "phone" ? "2px solid var(--primary)" : "none",
+                  color: tab === "phone" ? "var(--primary)" : "var(--text2)",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  fontWeight: tab === "phone" ? 600 : 500,
+                }}
+              >
+                Por Telefone
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("email")}
+                style={{
+                  padding: "8px 12px",
+                  background: "none",
+                  border: "none",
+                  borderBottom:
+                    tab === "email" ? "2px solid var(--primary)" : "none",
+                  color: tab === "email" ? "var(--primary)" : "var(--text2)",
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  fontWeight: tab === "email" ? 600 : 500,
+                }}
+              >
+                Por Email
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="form-label" htmlFor="reset-phone">
-                  WhatsApp com DDD
-                </label>
-                <input
-                  id="reset-phone"
-                  className="form-input"
-                  type="tel"
-                  placeholder="(38) 99111-0001"
-                  value={phone}
-                  onChange={(e) => setPhone(maskPhone(e.target.value))}
-                  inputMode="tel"
-                  autoFocus
-                  aria-required="true"
-                />
-              </div>
+              {tab === "phone" ? (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="reset-phone">
+                    WhatsApp com DDD
+                  </label>
+                  <input
+                    id="reset-phone"
+                    className="form-input"
+                    type="tel"
+                    placeholder="(38) 99111-0001"
+                    value={phone}
+                    onChange={(e) => setPhone(maskPhone(e.target.value))}
+                    inputMode="tel"
+                    autoFocus
+                    aria-required="true"
+                  />
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="reset-email">
+                    Email da conta
+                  </label>
+                  <input
+                    id="reset-email"
+                    className="form-input"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoFocus
+                    aria-required="true"
+                  />
+                </div>
+              )}
 
               {error && (
                 <div className={styles.error} role="alert">
@@ -83,7 +155,12 @@ export function ForgotPasswordPage() {
               <button
                 type="submit"
                 className={styles.submitBtn}
-                disabled={loading || unmaskPhone(phone).length < 10}
+                disabled={
+                  loading ||
+                  (tab === "phone"
+                    ? unmaskPhone(phone).length < 10
+                    : !email || !email.includes("@"))
+                }
                 aria-busy={loading}
               >
                 {loading ? (
@@ -91,8 +168,10 @@ export function ForgotPasswordPage() {
                     <Loader size={15} className={styles.spin} />
                     Enviando…
                   </>
-                ) : (
+                ) : tab === "phone" ? (
                   "Enviar link de recuperação"
+                ) : (
+                  "Enviar email de recuperação"
                 )}
               </button>
             </form>
