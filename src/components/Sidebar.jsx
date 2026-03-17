@@ -20,6 +20,7 @@ const NAV_GESTOR = [
   { id: "campaigns", label: "Cotações", Icon: ClipboardList },
   { id: "producers", label: "Parceiros", Icon: Users },
   { id: "financial", label: "Financeiro", Icon: DollarSign },
+  { id: "pivo-profile", label: "Meu Perfil", Icon: UserSquare2 },
 ];
 
 const NAV_ADMIN = [
