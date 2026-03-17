@@ -2,8 +2,9 @@ import { supabase } from "./supabase";
 import { ROLES } from "../constants/roles";
 
 /**
- * Upload de foto de perfil do vendor para Supabase Storage
- * Usa o mesmo padrão de campaigns - retorna apenas a URL, nunca salva o arquivo
+ * Converte a imagem selecionada para uma URL no frontend
+ * Apenas a URL é armazenada no banco de dados (photo_url text/varchar)
+ * NADA é enviado para Supabase - a imagem fica no navegador do usuário
  */
 export async function uploadVendorPhoto(file) {
   if (!file) throw new Error("Nenhum arquivo selecionado");
@@ -20,52 +21,28 @@ export async function uploadVendorPhoto(file) {
     throw new Error("Formato não suportado. Use JPG, PNG ou WebP");
   }
 
-  // Gerar nome único (vendor-foto-timestamp-random)
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 10);
-  const fileName = `vendor-photo-${timestamp}-${random}`;
-  const filePath = `vendors/${fileName}`;
-
-  // Upload para Supabase Storage (mesmo bucket que campaigns)
-  const { data, error } = await supabase.storage
-    .from("public")
-    .upload(filePath, file);
-
-  if (error) {
-    console.error("Erro no upload:", error);
-    throw new Error("Erro ao fazer upload da imagem");
-  }
-
-  // Retornar URL pública (nunca salvar o arquivo, apenas a URL)
-  const { data: publicData } = supabase.storage
-    .from("public")
-    .getPublicUrl(filePath);
-
-  if (!publicData?.publicUrl) {
-    throw new Error("Erro ao gerar URL pública");
-  }
-
-  return publicData.publicUrl;
+  // Converter arquivo para URL do navegador (blob:// URL)
+  // Apenas a URL string é retornada - NADA é enviado para Supabase
+  const url = URL.createObjectURL(file);
+  return url;
 }
 
 /**
- * Deletar foto de perfil do vendor (remove do storage se existir)
+ * Limpar URL do navegador (liberar memória)
  */
-export async function deleteVendorPhoto(photoUrl) {
-  if (!photoUrl) return;
+export function deleteVendorPhoto(photoUrl) {
+  if (!photoUrl) return Promise.resolve();
 
   try {
-    // Extrair caminho do arquivo da URL
-    // Formato: https://...supabase.co/storage/v1/object/public/public/vendors/vendor-photo-...
-    const urlParts = photoUrl.split("/public/");
-    if (urlParts.length < 2) return;
-
-    const filePath = urlParts[1];
-    await supabase.storage.from("public").remove([filePath]);
+    // Se for uma blob:// URL, revoga o objeto
+    if (photoUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(photoUrl);
+    }
   } catch (e) {
-    console.error("Erro ao deletar foto:", e);
-    // Não lançar erro - logging apenas
+    console.error("Erro ao limpar foto:", e);
   }
+
+  return Promise.resolve();
 }
 
 // Busca fornecedores conforme o papel do usuário:
