@@ -25,7 +25,7 @@ export default defineConfig({
       "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Content-Security-Policy":
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; connect-src 'self' https://iepgeibcwthilohdlfse.supabase.co https://*.supabase.co; frame-ancestors 'none'",
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://iepgeibcwthilohdlfse.supabase.co https://*.supabase.co; frame-ancestors 'none'",
     },
   },
   build: {

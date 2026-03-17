@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
 import {
-  Building2, Phone, MapPin, FileText, Save, Trash2, Camera, X,
+  Building2,
+  Phone,
+  MapPin,
+  FileText,
+  Save,
+  Trash2,
+  Camera,
+  X,
 } from "lucide-react";
 import { updateVendor, createVendor } from "../lib/vendors";
-import { createImageUrl, isValidImageFile, revokeImageUrl } from "../lib/imageUpload";
+import { createImageUrl, isValidImageFile } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { Button } from "../components/Button";
 import { Toast } from "../components/Toast";
@@ -12,7 +19,9 @@ import styles from "./VendorProfilePage.module.css";
 
 export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
   const [name, setName] = useState(vendor?.name ?? user?.name ?? "");
-  const [phone, setPhone] = useState(vendor?.phone ? maskPhone(vendor.phone) : "");
+  const [phone, setPhone] = useState(
+    vendor?.phone ? maskPhone(vendor.phone) : "",
+  );
   const [city, setCity] = useState(vendor?.city ?? "");
   const [notes, setNotes] = useState(vendor?.notes ?? "");
   const [photoUrl, setPhotoUrl] = useState(vendor?.photo_url ?? "");
@@ -44,9 +53,7 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
     }
 
     try {
-      // Revoga URL anterior se for blob
-      revokeImageUrl(photoUrl);
-      // Cria nova blob URL — nada enviado ao Supabase
+      // Cria nova Data URI — nada enviado ao Supabase
       const url = await createImageUrl(file);
       setPhotoUrl(url);
       showToast("Foto selecionada!");
@@ -56,7 +63,6 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
   };
 
   const handleRemovePhoto = () => {
-    revokeImageUrl(photoUrl);
     setPhotoUrl("");
     showToast("Foto removida.");
   };
@@ -99,27 +105,48 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
           {/* Foto */}
           <div className="form-group">
             <label className="form-label">
-              <Camera size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+              <Camera
+                size={12}
+                style={{ marginRight: 4, verticalAlign: "middle" }}
+              />
               Foto do perfil
             </label>
             <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
               {photoUrl && (
-                <div style={{
-                  position: "relative", width: 100, height: 100,
-                  borderRadius: 8, overflow: "hidden", background: "var(--bg2)",
-                  flexShrink: 0,
-                }}>
+                <div
+                  style={{
+                    position: "relative",
+                    width: 100,
+                    height: 100,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    background: "var(--bg2)",
+                    flexShrink: 0,
+                  }}
+                >
                   <img
-                    src={photoUrl} alt="Foto do perfil"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    src={photoUrl}
+                    alt="Foto do perfil"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                   />
                   <button
                     onClick={handleRemovePhoto}
                     style={{
-                      position: "absolute", top: 4, right: 4,
-                      background: "rgba(0,0,0,0.6)", border: "none",
-                      borderRadius: 4, color: "white", cursor: "pointer",
-                      padding: "4px 6px", display: "flex", alignItems: "center",
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.6)",
+                      border: "none",
+                      borderRadius: 4,
+                      color: "white",
+                      cursor: "pointer",
+                      padding: "4px 6px",
+                      display: "flex",
+                      alignItems: "center",
                     }}
                     title="Remover foto"
                   >
@@ -131,10 +158,16 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
                 <label
                   htmlFor="vendor-photo-input"
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    padding: "10px 16px", background: "var(--bg2)",
-                    border: "1px solid var(--border)", borderRadius: 6,
-                    cursor: "pointer", fontSize: "0.9rem", color: "var(--text1)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 16px",
+                    background: "var(--bg2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    color: "var(--text1)",
                     transition: "background 0.2s",
                   }}
                 >
@@ -148,7 +181,13 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
                   onChange={handlePhotoChange}
                   style={{ display: "none" }}
                 />
-                <p style={{ fontSize: ".75rem", color: "var(--text3)", marginTop: 8 }}>
+                <p
+                  style={{
+                    fontSize: ".75rem",
+                    color: "var(--text3)",
+                    marginTop: 8,
+                  }}
+                >
                   JPG, PNG ou WebP · Máx. 5 MB
                 </p>
               </div>
@@ -158,7 +197,10 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
           {/* Nome */}
           <div className="form-group">
             <label className="form-label">
-              <Building2 size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+              <Building2
+                size={12}
+                style={{ marginRight: 4, verticalAlign: "middle" }}
+              />
               Nome da empresa / fornecedor *
             </label>
             <input
@@ -173,7 +215,10 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">
-                <Phone size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                <Phone
+                  size={12}
+                  style={{ marginRight: 4, verticalAlign: "middle" }}
+                />
                 WhatsApp
               </label>
               <input
@@ -186,7 +231,10 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
             </div>
             <div className="form-group">
               <label className="form-label">
-                <MapPin size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                <MapPin
+                  size={12}
+                  style={{ marginRight: 4, verticalAlign: "middle" }}
+                />
                 Cidade
               </label>
               <input
@@ -201,7 +249,10 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
           {/* Observações */}
           <div className="form-group">
             <label className="form-label">
-              <FileText size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+              <FileText
+                size={12}
+                style={{ marginRight: 4, verticalAlign: "middle" }}
+              />
               Produtos que você fornece
             </label>
             <textarea
@@ -214,25 +265,46 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
             />
           </div>
 
-          <Button variant="primary" disabled={!name.trim() || saving} onClick={handleSave}>
-            {saving ? "Salvando…" : <><Save size={14} /> Salvar perfil</>}
+          <Button
+            variant="primary"
+            disabled={!name.trim() || saving}
+            onClick={handleSave}
+          >
+            {saving ? (
+              "Salvando…"
+            ) : (
+              <>
+                <Save size={14} /> Salvar perfil
+              </>
+            )}
           </Button>
 
           {/* Zona de perigo */}
-          <div style={{
-            marginTop: 24, paddingTop: 16,
-            borderTop: "1px solid var(--border)",
-            display: "flex", justifyContent: "flex-end",
-          }}>
+          <div
+            style={{
+              marginTop: 24,
+              paddingTop: 16,
+              borderTop: "1px solid var(--border)",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
             <button
               onClick={onDeleteAccount}
               className="btn-danger-ghost"
               title="Deletar minha conta (irreversível)"
               style={{
-                background: "none", border: "none",
-                color: "var(--text3)", fontSize: ".8rem",
-                cursor: "pointer", display: "flex", alignItems: "center",
-                gap: 6, padding: "6px 10px", borderRadius: 4, transition: "all .2s",
+                background: "none",
+                border: "none",
+                color: "var(--text3)",
+                fontSize: ".8rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 10px",
+                borderRadius: 4,
+                transition: "all .2s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "rgba(220,53,69,.05)";
@@ -249,7 +321,9 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
         </div>
       </div>
 
-      {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast} />}
+      {toast && (
+        <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
+      )}
     </div>
   );
 }
