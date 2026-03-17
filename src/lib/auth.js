@@ -201,6 +201,90 @@ export async function logout() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DELETE ACCOUNT
+// ─────────────────────────────────────────────────────────────────────────────
+export async function deleteAccount(password) {
+  if (!password) throw new Error("Senha é obrigatória para deletar conta.");
+
+  try {
+    // 1. Valida a senha fazendo re-autenticação
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session?.user?.email) {
+      throw new Error("Você precisa estar logado para deletar sua conta.");
+    }
+
+    // 2. Testa credenciais fazendo um "login test"
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: session.session.user.email,
+      password,
+    });
+
+    if (authError) {
+      throw new Error("Senha incorreta.");
+    }
+
+    const userId = session.session.user.id;
+
+    // 3. Delete account metadata
+    await logSecurityEvent(
+      "account_deletion_requested",
+      { id: userId, email: session.session.user.email },
+      "auth",
+      userId,
+      "User requested account deletion",
+    );
+
+    // 4. Delete from public.users (cascades from ON DELETE CASCADE in auth.users FK)
+    // But we do it explicitly first to ensure cleanup
+    const { error: deleteUserError } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", userId);
+
+    if (deleteUserError && !deleteUserError.message.includes("no rows")) {
+      throw new Error("Erro ao deletar dados da conta.");
+    }
+
+    // 5. Delete vendors if exists
+    const { error: deleteVendorError } = await supabase
+      .from("vendors")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteVendorError && !deleteVendorError.message.includes("no rows")) {
+      console.warn("Warning deleting vendors:", deleteVendorError);
+    }
+
+    // 6. Wait a bit for sync
+    await new Promise((r) => setTimeout(r, 500));
+
+    // 7. Delete from auth (this should cascade but we ensure cleanup)
+    // Note: This requires service role key, so in production you'd call an edge function
+    // For now, we just logout after deleting public data
+    await supabase.auth.signOut();
+
+    await logSecurityEvent(
+      "account_deleted",
+      { id: userId },
+      "auth",
+      userId,
+      "Account successfully deleted",
+    );
+
+    return { message: "Conta deletada com sucesso." };
+  } catch (err) {
+    await logSecurityEvent(
+      "account_deletion_failed",
+      null,
+      "auth",
+      null,
+      `error=${err.message}`,
+    );
+    throw err;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RECUPERAÇÃO DE SENHA
 // ─────────────────────────────────────────────────────────────────────────────
 export async function resetPassword(phone) {

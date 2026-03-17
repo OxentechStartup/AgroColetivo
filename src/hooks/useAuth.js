@@ -3,6 +3,7 @@ import {
   login,
   register,
   logout,
+  deleteAccount,
   getSession,
   saveSession,
   clearSession,
@@ -79,5 +80,20 @@ export function useAuth() {
     }
   }, []);
 
-  return { user, loading, error, signIn, signUp, signOut };
+  const deleteUserAccount = useCallback(async (password) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteAccount(password);
+      clearSession();
+      setUser(null);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { user, loading, error, signIn, signUp, signOut, deleteUserAccount };
 }

@@ -336,23 +336,29 @@ declare
   v_email text := new.email;
   v_phone text := (new.raw_user_meta_data->>'phone');
   v_name  text := coalesce(new.raw_user_meta_data->>'name', 'Usuario');
-  v_role  text := coalesce(new.raw_user_meta_data->>'role', 'vendor');
+  v_role  user_role := (new.raw_user_meta_data->>'role')::user_role;
   v_city  text := new.raw_user_meta_data->>'city';
   v_notes text := new.raw_user_meta_data->>'notes';
 begin
-  -- Upsert em public.users
-  insert into public.users (id, email, name, phone, role, city, notes)
-  values (new.id, v_email, v_name, v_phone, v_role::user_role, v_city, v_notes)
+  -- Validação: se role for NULL, usa 'vendor' como fallback
+  if v_role is null then
+    v_role := 'vendor'::user_role;
+  end if;
+
+  -- Upsert em public.users (role sempre será preenchido)
+  insert into public.users (id, email, name, phone, role, city, notes, active)
+  values (new.id, v_email, v_name, v_phone, v_role, v_city, v_notes, true)
   on conflict (id) do update
     set email = excluded.email,
         name  = excluded.name,
         phone = excluded.phone,
         role  = excluded.role,
         city  = excluded.city,
-        notes = excluded.notes;
+        notes = excluded.notes,
+        active = true;
 
   -- Cria linha em vendors apenas para role vendor
-  if v_role = 'vendor' then
+  if v_role = 'vendor'::user_role then
     insert into public.vendors (user_id, name, phone, city, notes)
     values (new.id, v_name, v_phone, v_city, v_notes)
     on conflict (user_id) do nothing;

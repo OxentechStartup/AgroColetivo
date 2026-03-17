@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
+import { DeleteAccountModal } from "./components/DeleteAccountModal";
 import { LoadingScreen, ErrorScreen } from "./components/LoadingScreen";
 import { LoginPage } from "./pages/LoginPage";
 import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
@@ -102,8 +103,23 @@ export default function App() {
     signIn,
     signUp,
     signOut,
+    deleteUserAccount,
   } = useAuth();
   const [page, setPage] = useState(() => defaultPageForRole(user?.role));
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleDeleteAccount = useCallback(
+    async (password) => {
+      try {
+        await deleteUserAccount(password);
+        setShowDeleteModal(false);
+        setPage("dashboard");
+      } catch (err) {
+        console.error("Delete account error:", err.message);
+      }
+    },
+    [deleteUserAccount],
+  );
 
   // ── Estado global de campanhas / vendors
   const {
@@ -346,9 +362,18 @@ export default function App() {
           user={user}
           onLogout={signOut}
           onProfile={() => navigate("vendor-profile")}
+          onDeleteAccount={() => setShowDeleteModal(true)}
         />
         <div className={styles.content}>{renderPage()}</div>
       </div>
+      {showDeleteModal && (
+        <DeleteAccountModal
+          user={user}
+          onDelete={handleDeleteAccount}
+          onCancel={() => setShowDeleteModal(false)}
+          loading={authLoading}
+        />
+      )}
     </div>
   );
 }
