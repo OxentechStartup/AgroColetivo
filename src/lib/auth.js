@@ -50,7 +50,9 @@ export async function login(email, password) {
 
   const { data: userData, error: userError } = await supabase
     .from("users")
-    .select("id, name, email, phone, role, city, notes, active")
+    .select(
+      "id, name, email, phone, role, city, notes, profile_photo_url, active",
+    )
     .eq("id", authData.user.id)
     .maybeSingle();
   if (userError) throw userError;
@@ -172,7 +174,7 @@ export async function register(email, password, role, extra = {}) {
 
   const { data: userData } = await supabase
     .from("users")
-    .select("id, name, email, phone, role, city, notes")
+    .select("id, name, email, phone, role, city, notes, profile_photo_url")
     .eq("id", authData.user.id)
     .maybeSingle();
 
