@@ -78,6 +78,7 @@ create table vendors (
   phone      text,
   city       text,
   notes      text,
+  photo_url  text,
   created_at timestamptz not null default now()
 );
 
@@ -431,6 +432,8 @@ create policy "le vendors" on vendors for select to authenticated
     is_gestor_or_admin()  -- admin vê tudo
   );
 create policy "vendor edita proprio"   on vendors for update to authenticated using (user_id = auth.uid());
+create policy "vendor insere proprio"  on vendors for insert to authenticated
+  with check (user_id = auth.uid() OR is_gestor_or_admin());
 create policy "gestor insere vendor"   on vendors for insert to authenticated
   with check (is_gestor_or_admin());
 create policy "gestor atualiza vendor" on vendors for update to authenticated
