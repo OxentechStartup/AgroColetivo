@@ -407,8 +407,13 @@ alter table campaign_events        enable row level security;
 alter table audit_logs             enable row level security;
 alter table portal_rate_limit      enable row level security;
 
--- users
-create policy "le users"        on users for select to authenticated using (true);
+-- users: apenas seu próprio perfil + dados de vendors (para contato)
+create policy "le users" on users for select to authenticated 
+  using (
+    id = auth.uid() OR  -- seu próprio perfil
+    role = 'vendor' OR  -- dados de vendor (público)
+    (select role from users where id = auth.uid()) = 'admin'  -- admin vê tudo
+  );
 create policy "edita proprio"   on users for update to authenticated using (id = auth.uid());
 create policy "admin edita"     on users for update to authenticated using (auth_role() = 'admin');
 create policy "trigger insere"  on users for insert to authenticated, anon with check (true);
@@ -418,9 +423,12 @@ create policy "auth acessa buyers" on buyers for all to authenticated using (tru
 create policy "anon insere buyer"  on buyers for insert to anon with check (true);
 create policy "anon le buyer"      on buyers for select to anon using (true);
 
--- vendors
--- CORRECAO: policies granulares por operacao (FOR ALL conflitava com SELECT)
-create policy "le vendors"             on vendors for select to authenticated using (true);
+-- vendors: apenas vendor publico + seu próprio
+create policy "le vendors" on vendors for select to authenticated 
+  using (
+    user_id = auth.uid() OR  -- seu próprio vendor
+    (select count(*) from public.users where id = auth.uid() and role = 'admin') > 0  -- admin vê tudo
+  );
 create policy "vendor edita proprio"   on vendors for update to authenticated using (user_id = auth.uid());
 create policy "gestor insere vendor"   on vendors for insert to authenticated
   with check (is_gestor_or_admin());
@@ -429,8 +437,15 @@ create policy "gestor atualiza vendor" on vendors for update to authenticated
 create policy "gestor deleta vendor"   on vendors for delete to authenticated
   using (is_gestor_or_admin());
 
--- products
-create policy "le products" on products for select to authenticated using (true);
+-- products: apenas de vendors que estão em campaigns abertas
+create policy "le products" on products for select to authenticated using (
+  vendor_id in (
+    select v.id from vendors v
+    where 
+      v.user_id = auth.uid() OR  -- seu próprio vendor
+      (select count(*) from public.users where id = auth.uid() and role = 'admin') > 0  -- admin
+  )
+);
 create policy "vendor gerencia produtos" on products for all to authenticated
   using  (vendor_id in (select id from vendors where user_id = auth.uid()))
   with check (vendor_id in (select id from vendors where user_id = auth.uid()));
@@ -439,16 +454,17 @@ create policy "vendor gerencia produtos" on products for all to authenticated
 create policy "auth acessa promotions" on product_promotions for all to authenticated
   using (true) with check (true);
 
--- campaigns
+-- campaigns: suas próprias + abertas ao público
 create policy "vendor le campaigns" on campaigns for select to authenticated
   using (
-    coalesce(auth_role(), 'vendor') != 'vendor'
-    or status in ('open', 'negotiating')
-    or id in (
+    pivo_id = auth.uid() OR  -- é o seu próprio campaign
+    status in ('open', 'negotiating') OR  -- públicos
+    (select count(*) from public.users where id = auth.uid() and role = 'admin') > 0 OR  -- admin
+    id in (
       select campaign_id from campaign_lots cl
       join vendors v on v.id = cl.vendor_id
       where v.user_id = auth.uid()
-    )
+    )  -- seu vendor está neste campaign
   );
 create policy "gestor gerencia campaigns" on campaigns for all to authenticated
   using (is_gestor_or_admin() or pivo_id = auth.uid())

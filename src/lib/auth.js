@@ -123,12 +123,8 @@ export async function register(email, password, role, extra = {}) {
   if (!limiter.allowed)
     throw new Error("Muitas tentativas de registro. Tente novamente depois");
 
-  const { data: existing } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", email)
-    .maybeSingle();
-  if (existing) throw new Error("Este email já está cadastrado. Faça login.");
+  // NÃO verificar se email existe (évita user enumeration)
+  // Deixar Supabase lidar com duplicata
 
   const name = extra.company_name?.trim() || "Usuário";
   const phone = extra.phone?.trim() || null;

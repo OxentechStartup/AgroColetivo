@@ -57,7 +57,7 @@ export function validatePhone(phone) {
 }
 
 /**
- * Valida força de senha
+ * Valida força de senha (REFORÇADO)
  * @param {string} password - Senha a validar
  * @returns {object} { valid: boolean, strength: 'weak'|'medium'|'strong', errors: string[] }
  */
@@ -68,29 +68,49 @@ export function validatePassword(password) {
     return { valid: false, strength: "weak", errors: ["Senha é obrigatória"] };
   }
 
-  if (password.length < 6) {
-    errors.push("Mínimo 6 caracteres");
+  // Requisitos mínimos REFORÇADOS
+  if (password.length < 8) {
+    errors.push("Mínimo 8 caracteres");
   }
   if (!/[a-z]/.test(password)) {
-    errors.push("Deve conter letra minúscula");
+    errors.push("Deve conter letra minúscula (a-z)");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Deve conter letra MAIÚSCULA (A-Z)");
   }
   if (!/[0-9]/.test(password)) {
-    errors.push("Deve conter número");
+    errors.push("Deve conter número (0-9)");
   }
 
-  // Validações fortes (mas não obrigatórias para demo)
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-  const isLong = password.length >= 12;
+  // Rejeita padrões muito comuns/fracos
+  const commonPatterns = [
+    /^(.)\1+$/,  // "aaaaaaa" (repetição)
+    /^[0-9]{8,}$/,  // "12345678" (só números)
+    /^[a-z]{8,}$/,  // "abcdefgh" (só letras minúsculas)
+    /^[A-Z]{8,}$/,  // "ABCDEFGH" (só letras maiúsculas)
+    /^(123|234|345|456|567|678|789|890|qwerty|asdfgh|zxcvbn)/i,  // padrões de teclado
+  ];
+
+  for (const pattern of commonPatterns) {
+    if (pattern.test(password)) {
+      errors.push("Senha muito previsível (évite sequências, repetições)");
+      break;
+    }
+  }
 
   let strength = "weak";
-  if (errors.length === 0) strength = "medium"; // Apenas requisitos mínimos
-  if (hasUppercase && hasSpecial && isLong) strength = "strong"; // Tudo atendido
+  if (errors.length === 0) {
+    strength = "medium"; // Atendeu requisitos mínimos
+    // Strong se tem caracteres especiais + 12+ chars
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password) && password.length >= 12) {
+      strength = "strong";
+    }
+  }
 
   return {
     valid: errors.length === 0,
     strength,
-    errors: errors.slice(0, 2), // Retorna apenas os principais
+    errors: errors.slice(0, 3),  // Retorna até 3 erros
   };
 }
 
@@ -316,11 +336,37 @@ export function detectSQLInjection(input) {
  * Detecta XSS malicioso
  */
 export function detectXSS(input) {
+  if (!input || typeof input !== "string") return false;
+
+  // PADRÕES DE XSS (mais robustos)
   const xssPatterns = [
-    /<script[^>]*>.*?<\/script>/i,
-    /on\w+\s*=/i,
-    /javascript:/i,
-    /data:text\/html/i,
+    // Tags script/iframe/embed
+    /<script[^>]*>.*?<\/script>/gi,
+    /<iframe[^>]*>.*?<\/iframe>/gi,
+    /<embed[^>]*>/gi,
+    /<object[^>]*>/gi,
+    
+    // Event handlers (on*)
+    /on(load|error|click|focus|blur|change|submit|keydown|keyup|mouseover|mouseout)\s*=/gi,
+    /javascript\s*:/gi,
+    
+    // Data URIs (HTML/SVG)
+    /data:text\/html/gi,
+    /data:application\/x-javascript/gi,
+    /data:image\/svg\+xml/gi,
+    
+    // Encoded attacks (unicode, hex, etc)
+    /&#\d{4,5};/g,  // numeric entities
+    /\\x[0-9a-f]{2,4}/gi,  // hex encoding
+    /\\u[0-9a-f]{4}/gi,  // unicode
+    
+    // SVG attacks
+    /<svg[^>]*on/gi,
+    
+    // STYLE attacks
+    /<style[^>]*>.*?<\/style>/gi,
+    /expression\s*\(/gi,
+    /behavior\s*:/gi,
   ];
 
   return xssPatterns.some((pattern) => pattern.test(input));
