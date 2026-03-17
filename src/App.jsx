@@ -340,6 +340,7 @@ export default function App() {
             onSaved={(updatedUser) => {
               setUser(updatedUser);
             }}
+            onDeleteAccount={() => setShowDeleteModal(true)}
           />
         );
 
