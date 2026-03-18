@@ -10,6 +10,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const distPath = path.join(__dirname, "dist");
 
+// Importar serverless functions
+const sendVerificationEmailHandler = require("./api/send-verification-email.js");
+
 // Middleware
 app.use(express.json());
 app.use(express.static(distPath));
@@ -18,6 +21,10 @@ app.use(express.static(distPath));
 app.get("/api/ping", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
+
+// Email verification endpoint
+app.post("/api/send-verification-email", sendVerificationEmailHandler);
+app.options("/api/send-verification-email", sendVerificationEmailHandler);
 
 // SPA fallback: retorna index.html para rotas não encontradas
 app.use((req, res) => {
