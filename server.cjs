@@ -20,7 +20,7 @@ app.get("/api/ping", (req, res) => {
 });
 
 // SPA fallback: retorna index.html para rotas não encontradas
-app.get("*", (req, res) => {
+app.use((req, res) => {
   const indexPath = path.join(distPath, "index.html");
 
   if (fs.existsSync(indexPath)) {
