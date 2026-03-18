@@ -47,7 +47,9 @@ export async function login(email, password) {
   // Busca perfil na tabela `users` pelo email (independente do método de auth)
   const { data: userData, error: userError } = await supabase
     .from("users")
-    .select("id, name, email, phone, role, city, notes, active, email_verified, password_hash")
+    .select(
+      "id, name, email, phone, role, city, notes, active, email_verified, password_hash",
+    )
     .eq("email", email)
     .maybeSingle();
 
@@ -55,7 +57,10 @@ export async function login(email, password) {
 
   if (!userData) {
     await logSecurityEvent(
-      "login_failed", null, "auth", null,
+      "login_failed",
+      null,
+      "auth",
+      null,
       `email=${email} reason=user_not_found`,
     );
     throw new Error("Email ou senha incorretos.");
@@ -65,7 +70,10 @@ export async function login(email, password) {
   if (authError) {
     if (!userData.password_hash || userData.password_hash !== password) {
       await logSecurityEvent(
-        "login_failed", null, "auth", null,
+        "login_failed",
+        null,
+        "auth",
+        null,
         `email=${email} reason=wrong_password`,
       );
       throw new Error("Email ou senha incorretos.");
@@ -147,7 +155,11 @@ export async function register(email, password, role, extra = {}) {
 
   if (detectSQLInjection(email) || detectSQLInjection(password))
     throw new Error("Segurança: Padrão malicioso detectado");
-  if (detectXSS(extra.company_name) || detectXSS(extra.city) || detectXSS(extra.notes))
+  if (
+    detectXSS(extra.company_name) ||
+    detectXSS(extra.city) ||
+    detectXSS(extra.notes)
+  )
     throw new Error("Segurança: Entrada inválida detectada");
 
   const limiter = registerLimiter.check(email);
@@ -162,8 +174,13 @@ export async function register(email, password, role, extra = {}) {
     .maybeSingle();
 
   if (existing) {
-    await logSecurityEvent("register_failed", null, "auth", null,
-      `email=${email} reason=email_already_exists`);
+    await logSecurityEvent(
+      "register_failed",
+      null,
+      "auth",
+      null,
+      `email=${email} reason=email_already_exists`,
+    );
     throw new Error("Este email já está cadastrado. Faça login.");
   }
 
@@ -177,21 +194,29 @@ export async function register(email, password, role, extra = {}) {
   // Salvar cadastro PENDENTE — usuário só vai para `users` após confirmar email
   const { error: pendingError } = await supabase
     .from("pending_registrations")
-    .upsert({
-      email,
-      password_hash: password,
-      name,
-      phone,
-      role,
-      city: extra.city?.trim() || null,
-      notes: extra.notes?.trim() || null,
-      verification_code: verificationCode,
-      expires_at: expiresAt.toISOString(),
-    }, { onConflict: "email" });
+    .upsert(
+      {
+        email,
+        password_hash: password,
+        name,
+        phone,
+        role,
+        city: extra.city?.trim() || null,
+        notes: extra.notes?.trim() || null,
+        verification_code: verificationCode,
+        expires_at: expiresAt.toISOString(),
+      },
+      { onConflict: "email" },
+    );
 
   if (pendingError) {
-    await logSecurityEvent("register_failed", null, "auth", null,
-      `email=${email} role=${role} reason=${pendingError.message}`);
+    await logSecurityEvent(
+      "register_failed",
+      null,
+      "auth",
+      null,
+      `email=${email} role=${role} reason=${pendingError.message}`,
+    );
     throw new Error("Não foi possível iniciar o cadastro. Tente novamente.");
   }
 
@@ -205,14 +230,24 @@ export async function register(email, password, role, extra = {}) {
   // Enviar email com o código
   let emailSent = false;
   try {
-    const emailResult = await sendVerificationEmail(email, name, verificationCode);
-    emailSent = emailResult?.success === true && emailResult?.service !== "fallback";
+    const emailResult = await sendVerificationEmail(
+      email,
+      name,
+      verificationCode,
+    );
+    emailSent =
+      emailResult?.success === true && emailResult?.service !== "fallback";
   } catch (emailError) {
     console.error("Erro ao enviar email de verificação:", emailError);
   }
 
-  await logSecurityEvent("register_pending", null, "auth", null,
-    `email=${email} role=${role} emailSent=${emailSent}`);
+  await logSecurityEvent(
+    "register_pending",
+    null,
+    "auth",
+    null,
+    `email=${email} role=${role} emailSent=${emailSent}`,
+  );
 
   return {
     id: pending?.id,
@@ -220,7 +255,7 @@ export async function register(email, password, role, extra = {}) {
     name,
     requiresEmailVerification: true,
     emailSent,
-    devCode: (!emailSent && import.meta.env.DEV) ? verificationCode : undefined,
+    devCode: !emailSent && import.meta.env.DEV ? verificationCode : undefined,
     message: emailSent
       ? "Código de verificação enviado! Verifique seu email."
       : "Não foi possível enviar o email. Use 'Reenviar Código' na próxima tela.",
@@ -233,7 +268,8 @@ export async function register(email, password, role, extra = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function verifyEmail(pendingId, code) {
   if (!pendingId) throw new Error("ID do cadastro é obrigatório");
-  if (!code || code.length !== 6) throw new Error("Código de verificação inválido");
+  if (!code || code.length !== 6)
+    throw new Error("Código de verificação inválido");
 
   // Buscar cadastro pendente
   const { data: pending, error: pendingError } = await supabase
@@ -244,22 +280,37 @@ export async function verifyEmail(pendingId, code) {
 
   if (pendingError) throw pendingError;
   if (!pending) {
-    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
-      "Pending registration not found");
+    await logSecurityEvent(
+      "email_verification_failed",
+      { pendingId },
+      "auth",
+      null,
+      "Pending registration not found",
+    );
     throw new Error("Cadastro não encontrado. Tente se registrar novamente.");
   }
 
   // Verificar código
   if (pending.verification_code !== code) {
-    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
-      "Wrong code");
+    await logSecurityEvent(
+      "email_verification_failed",
+      { pendingId },
+      "auth",
+      null,
+      "Wrong code",
+    );
     throw new Error("Código de verificação inválido.");
   }
 
   // Verificar expiração
   if (Date.now() > new Date(pending.expires_at).getTime()) {
-    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
-      "Code expired");
+    await logSecurityEvent(
+      "email_verification_failed",
+      { pendingId },
+      "auth",
+      null,
+      "Code expired",
+    );
     throw new Error("Código de verificação expirado. Solicite um novo.");
   }
 
@@ -296,29 +347,37 @@ export async function verifyEmail(pendingId, code) {
     .single();
 
   if (insertError) {
-    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
-      `insert user failed: ${insertError.message}`);
+    await logSecurityEvent(
+      "email_verification_failed",
+      { pendingId },
+      "auth",
+      null,
+      `insert user failed: ${insertError.message}`,
+    );
     throw new Error("Erro ao criar a conta. Tente novamente.");
   }
 
   // Se vendor, criar registro em vendors
   if (pending.role === ROLES.VENDOR) {
-    const { error: vendorError } = await supabase
-      .from("vendors")
-      .insert({
-        user_id: newUser.id,
-        name: pending.name,
-        phone: pending.phone || "",
-        city: pending.city,
-      });
+    const { error: vendorError } = await supabase.from("vendors").insert({
+      user_id: newUser.id,
+      name: pending.name,
+      phone: pending.phone || "",
+      city: pending.city,
+    });
     if (vendorError) console.warn("Aviso ao criar vendor:", vendorError);
   }
 
   // Remover registro pendente
   await supabase.from("pending_registrations").delete().eq("id", pendingId);
 
-  await logSecurityEvent("email_verified", { userId: newUser.id }, "auth",
-    newUser.id, "User created after email verification");
+  await logSecurityEvent(
+    "email_verified",
+    { userId: newUser.id },
+    "auth",
+    newUser.id,
+    "User created after email verification",
+  );
 
   return { message: "Email verificado! Conta criada com sucesso." };
 }
@@ -350,16 +409,15 @@ export async function resendVerificationEmail(pendingId) {
 
   await sendVerificationEmail(pending.email, pending.name, verificationCode);
 
-  await logSecurityEvent("verification_email_resent", { pendingId }, "auth",
-    null, "Verification email resent");
+  await logSecurityEvent(
+    "verification_email_resent",
+    { pendingId },
+    "auth",
+    null,
+    "Verification email resent",
+  );
 
   return { message: "Novo código de verificação enviado para seu email." };
-}
-
-    return { message: "Novo código de verificação enviado para seu email." };
-  } catch (error) {
-    throw error;
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -474,7 +532,9 @@ export async function updateUser(userId, updates) {
     // SELECT separado: carrega dados atualizados incluindo foto
     const { data, error: selectError } = await supabase
       .from("users")
-      .select("id, name, email, phone, role, city, notes, active, profile_photo_url")
+      .select(
+        "id, name, email, phone, role, city, notes, active, profile_photo_url",
+      )
       .eq("id", userId)
       .single();
 
