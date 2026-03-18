@@ -22,6 +22,7 @@ import { useCampaigns } from "./hooks/useCampaigns";
 import { useVendorProducts } from "./hooks/useVendorProducts";
 import { useGestores } from "./hooks/useGestores";
 import { useAuth } from "./hooks/useAuth";
+import { useKeepAlive } from "./hooks/useKeepAlive";
 import { ROLES } from "./constants/roles";
 import styles from "./App.module.css";
 
@@ -116,6 +117,10 @@ export default function App() {
     onEmailVerified,
     refreshUser,
   } = useAuth();
+
+  // Keep-Alive: Mantém servidor acordado no Render (ping a cada 10min)
+  useKeepAlive(600000);
+
   const [page, setPageState] = useState(() => defaultPage(user?.role));
 
   // Campanhas e vendors
@@ -339,7 +344,9 @@ export default function App() {
           <VendorProfilePage
             user={user}
             vendor={vendor}
-            onSaved={(result) => { reload(); }}
+            onSaved={(result) => {
+              reload();
+            }}
             onDeleteAccount={() => setShowDeleteModal(true)}
           />
         );
@@ -348,7 +355,9 @@ export default function App() {
         return (
           <PivoProfilePage
             user={user}
-            onSaved={(result) => { refreshUser(result); }}
+            onSaved={(result) => {
+              refreshUser(result);
+            }}
             onDeleteAccount={() => setShowDeleteModal(true)}
           />
         );
