@@ -3,52 +3,48 @@ import { useEffect } from "react";
 /**
  * Hook que mantém o servidor acordado fazendo ping a cada 10 minutos
  * Necessário para plataformas como Render que desligam após inatividade
- * Em desenvolvimento local, apenas ignora erros silenciosamente
+ * Em desenvolvimento local, este hook é completamente desativado
  * @param {number} intervalMs - Intervalo em ms (padrão: 10 minutos = 600000ms)
  */
 export function useKeepAlive(intervalMs = 600000) {
   useEffect(() => {
-    // Detectar se está em desenvolvimento
-    const isDev =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
+    // APENAS NO RENDER/PRODUÇÃO - NÃO FAZER NADA EM DEV LOCAL
+    // Verificar se é produção (não localhost)
+    const isProduction =
+      !window.location.hostname.includes("localhost") &&
+      window.location.hostname !== "127.0.0.1" &&
+      window.location.hostname !== "0.0.0.0";
+
+    // Se não for produção, não fazer nada
+    if (!isProduction) {
+      return; // Desativa hook completamente em dev
+    }
 
     const pingServer = async () => {
       try {
         const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-        await fetch(`${appUrl}/api/ping`, {
+        const response = await fetch(`${appUrl}/api/ping`, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
 
-        // Log apenas em produção
-        if (!isDev) {
+        if (response.ok) {
           console.log(
-            `[Keep-Alive] Ping enviado em ${new Date().toLocaleTimeString("pt-BR")}`,
+            `[Keep-Alive] Ping OK em ${new Date().toLocaleTimeString("pt-BR")}`,
           );
         }
       } catch (error) {
-        // Silenciar erros em desenvolvimento
-        if (!isDev) {
-          console.warn("[Keep-Alive] Erro ao fazer ping:", error.message);
-        }
+        // Silenciar - falha não é crítica
       }
     };
 
-    // Faz ping imediatamente ao carregar (apenas em produção)
-    if (!isDev) {
-      pingServer();
-    }
+    // Fazer ping imediatamente
+    pingServer();
 
-    // Configura intervalo repetido (apenas em produção)
-    let intervalId;
-    if (!isDev) {
-      intervalId = setInterval(pingServer, intervalMs);
-    }
+    // E repetir a cada 10 minutos
+    const intervalId = setInterval(pingServer, intervalMs);
 
-    // Limpa intervalo ao desmontar
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
+    // Limpar ao desmontar
+    return () => clearInterval(intervalId);
   }, [intervalMs]);
 }
