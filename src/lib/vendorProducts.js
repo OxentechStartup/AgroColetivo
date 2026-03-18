@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "./supabase.js";
 
 // Tabela: products (id, vendor_id, name, unit, unit_weight_kg, price_per_unit, qty_available, active)
 // Tabela: product_promotions (id, product_id, min_qty, promo_type, value, description, active)

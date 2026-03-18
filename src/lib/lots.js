@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "./supabase.js";
 
 export async function fetchLots(campaignId) {
   const { data, error } = await supabase

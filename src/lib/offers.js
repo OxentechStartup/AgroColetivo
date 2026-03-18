@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "./supabase.js";
 
 // Busca todas as ofertas de uma cotacao
 export async function fetchOffers(campaignId) {

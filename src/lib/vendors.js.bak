@@ -76,10 +76,10 @@ export async function updateVendor(id, patch) {
   if (updateError)
     throw new Error(updateError?.message || "Erro ao atualizar vendor");
 
-  // SELECT separado para carregar dados atualizados incluindo foto
+  // SELECT separado para carregar dados atualizados
   const { data, error: selectError } = await supabase
     .from("vendors")
-    .select("id, name, phone, city, notes, user_id, photo_url")
+    .select("id, name, phone, city, notes, user_id")
     .eq("id", id)
     .single();
 

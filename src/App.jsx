@@ -7,7 +7,6 @@ import { LoginPage } from "./pages/LoginPage";
 import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { TestPage } from "./pages/TestPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignsPage } from "./pages/CampaignsPage";
 import { ProducersPage } from "./pages/ProducersPage";
@@ -29,40 +28,50 @@ import styles from "./App.module.css";
 // ── Detecção de rotas especiais ───────────────────────────────────────────────
 const matchRoute = (paths) =>
   paths.some(
-    (p) => window.location.pathname === p || window.location.hash === `#${p}`
+    (p) => window.location.pathname === p || window.location.hash === `#${p}`,
   );
 
-const isTestRoute          = () => matchRoute(["/test", "/test/"]);
-const isPortalRoute        = () => matchRoute(["/portalforms"]);
-const isConfirmEmailRoute  = () => matchRoute(["/auth/confirmar-email"]);
-const isForgotPasswordRoute= () => matchRoute(["/auth/recuperar-senha"]);
+const isPortalRoute = () => matchRoute(["/portalforms"]);
+const isConfirmEmailRoute = () => matchRoute(["/auth/confirmar-email"]);
+const isForgotPasswordRoute = () => matchRoute(["/auth/recuperar-senha"]);
 const isResetPasswordRoute = () => matchRoute(["/auth/resetar-senha"]);
 
 // ── Página padrão por role ────────────────────────────────────────────────────
 function defaultPage(role) {
   if (role === ROLES.VENDOR) return "vendor-dashboard";
-  if (role === ROLES.ADMIN)  return "admin";
+  if (role === ROLES.ADMIN) return "admin";
   return "dashboard";
 }
 
 // ── Páginas permitidas por role ───────────────────────────────────────────────
 const ALLOWED = {
-  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "financial", "pivo-profile"],
-  [ROLES.VENDOR]: ["vendor-dashboard", "vendor-profile", "vendor-products", "vendor-pivos"],
-  [ROLES.ADMIN]:  ["dashboard", "campaigns", "producers", "admin", "financial"],
+  [ROLES.GESTOR]: [
+    "dashboard",
+    "campaigns",
+    "producers",
+    "financial",
+    "pivo-profile",
+  ],
+  [ROLES.VENDOR]: [
+    "vendor-dashboard",
+    "vendor-profile",
+    "vendor-products",
+    "vendor-pivos",
+  ],
+  [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "financial"],
 };
 
 const PAGE_TITLES = {
-  dashboard:        "Dashboard",
-  campaigns:        "Cotações",
-  producers:        "Parceiros",
-  admin:            "Monitoramento",
-  financial:        "Financeiro",
+  dashboard: "Dashboard",
+  campaigns: "Cotações",
+  producers: "Parceiros",
+  admin: "Monitoramento",
+  financial: "Financeiro",
   "vendor-dashboard": "Propostas",
-  "vendor-profile":   "Meu Perfil",
-  "vendor-products":  "Meus Produtos",
-  "vendor-pivos":     "Gestores",
-  "pivo-profile":     "Meu Perfil",
+  "vendor-profile": "Meu Perfil",
+  "vendor-products": "Meus Produtos",
+  "vendor-pivos": "Gestores",
+  "pivo-profile": "Meu Perfil",
 };
 
 // ── Sidebar Mobile com estado interno ────────────────────────────────────────
@@ -87,34 +96,71 @@ function SidebarMobile({ page, setPage, user }) {
 
 // ── App principal ─────────────────────────────────────────────────────────────
 export default function App() {
-  const [isTest,           setIsTest]           = useState(isTestRoute);
-  const [isPortal,         setIsPortal]         = useState(isPortalRoute);
-  const [isConfirmEmail,   setIsConfirmEmail]   = useState(isConfirmEmailRoute);
-  const [isForgotPassword, setIsForgotPassword] = useState(isForgotPasswordRoute);
-  const [isResetPassword,  setIsResetPassword]  = useState(isResetPasswordRoute);
-  const [showDeleteModal,  setShowDeleteModal]  = useState(false);
+  const [isPortal, setIsPortal] = useState(isPortalRoute);
+  const [isConfirmEmail, setIsConfirmEmail] = useState(isConfirmEmailRoute);
+  const [isForgotPassword, setIsForgotPassword] = useState(
+    isForgotPasswordRoute,
+  );
+  const [isResetPassword, setIsResetPassword] = useState(isResetPasswordRoute);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const { user, loading: authLoading, error: authError, signIn, signUp, signOut, deleteUserAccount } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    error: authError,
+    signIn,
+    signUp,
+    signOut,
+    deleteUserAccount,
+    pendingVerificationUser,
+    onEmailVerified,
+    refreshUser,
+  } = useAuth();
   const [page, setPageState] = useState(() => defaultPage(user?.role));
 
   // Campanhas e vendors
   const {
-    campaigns, vendors, loading, error, reload,
-    addCampaign, addOrder, removeOrder, saveFinancials,
-    closeCampaign, finishCampaign, reopenCampaign, publishToVendors,
-    deleteCampaign, addPendingOrder, approvePending, rejectPending,
-    addLot, removeLot, addVendor, removeVendor, reloadCampaign, ownVendor,
+    campaigns,
+    vendors,
+    loading,
+    error,
+    reload,
+    addCampaign,
+    addOrder,
+    removeOrder,
+    saveFinancials,
+    closeCampaign,
+    finishCampaign,
+    reopenCampaign,
+    publishToVendors,
+    deleteCampaign,
+    addPendingOrder,
+    approvePending,
+    rejectPending,
+    addLot,
+    removeLot,
+    addVendor,
+    removeVendor,
+    reloadCampaign,
+    ownVendor,
   } = useCampaigns(user);
 
   // Vendor atual
-  const vendor = user?.role === ROLES.VENDOR
-    ? (ownVendor ?? null)
-    : (vendors?.find((v) => v.user_id === user?.id) ?? null);
+  const vendor =
+    user?.role === ROLES.VENDOR
+      ? (ownVendor ?? null)
+      : (vendors?.find((v) => v.user_id === user?.id) ?? null);
   const vendorId = vendor?.id ?? null;
 
   // Produtos do vendor
-  const { products, loading: productsLoading, saveProduct, removeProduct, addPromo, removePromo } =
-    useVendorProducts(user?.role === ROLES.VENDOR ? vendorId : null);
+  const {
+    products,
+    loading: productsLoading,
+    saveProduct,
+    removeProduct,
+    addPromo,
+    removePromo,
+  } = useVendorProducts(user?.role === ROLES.VENDOR ? vendorId : null);
 
   // Gestores (para tela vendor-pivos)
   const { gestores, loading: gestoresLoading } = useGestores(user);
@@ -122,17 +168,16 @@ export default function App() {
   // ── Listeners de rota ──────────────────────────────────────────────────────
   useEffect(() => {
     const check = () => {
-      setIsTest(isTestRoute());
       setIsPortal(isPortalRoute());
       setIsConfirmEmail(isConfirmEmailRoute());
       setIsForgotPassword(isForgotPasswordRoute());
       setIsResetPassword(isResetPasswordRoute());
     };
     window.addEventListener("hashchange", check);
-    window.addEventListener("popstate",   check);
+    window.addEventListener("popstate", check);
     return () => {
       window.removeEventListener("hashchange", check);
-      window.removeEventListener("popstate",   check);
+      window.removeEventListener("popstate", check);
     };
   }, []);
 
@@ -140,23 +185,24 @@ export default function App() {
   useEffect(() => {
     const open = isPortal || !user;
     document.body.style.overflow = open ? "auto" : "";
-    document.body.style.height   = open ? "auto" : "";
+    document.body.style.height = open ? "auto" : "";
   }, [isPortal, user]);
 
   // Navega para página padrão ao trocar de conta
   useEffect(() => {
     if (user) setPageState(defaultPage(user.role));
-    else      setPageState("dashboard");
+    else setPageState("dashboard");
   }, [user?.id]);
 
   // ── Navegação segura ───────────────────────────────────────────────────────
   const navigate = useCallback(
     (target) => {
       if (user?.blocked && target !== "dashboard") return;
-      const allowed = ALLOWED[user?.role ?? ROLES.GESTOR] ?? ALLOWED[ROLES.GESTOR];
+      const allowed =
+        ALLOWED[user?.role ?? ROLES.GESTOR] ?? ALLOWED[ROLES.GESTOR];
       if (allowed.includes(target)) setPageState(target);
     },
-    [user]
+    [user],
   );
 
   const handleDeleteAccount = useCallback(
@@ -168,81 +214,126 @@ export default function App() {
         // erro gerenciado no modal
       }
     },
-    [deleteUserAccount]
+    [deleteUserAccount],
   );
 
   // ── Rotas especiais ────────────────────────────────────────────────────────
-  if (isTest)           return <TestPage />;
-  if (isPortal)         return <ProducerPortalPage onSubmit={addPendingOrder} />;
-  if (isConfirmEmail)   return <ConfirmEmailPage />;
+  if (isPortal) return <ProducerPortalPage onSubmit={addPendingOrder} />;
+  if (isConfirmEmail) return <ConfirmEmailPage />;
   if (isForgotPassword) return <ForgotPasswordPage />;
-  if (isResetPassword)  return <ResetPasswordPage />;
+  if (isResetPassword) return <ResetPasswordPage />;
+
+  // Mostrar página de confirmação de email após registro ou login com email não verificado
+  if (pendingVerificationUser) {
+    return <ConfirmEmailPage onVerified={onEmailVerified} />;
+  }
+
   if (!user)
-    return <LoginPage onLogin={signIn} onRegister={signUp} loading={authLoading} error={authError} />;
+    return (
+      <LoginPage
+        onLogin={signIn}
+        onRegister={signUp}
+        loading={authLoading}
+        error={authError}
+      />
+    );
 
   const role = user.role ?? ROLES.GESTOR;
 
   const campaignActions = {
-    addCampaign, addOrder, removeOrder, saveFinancials,
-    closeCampaign, finishCampaign, reopenCampaign, publishToVendors,
-    deleteCampaign, approvePending, rejectPending,
-    addLot, removeLot, addVendor, removeVendor, reload, reloadCampaign,
+    addCampaign,
+    addOrder,
+    removeOrder,
+    saveFinancials,
+    closeCampaign,
+    finishCampaign,
+    reopenCampaign,
+    publishToVendors,
+    deleteCampaign,
+    approvePending,
+    rejectPending,
+    addLot,
+    removeLot,
+    addVendor,
+    removeVendor,
+    reload,
+    reloadCampaign,
   };
 
   // ── Renderiza a página ativa ───────────────────────────────────────────────
   const renderPage = () => {
     if (loading) return <LoadingScreen message="Carregando…" />;
-    if (error)   return <ErrorScreen   message={error} onRetry={reload} />;
+    if (error) return <ErrorScreen message={error} onRetry={reload} />;
 
-    const allowed  = ALLOWED[role] ?? ALLOWED[ROLES.GESTOR];
+    const allowed = ALLOWED[role] ?? ALLOWED[ROLES.GESTOR];
     const safePage = allowed.includes(page) ? page : defaultPage(role);
 
     switch (safePage) {
       case "dashboard":
-        return <DashboardPage campaigns={campaigns} setPage={navigate} user={user} />;
+        return (
+          <DashboardPage campaigns={campaigns} setPage={navigate} user={user} />
+        );
 
       case "campaigns":
         return (
           <CampaignsPage
-            campaigns={campaigns} vendors={vendors}
-            actions={campaignActions} user={user} setPage={navigate}
+            campaigns={campaigns}
+            vendors={vendors}
+            actions={campaignActions}
+            user={user}
+            setPage={navigate}
           />
         );
 
       case "producers":
         return (
           <ProducersPage
-            campaigns={campaigns} vendors={vendors}
-            actions={campaignActions} user={user}
+            campaigns={campaigns}
+            vendors={vendors}
+            actions={campaignActions}
+            user={user}
           />
         );
 
       case "admin":
-        return <AdminPage campaigns={campaigns} actions={campaignActions} reload={reload} />;
+        return (
+          <AdminPage
+            campaigns={campaigns}
+            actions={campaignActions}
+            reload={reload}
+          />
+        );
 
       case "vendor-dashboard":
         return (
           <VendorDashboardPage
-            campaigns={campaigns} vendors={vendors}
-            vendor={vendor} user={user}
+            campaigns={campaigns}
+            vendors={vendors}
+            vendor={vendor}
+            user={user}
           />
         );
 
       case "vendor-products":
         return (
           <VendorProductsPage
-            user={user} vendor={vendor}
-            products={products} loading={productsLoading}
-            onSave={saveProduct} onDelete={removeProduct}
-            onAddPromo={addPromo} onDeletePromo={removePromo}
+            user={user}
+            vendor={vendor}
+            products={products}
+            loading={productsLoading}
+            onSave={saveProduct}
+            onDelete={removeProduct}
+            onAddPromo={addPromo}
+            onDeletePromo={removePromo}
           />
         );
 
       case "vendor-profile":
         return (
           <VendorProfilePage
-            user={user} vendor={vendor}
-            onSaved={reload}
+            user={user}
+            vendor={vendor}
+            onSaved={(result) => { reload(); }}
             onDeleteAccount={() => setShowDeleteModal(true)}
           />
         );
@@ -251,7 +342,7 @@ export default function App() {
         return (
           <PivoProfilePage
             user={user}
-            onSaved={reload}
+            onSaved={(result) => { refreshUser(result); }}
             onDeleteAccount={() => setShowDeleteModal(true)}
           />
         );
@@ -259,7 +350,8 @@ export default function App() {
       case "financial":
         return (
           <FinancialPage
-            campaigns={campaigns} actions={campaignActions}
+            campaigns={campaigns}
+            actions={campaignActions}
             onBack={() => navigate("campaigns")}
           />
         );
@@ -268,7 +360,9 @@ export default function App() {
         return <VendorPivosPage pivos={gestores} loading={gestoresLoading} />;
 
       default:
-        return <DashboardPage campaigns={campaigns} setPage={navigate} user={user} />;
+        return (
+          <DashboardPage campaigns={campaigns} setPage={navigate} user={user} />
+        );
     }
   };
 
@@ -276,9 +370,12 @@ export default function App() {
     <div className={styles.app}>
       {/* Sidebar desktop — sempre visível, não abre */}
       <Sidebar
-        page={page} setPage={navigate}
-        open={false} onClose={() => {}}
-        user={user} blocked={user?.blocked}
+        page={page}
+        setPage={navigate}
+        open={false}
+        onClose={() => {}}
+        user={user}
+        blocked={user?.blocked}
       />
       {/* Sidebar mobile — controlada por evento */}
       <SidebarMobile page={page} setPage={navigate} user={user} />

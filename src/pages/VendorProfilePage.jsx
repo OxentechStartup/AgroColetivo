@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { updateVendor, createVendor } from "../lib/vendors";
-import { createImageUrl, isValidImageFile } from "../lib/imageUpload";
+import { createImageUrl } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { Button } from "../components/Button";
 import { Toast } from "../components/Toast";
@@ -40,23 +40,14 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
   }, [vendor?.id]);
 
   const handlePhotoChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!isValidImageFile(file)) {
-      showToast("Formato não suportado. Use JPG, PNG ou WebP.", "error");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Imagem muito grande. Máximo: 5 MB.", "error");
-      return;
-    }
-
     try {
-      // Cria nova Data URI — nada enviado ao Supabase
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // createImageUrl faz todas as validações: tipo, tamanho, dimensões
       const url = await createImageUrl(file);
       setPhotoUrl(url);
-      showToast("Foto selecionada!");
+      showToast("Foto selecionada com sucesso!", "success");
     } catch (err) {
       showToast(err?.message || "Erro ao processar a foto.", "error");
     }
@@ -65,6 +56,12 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
   const handleRemovePhoto = () => {
     setPhotoUrl("");
     showToast("Foto removida.");
+  };
+
+  const handlePhotoError = (e) => {
+    console.error("Erro ao carregar foto do vendedor:", e);
+    showToast("Erro ao carregar sua foto. Tente carregar novamente.", "error");
+    setPhotoUrl("");
   };
 
   const handleSave = async () => {
@@ -84,6 +81,11 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
       } else {
         result = await createVendor({ ...payload, user_id: user?.id });
       }
+      // Persiste photo_url na sessão local do vendor (exibido na Topbar via vendor)
+      try {
+        const current = JSON.parse(localStorage.getItem("agro_auth") || "{}");
+        localStorage.setItem("agro_auth", JSON.stringify({ ...current, vendor_photo_url: photoUrl || null }));
+      } catch {}
       showToast("Perfil atualizado!");
       onSaved?.(result);
     } catch (e) {
@@ -132,6 +134,7 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
                       height: "100%",
                       objectFit: "cover",
                     }}
+                    onError={handlePhotoError}
                   />
                   <button
                     onClick={handleRemovePhoto}

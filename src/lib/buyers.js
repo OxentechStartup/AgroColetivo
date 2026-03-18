@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import { logSecurityEvent } from "./authorization";
+import { supabase } from "./supabase.js";
+import { logSecurityEvent } from "./authorization.js";
 
 // ── BUYERS (fazendeiros/compradores) ──────────────────────────────────────────
 // Identificados por telefone — sem senha (acesso via link).

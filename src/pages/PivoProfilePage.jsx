@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { User, Phone, MapPin, Save, Trash2, Camera, X } from "lucide-react";
 import { updateUser } from "../lib/auth";
-import { createImageUrl, isValidImageFile } from "../lib/imageUpload";
+import { createImageUrl } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { Button } from "../components/Button";
 import { Toast } from "../components/Toast";
@@ -12,7 +12,7 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
   const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState(user?.phone ? maskPhone(user.phone) : "");
   const [city, setCity] = useState(user?.city ?? "");
-  const [photoUrl, setPhotoUrl] = useState(user?.photo_url ?? "");
+  const [photoUrl, setPhotoUrl] = useState(user?.profile_photo_url ?? "");
   const [saving, setSaving] = useState(false);
   const { toast, showToast, clearToast } = useToast();
 
@@ -21,27 +21,19 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
       setName(user.name ?? "");
       setPhone(user.phone ? maskPhone(user.phone) : "");
       setCity(user.city ?? "");
-      setPhotoUrl(user.photo_url ?? "");
+      setPhotoUrl(user.profile_photo_url ?? "");
     }
   }, [user?.id]);
 
   const handlePhotoChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!isValidImageFile(file)) {
-      showToast("Formato não suportado. Use JPG, PNG ou WebP.", "error");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Imagem muito grande. Máximo: 5 MB.", "error");
-      return;
-    }
-
     try {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // createImageUrl faz todas as validações: tipo, tamanho, dimensões
       const url = await createImageUrl(file);
       setPhotoUrl(url);
-      showToast("Foto selecionada!");
+      showToast("Foto selecionada com sucesso!", "success");
     } catch (err) {
       showToast(err?.message || "Erro ao processar a foto.", "error");
     }
@@ -52,6 +44,12 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
     showToast("Foto removida.");
   };
 
+  const handlePhotoError = (e) => {
+    console.error("Erro ao carregar foto do perfil:", e);
+    showToast("Erro ao carregar sua foto. Tente carregar novamente.", "error");
+    setPhotoUrl("");
+  };
+
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
@@ -60,8 +58,13 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
         name: name.trim(),
         phone: unmaskPhone(phone),
         city: city.trim() || null,
-        photo_url: photoUrl || null,
+        profile_photo_url: photoUrl || null,
       });
+      // Atualiza sessão no localStorage com a foto nova
+      try {
+        const current = JSON.parse(localStorage.getItem("agro_auth") || "{}");
+        localStorage.setItem("agro_auth", JSON.stringify({ ...current, ...result, profile_photo_url: photoUrl || null }));
+      } catch {}
       showToast("Perfil atualizado!");
       onSaved?.(result);
     } catch (e) {
@@ -83,27 +86,49 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           {/* Foto */}
           <div className="form-group">
             <label className="form-label">
-              <Camera size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+              <Camera
+                size={12}
+                style={{ marginRight: 4, verticalAlign: "middle" }}
+              />
               Foto do perfil
             </label>
             <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
               {photoUrl && (
-                <div style={{
-                  position: "relative", width: 100, height: 100,
-                  borderRadius: 8, overflow: "hidden", background: "var(--bg2)",
-                  flexShrink: 0,
-                }}>
+                <div
+                  style={{
+                    position: "relative",
+                    width: 100,
+                    height: 100,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    background: "var(--bg2)",
+                    flexShrink: 0,
+                  }}
+                >
                   <img
-                    src={photoUrl} alt="Foto do perfil"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    src={photoUrl}
+                    alt="Foto do perfil"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                    onError={handlePhotoError}
                   />
                   <button
                     onClick={handleRemovePhoto}
                     style={{
-                      position: "absolute", top: 4, right: 4,
-                      background: "rgba(0,0,0,0.6)", border: "none",
-                      borderRadius: 4, color: "white", cursor: "pointer",
-                      padding: "4px 6px", display: "flex", alignItems: "center",
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.6)",
+                      border: "none",
+                      borderRadius: 4,
+                      color: "white",
+                      cursor: "pointer",
+                      padding: "4px 6px",
+                      display: "flex",
+                      alignItems: "center",
                     }}
                     title="Remover foto"
                   >
@@ -115,10 +140,16 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
                 <label
                   htmlFor="pivo-photo-input"
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 8,
-                    padding: "10px 16px", background: "var(--bg2)",
-                    border: "1px solid var(--border)", borderRadius: 6,
-                    cursor: "pointer", fontSize: "0.9rem", color: "var(--text1)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "10px 16px",
+                    background: "var(--bg2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    color: "var(--text1)",
                   }}
                 >
                   <Camera size={16} />
@@ -131,7 +162,13 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
                   onChange={handlePhotoChange}
                   style={{ display: "none" }}
                 />
-                <p style={{ fontSize: ".75rem", color: "var(--text3)", marginTop: 8 }}>
+                <p
+                  style={{
+                    fontSize: ".75rem",
+                    color: "var(--text3)",
+                    marginTop: 8,
+                  }}
+                >
                   JPG, PNG ou WebP · Máx. 5 MB
                 </p>
               </div>
@@ -141,7 +178,10 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           {/* Nome */}
           <div className="form-group">
             <label className="form-label">
-              <User size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+              <User
+                size={12}
+                style={{ marginRight: 4, verticalAlign: "middle" }}
+              />
               Nome completo *
             </label>
             <input
@@ -156,7 +196,10 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">
-                <Phone size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                <Phone
+                  size={12}
+                  style={{ marginRight: 4, verticalAlign: "middle" }}
+                />
                 WhatsApp
               </label>
               <input
@@ -169,7 +212,10 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
             </div>
             <div className="form-group">
               <label className="form-label">
-                <MapPin size={12} style={{ marginRight: 4, verticalAlign: "middle" }} />
+                <MapPin
+                  size={12}
+                  style={{ marginRight: 4, verticalAlign: "middle" }}
+                />
                 Cidade
               </label>
               <input
@@ -181,24 +227,45 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
             </div>
           </div>
 
-          <Button variant="primary" disabled={!name.trim() || saving} onClick={handleSave}>
-            {saving ? "Salvando…" : <><Save size={14} /> Salvar perfil</>}
+          <Button
+            variant="primary"
+            disabled={!name.trim() || saving}
+            onClick={handleSave}
+          >
+            {saving ? (
+              "Salvando…"
+            ) : (
+              <>
+                <Save size={14} /> Salvar perfil
+              </>
+            )}
           </Button>
 
           {/* Zona de perigo */}
-          <div style={{
-            marginTop: 24, paddingTop: 16,
-            borderTop: "1px solid var(--border)",
-            display: "flex", justifyContent: "flex-end",
-          }}>
+          <div
+            style={{
+              marginTop: 24,
+              paddingTop: 16,
+              borderTop: "1px solid var(--border)",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
             <button
               onClick={onDeleteAccount}
               title="Deletar minha conta (irreversível)"
               style={{
-                background: "none", border: "none",
-                color: "var(--text3)", fontSize: ".8rem",
-                cursor: "pointer", display: "flex", alignItems: "center",
-                gap: 6, padding: "6px 10px", borderRadius: 4, transition: "all .2s",
+                background: "none",
+                border: "none",
+                color: "var(--text3)",
+                fontSize: ".8rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 10px",
+                borderRadius: 4,
+                transition: "all .2s",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "rgba(220,53,69,.05)";
@@ -215,7 +282,9 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
         </div>
       </div>
 
-      {toast && <Toast message={toast.msg} type={toast.type} onDone={clearToast} />}
+      {toast && (
+        <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { supabase } from "./supabase";
-import { ROLES } from "../constants/roles";
+import { supabase } from "./supabase.js";
+import { ROLES } from "../constants/roles.js";
 
 // Filtra cotações de acordo com o papel do usuário:
 //  - admin  → todas as cotações

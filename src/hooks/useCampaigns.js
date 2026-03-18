@@ -8,8 +8,8 @@ import {
   updateOrderStatus,
   deleteOrder,
   deleteCampaign as apiDeleteCampaign,
-} from "../lib/campaigns";
-import { logEvent, EVENT } from "../lib/events";
+} from "../lib/campaigns.js";
+import { logEvent, EVENT } from "../lib/events.js";
 import {
   fetchOrdersWithLots,
   fetchLots,
@@ -17,11 +17,11 @@ import {
   deleteLot,
   fetchAllOrdersForCampaigns,
   fetchAllLotsForCampaigns,
-} from "../lib/lots";
-import { fetchVendors, createVendor, deleteVendor } from "../lib/vendors";
-import { findOrCreateProducer } from "../lib/producers";
-import { ROLES } from "../constants/roles";
-import { supabase } from "../lib/supabase";
+} from "../lib/lots.js";
+import { fetchVendors, createVendor, deleteVendor } from "../lib/vendors.js";
+import { findOrCreateProducer } from "../lib/producers.js";
+import { ROLES } from "../constants/roles.js";
+import { supabase } from "../lib/supabase.js";
 
 export function useCampaigns(user) {
   const [campaigns, setCampaigns] = useState([]);

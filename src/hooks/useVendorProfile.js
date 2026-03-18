@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { updateVendor, createVendor } from "../lib/vendors";
+import { updateVendor, createVendor } from "../lib/vendors.js";
 
 export function useVendorProfile(vendor, user, onVendorChange) {
   const [saving, setSaving] = useState(false);

@@ -116,6 +116,14 @@ function CampaignCardWithImage({ campaign, onJoin, showGestor = false }) {
               height: "100%",
               objectFit: "cover",
             }}
+            onError={(e) => {
+              e.target.style.display = "none";
+              e.target.parentElement.innerHTML = `
+                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--text3);">
+                  <span>Erro ao carregar imagem</span>
+                </div>
+              `;
+            }}
           />
         ) : (
           <div

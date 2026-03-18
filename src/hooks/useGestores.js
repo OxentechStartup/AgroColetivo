@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { ROLES } from "../constants/roles";
-import { supabase } from "../lib/supabase";
+import { ROLES } from "../constants/roles.js";
+import { supabase } from "../lib/supabase.js";
 
 // Hook para carregar lista de gestores (pivôs) do sistema
 // Só executa se o usuário estiver autenticado (evita 401 no Vercel)

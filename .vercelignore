@@ -1,0 +1,14 @@
+# Vercel Build Configuration
+
+# Otimiza downloads e build time no Vercel
+
+node_modules/
+.git/
+.idea/
+.env
+.env.local
+src.zip
+dist/
+\*.log
+.vite/
+.DS_Store

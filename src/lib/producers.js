@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "./supabase.js";
 
 // Tabela: buyers (id, name, phone, city)
 export async function findOrCreateProducer(name, phone) {

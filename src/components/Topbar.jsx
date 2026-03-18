@@ -17,6 +17,7 @@ export function Topbar({ title, onMenuClick, onPortalClick, user, onLogout, onPr
   const role        = user?.role ?? ROLES.GESTOR;
   const displayName = user?.name ?? "Usuário";
   const roleLabel   = ROLE_DISPLAY[role] ?? role;
+  const photoUrl    = user?.profile_photo_url ?? null;
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -53,7 +54,12 @@ export function Topbar({ title, onMenuClick, onPortalClick, user, onLogout, onPr
             title={displayName}
           >
             <div className={styles.avatar}>
-              {displayName[0]?.toUpperCase() ?? "A"}
+              {photoUrl
+                ? <img src={photoUrl} alt={displayName} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={(e) => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                : null}
+              <span style={{ display: photoUrl ? "none" : "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                {displayName[0]?.toUpperCase() ?? "A"}
+              </span>
             </div>
             <div className={styles.userInfo}>
               <span className={styles.userName}>{displayName}</span>

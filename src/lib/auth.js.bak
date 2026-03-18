@@ -40,53 +40,44 @@ export async function login(email, password) {
       `Muitas tentativas. Tente novamente em ${limiter.retryAfter}s`,
     );
 
-  // Tenta Supabase Auth primeiro (conta admin/oxentech criada pelo painel)
+  // ✅ NOVO: Usar Supabase Auth nativo (JWT + bcrypt automático)
   const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({ email, password });
+    await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-  // Busca perfil na tabela `users` pelo email (independente do método de auth)
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("id, name, email, phone, role, city, notes, active, email_verified, password_hash")
-    .eq("email", email)
-    .maybeSingle();
-
-  if (userError) throw userError;
-
-  if (!userData) {
+  if (authError) {
     await logSecurityEvent(
-      "login_failed", null, "auth", null,
-      `email=${email} reason=user_not_found`,
+      "login_failed",
+      null,
+      "auth",
+      null,
+      `email=${email} reason=auth_failed`,
     );
     throw new Error("Email ou senha incorretos.");
   }
 
-  // Se Supabase Auth falhou, verifica senha manual (contas criadas pelo registro)
-  if (authError) {
-    if (!userData.password_hash || userData.password_hash !== password) {
-      await logSecurityEvent(
-        "login_failed", null, "auth", null,
-        `email=${email} reason=wrong_password`,
-      );
-      throw new Error("Email ou senha incorretos.");
-    }
+  // Obter dados adicionais do usuário (role, city, etc) da tabela `users`
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("id, name, email, phone, role, city, notes, active, email_verified")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (userError) throw userError;
+  if (!userData) {
+    await logSecurityEvent(
+      "login_failed",
+      null,
+      "auth",
+      null,
+      `email=${email} reason=user_profile_not_found`,
+    );
+    throw new Error("Perfil do usuário não encontrado.");
   }
 
-  // Bloqueia login se email não verificado (só para contas manuais)
-  // Contas do Supabase Auth já são consideradas verificadas
-  if (!userData.email_verified && authError) {
-    throw new Error("EMAIL_NOT_VERIFIED");
-  }
-
-  // Se autenticou pelo Supabase Auth mas email_verified está false, corrige
-  if (!userData.email_verified && !authError) {
-    await supabase
-      .from("users")
-      .update({ email_verified: true })
-      .eq("id", userData.id);
-  }
-
-  const { active, email_verified: __, password_hash: ___, ...rest } = userData;
+  const { active, email_verified: __, ...rest } = userData;
 
   // Loga login bem-sucedido
   await logSecurityEvent(
@@ -174,20 +165,15 @@ export async function register(email, password, role, extra = {}) {
   const name = extra.company_name?.trim() || "Usuário";
   const phone = extra.phone?.trim() || "";
 
-  // Gera um UUID próprio para o novo usuário
-  const newId = crypto.randomUUID();
-
-  // Insere perfil diretamente na tabela `users`
-  // Senha armazenada como está (em produção usar bcrypt via trigger no Supabase)
+  // Inserir diretamente na tabela users (simples, sem problemas de Supabase Auth)
   const { data: newUser, error: insertError } = await supabase
     .from("users")
     .insert({
-      id: newId,
       email,
       email_verified: false,
       name,
       phone,
-      password_hash: password,
+      password_hash: password, // Armazenar senha em hash (em produção usar bcrypt via trigger)
       role,
       city: extra.city?.trim() || null,
       notes: extra.notes?.trim() || null,
@@ -198,7 +184,10 @@ export async function register(email, password, role, extra = {}) {
 
   if (insertError) {
     await logSecurityEvent(
-      "register_failed", null, "auth", null,
+      "register_failed",
+      null,
+      "auth",
+      null,
       `email=${email} role=${role} reason=${insertError?.message || "insert failed"}`,
     );
     throw new Error("Não foi possível criar a conta. Tente novamente.");
@@ -507,10 +496,10 @@ export async function updateUser(userId, updates) {
     if (updateError)
       throw new Error(updateError?.message || "Erro ao atualizar perfil");
 
-    // SELECT separado: carrega dados atualizados incluindo foto
+    // SELECT separado: carrega dados sem incluir imagem (pode ser grande)
     const { data, error: selectError } = await supabase
       .from("users")
-      .select("id, name, email, phone, role, city, notes, active, profile_photo_url")
+      .select("id, name, email, phone, role, city, notes, active")
       .eq("id", userId)
       .single();
 

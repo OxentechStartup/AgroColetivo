@@ -2,8 +2,8 @@
  * Middleware de Autorização e Controle de Acesso
  */
 
-import { ROLES } from "../constants/roles";
-import { supabase } from "./supabase";
+import { ROLES } from "../constants/roles.js";
+import { supabase } from "./supabase.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // AUTORIZAÇÃO BASEADA EM ROLE
