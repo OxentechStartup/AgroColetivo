@@ -125,8 +125,13 @@ export async function login(email, password) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // REGISTRO — apenas roles permitidos (vendor e gestor)
 // Admin nunca pode ser criado via registro público
+//
+// FLUXO CORRETO:
+//   1. register()    → valida dados, salva em pending_registrations, envia email
+//   2. verifyEmail() → valida código → SÓ AÍ cria o usuário em `users`
 // ─────────────────────────────────────────────────────────────────────────────
 const REGISTERABLE_ROLES = [ROLES.VENDOR, ROLES.GESTOR];
 
@@ -142,18 +147,14 @@ export async function register(email, password, role, extra = {}) {
 
   if (detectSQLInjection(email) || detectSQLInjection(password))
     throw new Error("Segurança: Padrão malicioso detectado");
-  if (
-    detectXSS(extra.company_name) ||
-    detectXSS(extra.city) ||
-    detectXSS(extra.notes)
-  )
+  if (detectXSS(extra.company_name) || detectXSS(extra.city) || detectXSS(extra.notes))
     throw new Error("Segurança: Entrada inválida detectada");
 
   const limiter = registerLimiter.check(email);
   if (!limiter.allowed)
     throw new Error("Muitas tentativas de registro. Tente novamente depois");
 
-  // Verificar se email já existe
+  // Verificar se email já existe como usuário ativo
   const { data: existing } = await supabase
     .from("users")
     .select("id")
@@ -161,241 +162,199 @@ export async function register(email, password, role, extra = {}) {
     .maybeSingle();
 
   if (existing) {
-    await logSecurityEvent(
-      "register_failed",
-      null,
-      "auth",
-      null,
-      `email=${email} reason=email_already_exists`,
-    );
+    await logSecurityEvent("register_failed", null, "auth", null,
+      `email=${email} reason=email_already_exists`);
     throw new Error("Este email já está cadastrado. Faça login.");
   }
 
   const name = extra.company_name?.trim() || "Usuário";
   const phone = extra.phone?.trim() || "";
 
-  // Gera um UUID próprio para o novo usuário
-  const newId = crypto.randomUUID();
+  // Gerar código de verificação
+  const verificationCode = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-  // Insere perfil diretamente na tabela `users`
-  // Senha armazenada como está (em produção usar bcrypt via trigger no Supabase)
-  const { data: newUser, error: insertError } = await supabase
-    .from("users")
-    .insert({
-      id: newId,
+  // Salvar cadastro PENDENTE — usuário só vai para `users` após confirmar email
+  const { error: pendingError } = await supabase
+    .from("pending_registrations")
+    .upsert({
       email,
-      email_verified: false,
+      password_hash: password,
       name,
       phone,
-      password_hash: password,
       role,
       city: extra.city?.trim() || null,
       notes: extra.notes?.trim() || null,
-      active: true,
-    })
-    .select("id, name, email, phone, role, city, notes")
+      verification_code: verificationCode,
+      expires_at: expiresAt.toISOString(),
+    }, { onConflict: "email" });
+
+  if (pendingError) {
+    await logSecurityEvent("register_failed", null, "auth", null,
+      `email=${email} role=${role} reason=${pendingError.message}`);
+    throw new Error("Não foi possível iniciar o cadastro. Tente novamente.");
+  }
+
+  // Buscar o registro recém inserido para pegar o id
+  const { data: pending } = await supabase
+    .from("pending_registrations")
+    .select("id")
+    .eq("email", email)
     .single();
 
-  if (insertError) {
-    await logSecurityEvent(
-      "register_failed", null, "auth", null,
-      `email=${email} role=${role} reason=${insertError?.message || "insert failed"}`,
-    );
-    throw new Error("Não foi possível criar a conta. Tente novamente.");
-  }
-
-  // Gerar código de verificação de email (6 dígitos)
-  const verificationCode = generateVerificationCode();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
-
-  // Armazenar código de verificação
-  const { error: codeError } = await supabase
-    .from("email_verifications")
-    .insert({
-      user_id: newUser.id,
-      code: verificationCode,
-      expires_at: expiresAt.toISOString(),
-      verified: false,
-    });
-
-  if (codeError) {
-    console.error("Erro ao gerar código de verificação:", codeError);
-    // Não falhar o registro, apenas avisar que não conseguiu gerar código
-  }
-
-  // Enviar email de verificação
+  // Enviar email com o código
   let emailSent = false;
   try {
-    const emailResult = await sendVerificationEmail(newUser.email, newUser.name, verificationCode);
+    const emailResult = await sendVerificationEmail(email, name, verificationCode);
     emailSent = emailResult?.success === true && emailResult?.service !== "fallback";
   } catch (emailError) {
     console.error("Erro ao enviar email de verificação:", emailError);
   }
 
-  // Loga registro bem-sucedido
-  await logSecurityEvent(
-    "register_success",
-    newUser,
-    "auth",
-    newUser.id,
-    `role=${role}`,
-  );
-
-  // Se role é vendor, criar vendor record
-  if (role === ROLES.VENDOR) {
-    const { error: vendorError } = await supabase
-      .from("vendors")
-      .insert({
-        user_id: newUser.id,
-        name,
-        phone,
-      })
-      .single();
-
-    if (vendorError) console.warn("Aviso ao criar vendor:", vendorError);
-  }
+  await logSecurityEvent("register_pending", null, "auth", null,
+    `email=${email} role=${role} emailSent=${emailSent}`);
 
   return {
-    ...newUser,
+    id: pending?.id,
+    email,
+    name,
     requiresEmailVerification: true,
     emailSent,
-    // Em desenvolvimento, se o email não foi enviado, retorna o código para facilitar testes
     devCode: (!emailSent && import.meta.env.DEV) ? verificationCode : undefined,
     message: emailSent
-      ? "Conta criada! Verifique seu email para confirmar o cadastro."
-      : "Conta criada! O email de verificação não pôde ser enviado. Use 'Reenviar Código' na próxima tela.",
+      ? "Código de verificação enviado! Verifique seu email."
+      : "Não foi possível enviar o email. Use 'Reenviar Código' na próxima tela.",
   };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VERIFICAÇÃO DE EMAIL
+// Só cria o usuário no banco APÓS validar o código
 // ─────────────────────────────────────────────────────────────────────────────
-export async function verifyEmail(userId, code) {
-  if (!userId) throw new Error("ID do usuário é obrigatório");
-  if (!code || code.length !== 6)
-    throw new Error("Código de verificação inválido");
+export async function verifyEmail(pendingId, code) {
+  if (!pendingId) throw new Error("ID do cadastro é obrigatório");
+  if (!code || code.length !== 6) throw new Error("Código de verificação inválido");
 
-  try {
-    // Buscar código de verificação
-    const { data: verification, error: selectError } = await supabase
-      .from("email_verifications")
-      .select("id, user_id, expires_at, verified")
-      .eq("code", code)
-      .eq("user_id", userId)
-      .maybeSingle();
+  // Buscar cadastro pendente
+  const { data: pending, error: pendingError } = await supabase
+    .from("pending_registrations")
+    .select("*")
+    .eq("id", pendingId)
+    .maybeSingle();
 
-    if (selectError) throw selectError;
-
-    if (!verification) {
-      await logSecurityEvent(
-        "email_verification_failed",
-        { userId },
-        "auth",
-        userId,
-        "Code not found or doesn't match user",
-      );
-      throw new Error("Código de verificação inválido ou expirado.");
-    }
-
-    // Verificar se já foi verificado
-    if (verification.verified) {
-      throw new Error("Este código já foi utilizado.");
-    }
-
-    // Verificar expiração
-    const expiresAt = new Date(verification.expires_at);
-    if (Date.now() > expiresAt.getTime()) {
-      await logSecurityEvent(
-        "email_verification_failed",
-        { userId },
-        "auth",
-        userId,
-        "Code expired",
-      );
-      throw new Error("Código de verificação expirado.");
-    }
-
-    // Marcar como verificado na tabela email_verifications
-    const { error: updateVerError } = await supabase
-      .from("email_verifications")
-      .update({ verified: true })
-      .eq("id", verification.id);
-
-    if (updateVerError) throw updateVerError;
-
-    // Atualizar email_verified na tabela users
-    const { error: updateUserError } = await supabase
-      .from("users")
-      .update({ email_verified: true })
-      .eq("id", userId);
-
-    if (updateUserError) throw updateUserError;
-
-    await logSecurityEvent(
-      "email_verified",
-      { userId },
-      "auth",
-      userId,
-      "User email successfully verified",
-    );
-
-    return {
-      message: "Email verificado com sucesso! Você já pode acessar o sistema.",
-    };
-  } catch (error) {
-    throw error;
+  if (pendingError) throw pendingError;
+  if (!pending) {
+    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
+      "Pending registration not found");
+    throw new Error("Cadastro não encontrado. Tente se registrar novamente.");
   }
+
+  // Verificar código
+  if (pending.verification_code !== code) {
+    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
+      "Wrong code");
+    throw new Error("Código de verificação inválido.");
+  }
+
+  // Verificar expiração
+  if (Date.now() > new Date(pending.expires_at).getTime()) {
+    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
+      "Code expired");
+    throw new Error("Código de verificação expirado. Solicite um novo.");
+  }
+
+  // Verificar se email já foi cadastrado enquanto aguardava (race condition)
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", pending.email)
+    .maybeSingle();
+
+  if (existingUser) {
+    // Limpar pendente e considerar como já verificado
+    await supabase.from("pending_registrations").delete().eq("id", pendingId);
+    throw new Error("Este email já está cadastrado. Faça login.");
+  }
+
+  // ✅ EMAIL CONFIRMADO — agora sim cria o usuário
+  const newId = crypto.randomUUID();
+  const { data: newUser, error: insertError } = await supabase
+    .from("users")
+    .insert({
+      id: newId,
+      email: pending.email,
+      email_verified: true,
+      name: pending.name,
+      phone: pending.phone || "",
+      password_hash: pending.password_hash,
+      role: pending.role,
+      city: pending.city,
+      notes: pending.notes,
+      active: true,
+    })
+    .select("id, name, email, phone, role, city, notes, active")
+    .single();
+
+  if (insertError) {
+    await logSecurityEvent("email_verification_failed", { pendingId }, "auth", null,
+      `insert user failed: ${insertError.message}`);
+    throw new Error("Erro ao criar a conta. Tente novamente.");
+  }
+
+  // Se vendor, criar registro em vendors
+  if (pending.role === ROLES.VENDOR) {
+    const { error: vendorError } = await supabase
+      .from("vendors")
+      .insert({
+        user_id: newUser.id,
+        name: pending.name,
+        phone: pending.phone || "",
+        city: pending.city,
+      });
+    if (vendorError) console.warn("Aviso ao criar vendor:", vendorError);
+  }
+
+  // Remover registro pendente
+  await supabase.from("pending_registrations").delete().eq("id", pendingId);
+
+  await logSecurityEvent("email_verified", { userId: newUser.id }, "auth",
+    newUser.id, "User created after email verification");
+
+  return { message: "Email verificado! Conta criada com sucesso." };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REENVIAR EMAIL DE VERIFICAÇÃO
 // ─────────────────────────────────────────────────────────────────────────────
-export async function resendVerificationEmail(userId) {
-  if (!userId) throw new Error("ID do usuário é obrigatório");
+export async function resendVerificationEmail(pendingId) {
+  if (!pendingId) throw new Error("ID do cadastro é obrigatório");
 
-  try {
-    // Buscar usuário
-    const { data: user, error: userError } = await supabase
-      .from("users")
-      .select("id, email, name, email_verified")
-      .eq("id", userId)
-      .single();
+  const { data: pending, error } = await supabase
+    .from("pending_registrations")
+    .select("id, email, name")
+    .eq("id", pendingId)
+    .single();
 
-    if (userError || !user) throw new Error("Usuário não encontrado");
+  if (error || !pending) throw new Error("Cadastro não encontrado.");
 
-    if (user.email_verified) {
-      throw new Error("Este email já foi verificado.");
-    }
+  const verificationCode = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Gerar novo código
-    const verificationCode = generateVerificationCode();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await supabase
+    .from("pending_registrations")
+    .update({
+      verification_code: verificationCode,
+      expires_at: expiresAt.toISOString(),
+    })
+    .eq("id", pendingId);
 
-    // Deletar código anterior se existir
-    await supabase.from("email_verifications").delete().eq("user_id", userId);
+  await sendVerificationEmail(pending.email, pending.name, verificationCode);
 
-    // Inserir novo código
-    const { error: insertError } = await supabase
-      .from("email_verifications")
-      .insert({
-        user_id: userId,
-        code: verificationCode,
-        expires_at: expiresAt.toISOString(),
-        verified: false,
-      });
+  await logSecurityEvent("verification_email_resent", { pendingId }, "auth",
+    null, "Verification email resent");
 
-    if (insertError) throw insertError;
-
-    // Enviar email
-    await sendVerificationEmail(user.email, user.name, verificationCode);
-
-    await logSecurityEvent(
-      "verification_email_resent",
-      { userId },
-      "auth",
-      userId,
-      "Verification email resent",
-    );
+  return { message: "Novo código de verificação enviado para seu email." };
+}
 
     return { message: "Novo código de verificação enviado para seu email." };
   } catch (error) {

@@ -99,14 +99,14 @@ export function useAuth() {
   }, []);
 
   // Chamado pela ConfirmEmailPage quando o email for verificado com sucesso
+  // Neste ponto o usuário JÁ foi criado em `users` pelo verifyEmail()
   const onEmailVerified = useCallback(async () => {
     if (!pendingVerificationUser) return;
-    // Faz login completo buscando os dados do usuário
     try {
       const { data } = await supabase
         .from("users")
         .select("id, name, email, phone, role, city, notes, active")
-        .eq("id", pendingVerificationUser.id)
+        .eq("email", pendingVerificationUser.email)
         .single();
       if (data) {
         const sessionUser = { ...data, blocked: data.active === false };

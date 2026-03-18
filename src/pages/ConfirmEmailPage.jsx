@@ -14,10 +14,10 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
   const [canResend, setCanResend] = useState(true);
   const [resendCountdown, setResendCountdown] = useState(0);
 
-  // Pega o email e userId da localStorage
+  // Pega o email e pendingId da localStorage (salvo no signUp)
   const user = JSON.parse(localStorage.getItem("agro_auth") || "{}");
   const email = user?.email || "";
-  const userId = user?.id || "";
+  const pendingId = user?.id || "";
 
   // Countdown para reenviar email
   useEffect(() => {
@@ -50,7 +50,7 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
     setError("");
 
     try {
-      await verifyEmail(userId, code);
+      await verifyEmail(pendingId, code);
       setSuccess("Email verificado com sucesso! Entrando no sistema...");
 
       // Se veio da tela de registro/login bloqueado, chama callback para fazer login real
@@ -78,7 +78,7 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
     setError("");
 
     try {
-      await resendVerificationEmail(userId);
+      await resendVerificationEmail(pendingId);
       setSuccess("Novo código enviado para seu email!");
       setCanResend(false);
       setResendCountdown(60);

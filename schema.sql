@@ -18,6 +18,7 @@
 drop view     if exists v_producer_costs        cascade;
 drop view     if exists v_campaign_summary      cascade;
 drop table    if exists email_verifications     cascade;
+drop table    if exists pending_registrations   cascade;
 drop table    if exists orders                  cascade;
 drop table    if exists campaign_lots           cascade;
 drop table    if exists campaigns               cascade;
@@ -167,6 +168,23 @@ create table public.email_verifications (
 create index email_verifications_user_id_idx on public.email_verifications(user_id);
 create index email_verifications_code_idx    on public.email_verifications(code);
 
+-- ── pending_registrations: cadastros aguardando confirmação de email ──
+-- O usuário SÓ vai para a tabela `users` depois de confirmar o email
+create table public.pending_registrations (
+  id                uuid        primary key default gen_random_uuid(),
+  email             text        unique not null,
+  password_hash     text        not null,
+  name              text        not null,
+  phone             text        not null default '',
+  role              user_role   not null,
+  city              text,
+  notes             text,
+  verification_code text        not null,
+  expires_at        timestamptz not null,
+  created_at        timestamptz not null default now()
+);
+create index pending_registrations_email_idx on public.pending_registrations(email);
+
 -- ── orders: pedidos dos compradores/produtores ─────────────────
 create table public.orders (
   id           uuid         primary key default gen_random_uuid(),
@@ -269,6 +287,7 @@ alter table public.product_promotions  disable row level security;
 alter table public.orders              disable row level security;
 alter table public.buyers              disable row level security;
 alter table public.email_verifications disable row level security;
+alter table public.pending_registrations disable row level security;
 
 
 -- ══════════════════════════════════════════════════════════════
