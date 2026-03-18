@@ -225,7 +225,13 @@ export default function App() {
 
   // Mostrar página de confirmação de email após registro ou login com email não verificado
   if (pendingVerificationUser) {
-    return <ConfirmEmailPage onVerified={onEmailVerified} />;
+    return (
+      <ConfirmEmailPage
+        onVerified={onEmailVerified}
+        devCode={pendingVerificationUser.devCode}
+        emailSent={pendingVerificationUser.emailSent}
+      />
+    );
   }
 
   if (!user)

@@ -32,18 +32,18 @@ export function useAuth() {
   const signIn = useCallback(async (email, password) => {
     setLoading(true);
     setError(null);
+    // Limpa qualquer estado pendente de registro anterior
+    setPendingVerificationUser(null);
+    localStorage.removeItem("agro_auth");
     manualAuthInProgress.current = true;
     try {
-      clearSession();
       const u = await login(email, password);
       saveSession(u);
       setUser(u);
-      setPendingVerificationUser(null);
     } catch (err) {
       const msg = err?.message || "Erro desconhecido ao fazer login";
-      // Se email não verificado, busca o userId para mostrar tela de confirmação
       if (msg === "EMAIL_NOT_VERIFIED") {
-        // Busca o userId pelo email para poder reenviar código
+        // Usuário existe mas não verificou o email — busca dados para tela de confirmação
         try {
           const { data } = await supabase
             .from("users")
@@ -54,10 +54,18 @@ export function useAuth() {
             const pendingUser = { id: data.id, name: data.name, email: data.email };
             localStorage.setItem("agro_auth", JSON.stringify(pendingUser));
             setPendingVerificationUser(pendingUser);
+            setError("Confirme seu email antes de entrar. Verifique sua caixa de entrada.");
+          } else {
+            // Email não existe na tabela users
+            setError("Email ou senha incorretos.");
           }
-        } catch {}
-        setError("Você precisa confirmar seu email antes de entrar. Verifique sua caixa de entrada.");
+        } catch {
+          setError("Email ou senha incorretos.");
+        }
       } else {
+        // Qualquer outro erro: garante que não mostra tela de verificação
+        setPendingVerificationUser(null);
+        localStorage.removeItem("agro_auth");
         setError(msg);
       }
     } finally {
@@ -73,10 +81,14 @@ export function useAuth() {
     try {
       clearSession();
       const result = await register(email, password, role, extra);
-      // Salva apenas dados mínimos no localStorage para poder reenviar código
-      const pendingUser = { id: result.id, name: result.name, email: result.email };
+      const pendingUser = {
+        id: result.id,
+        name: result.name,
+        email: result.email,
+        devCode: result.devCode,       // código visível só em dev quando email falha
+        emailSent: result.emailSent,   // se o email foi enviado com sucesso
+      };
       localStorage.setItem("agro_auth", JSON.stringify(pendingUser));
-      // NÃO faz login — apenas sinaliza que precisa de verificação
       setPendingVerificationUser(pendingUser);
     } catch (err) {
       setError(err?.message || "Erro desconhecido ao registrar");

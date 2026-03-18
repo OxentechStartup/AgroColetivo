@@ -224,11 +224,12 @@ export async function register(email, password, role, extra = {}) {
   }
 
   // Enviar email de verificação
+  let emailSent = false;
   try {
-    await sendVerificationEmail(newUser.email, newUser.name, verificationCode);
+    const emailResult = await sendVerificationEmail(newUser.email, newUser.name, verificationCode);
+    emailSent = emailResult?.success === true && emailResult?.service !== "fallback";
   } catch (emailError) {
     console.error("Erro ao enviar email de verificação:", emailError);
-    // Não falhar o registro, o email pode ser reenviado
   }
 
   // Loga registro bem-sucedido
@@ -257,8 +258,12 @@ export async function register(email, password, role, extra = {}) {
   return {
     ...newUser,
     requiresEmailVerification: true,
-    message:
-      "Conta criada com sucesso! Verifique seu email para confirmar seu cadastro.",
+    emailSent,
+    // Em desenvolvimento, se o email não foi enviado, retorna o código para facilitar testes
+    devCode: (!emailSent && import.meta.env.DEV) ? verificationCode : undefined,
+    message: emailSent
+      ? "Conta criada! Verifique seu email para confirmar o cadastro."
+      : "Conta criada! O email de verificação não pôde ser enviado. Use 'Reenviar Código' na próxima tela.",
   };
 }
 

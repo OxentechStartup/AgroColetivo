@@ -5,7 +5,7 @@ import { Button } from "../components/Button.jsx";
 import { Toast } from "../components/Toast.jsx";
 import styles from "./ConfirmEmailPage.module.css";
 
-export function ConfirmEmailPage({ onVerified }) {
+export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -97,9 +97,29 @@ export function ConfirmEmailPage({ onVerified }) {
           <div className={styles.header}>
             <h1>✉️ Confirme seu Email</h1>
             <p className={styles.subtitle}>
-              Um código de verificação foi enviado para:
+              {emailSent === false
+                ? "⚠️ Não foi possível enviar o email. Use o botão abaixo para reenviar."
+                : "Um código de verificação foi enviado para:"}
             </p>
             <p className={styles.email}>{email || "seu email"}</p>
+            {/* Mostra código em desenvolvimento quando email não foi enviado */}
+            {devCode && (
+              <div style={{
+                background: "#fff3cd",
+                border: "1px solid #ffc107",
+                borderRadius: 8,
+                padding: "12px 16px",
+                marginTop: 12,
+                textAlign: "center",
+              }}>
+                <p style={{ margin: 0, fontSize: 12, color: "#856404" }}>
+                  🛠️ Modo dev — código gerado:
+                </p>
+                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: "bold", letterSpacing: 6, color: "#856404" }}>
+                  {devCode}
+                </p>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className={styles.form}>
