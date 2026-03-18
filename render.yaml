@@ -3,10 +3,12 @@ services:
     name: agrocoletivo
     env: node
     buildCommand: npm run build
-    startCommand: npm run preview -- --host
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3000
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
