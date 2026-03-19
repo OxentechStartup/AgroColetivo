@@ -11,26 +11,26 @@ export async function fetchOffers(campaignId) {
     throw new Error(
       "Erro ao buscar ofertas: " + (error?.message || "Erro desconhecido"),
     );
-  
+
   // Buscar dados dos vendors separadamente
   if (data && data.length > 0) {
-    const vendorIds = [...new Set(data.map(o => o.vendor_id))];
+    const vendorIds = [...new Set(data.map((o) => o.vendor_id))];
     const { data: vendors } = await supabase
       .from("vendors")
       .select("id, name, phone, city")
       .in("id", vendorIds);
-    
+
     const vendorMap = {};
-    (vendors ?? []).forEach(v => {
+    (vendors ?? []).forEach((v) => {
       vendorMap[v.id] = v;
     });
-    
-    return data.map(o => ({
+
+    return data.map((o) => ({
       ...normalizeOffer(o),
-      vendors: vendorMap[o.vendor_id] || null
+      vendors: vendorMap[o.vendor_id] || null,
     }));
   }
-  
+
   return (data ?? []).map(normalizeOffer);
 }
 

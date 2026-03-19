@@ -1425,9 +1425,37 @@ export function ProducerPortalPage({ onSubmit }) {
   // Carregar campanhas
   useEffect(() => {
     fetchOpenCampaigns()
-      .then(setCampaigns)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then((data) => {
+        setCampaigns(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+
+    // Realtime subscription para atualizar campanhas automaticamente
+    const subscription = supabase
+      .channel("campaigns_updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "campaigns",
+          filter: "status=in.(open,negotiating)",
+        },
+        () => {
+          // Recarregar campanhas quando há mudanças
+          fetchOpenCampaigns()
+            .then(setCampaigns)
+            .catch(() => {});
+        },
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Persistir carrinho

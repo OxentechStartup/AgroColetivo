@@ -19,7 +19,7 @@ export async function fetchVendorProducts(vendorId) {
 export async function fetchAllProducts() {
   const { data, error } = await supabase
     .from("products")
-    .select("*, vendors(id,name), product_promotions(*)")
+    .select("*, product_promotions(*)")
     .eq("active", true)
     .order("name", { ascending: true });
   if (error)

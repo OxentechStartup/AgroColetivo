@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
+import { ConfirmationModal } from "../components/ConfirmationModal";
+import { Toast } from "../components/Toast";
+import { useToast } from "../hooks/useToast";
 
 async function fetchBuyerOrdersWithOffers(phone) {
   const cleanPhone = unmaskPhone(phone);
@@ -59,18 +62,42 @@ async function fetchBuyerOrdersWithOffers(phone) {
     (orders ?? []).map(async (order) => {
       const { data: offers } = await supabase
         .from("vendor_campaign_offers")
-        .select("*, vendors(name, city)")
+        .select("*")
         .eq("campaign_id", order.campaign.id)
         .order("price_per_unit", { ascending: true });
 
-      const approvedOffer = (offers ?? []).find((o) => o.status === "approved");
+      // Buscar dados dos vendors correspondentes
+      let offersWithVendors = offers ?? [];
+      if (offersWithVendors.length > 0) {
+        const vendorIds = [
+          ...new Set(offersWithVendors.map((o) => o.vendor_id)),
+        ];
+        const { data: vendors } = await supabase
+          .from("vendors")
+          .select("id, name, city")
+          .in("id", vendorIds);
+
+        const vendorMap = {};
+        (vendors ?? []).forEach((v) => {
+          vendorMap[v.id] = v;
+        });
+
+        offersWithVendors = offersWithVendors.map((o) => ({
+          ...o,
+          vendors: vendorMap[o.vendor_id] || null,
+        }));
+      }
+
+      const approvedOffer = (offersWithVendors ?? []).find(
+        (o) => o.status === "approved",
+      );
       const totalPrice = approvedOffer
         ? approvedOffer.price_per_unit * order.qty
         : null;
 
       return {
         ...order,
-        offers: offers ?? [],
+        offers: offersWithVendors ?? [],
         approvedOffer,
         totalPrice,
       };
@@ -329,13 +356,11 @@ function OrderCard({ order, onCancel, canceling }) {
           {/* Botão cancelar */}
           <button
             onClick={() => {
-              if (
-                confirm(
-                  `Tem certeza que deseja desistir do pedido de ${order.campaign.product}?`,
-                )
-              ) {
-                onCancel(order.id);
-              }
+              setCancelConfirm({
+                open: true,
+                orderId: order.id,
+                product: order.campaign.product,
+              });
             }}
             disabled={canceling === order.id}
             style={{
@@ -602,11 +627,17 @@ function LoginForm({ onLogin, loading }) {
 }
 
 export function BuyerOrderStatusPage() {
+  const { toast, showToast, clearToast } = useToast();
   const [phone, setPhone] = useState(null);
   const [buyerData, setBuyerData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [canceling, setCanceling] = useState(null);
+  const [cancelConfirm, setCancelConfirm] = useState({
+    open: false,
+    orderId: null,
+    product: "",
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem("agro_buyer_phone");
@@ -660,6 +691,16 @@ export function BuyerOrderStatusPage() {
   const handleCancelOrder = async (orderId) => {
     setCanceling(orderId);
     try {
+      // Buscar dados do order para notificação
+      const { data: orderData } = await supabase
+        .from("orders")
+        .select(
+          "id, campaign_id, qty, campaign:campaigns(id, product, pivo_id)",
+        )
+        .eq("id", orderId)
+        .single();
+
+      // Cancelar o pedido
       const { error } = await supabase
         .from("orders")
         .update({ status: "rejected" })
@@ -667,11 +708,29 @@ export function BuyerOrderStatusPage() {
 
       if (error) throw error;
 
+      // Criar notificação para o gestor
+      if (orderData?.campaign?.pivo_id) {
+        const notificationMsg = `Comprador cancelou pedido de ${orderData.campaign.product} (${orderData.qty} ${cancelConfirm.product ? "un" : "lotes"})`;
+        await supabase.from("notifications").insert({
+          pivo_id: orderData.campaign.pivo_id,
+          type: "order_canceled",
+          title: "Pedido Cancelado",
+          message: notificationMsg,
+          related_order_id: orderId,
+          related_campaign_id: orderData.campaign_id,
+        });
+      }
+
       // Recarregar pedidos
       await loadOrders(phone);
+      showToast("Pedido cancelado com sucesso");
+      setCancelConfirm({ open: false, orderId: null, product: "" });
     } catch (err) {
       console.error("Erro ao cancelar pedido:", err);
-      alert("Erro ao cancelar pedido: " + (err?.message || "Tente novamente"));
+      showToast(
+        "Erro ao cancelar pedido: " + (err?.message || "Tente novamente"),
+        "error",
+      );
     } finally {
       setCanceling(null);
     }
@@ -901,6 +960,26 @@ export function BuyerOrderStatusPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de confirmação */}
+      <ConfirmationModal
+        open={cancelConfirm.open}
+        title="Cancelar Pedido"
+        message={`Tem certeza que deseja desistir do pedido de ${cancelConfirm.product}?`}
+        confirmText="Cancelar Pedido"
+        cancelText="Manter Pedido"
+        isDestructive={true}
+        loading={canceling === cancelConfirm.orderId}
+        onConfirm={() => handleCancelOrder(cancelConfirm.orderId)}
+        onCancel={() =>
+          setCancelConfirm({ open: false, orderId: null, product: "" })
+        }
+      />
+
+      {/* Toast */}
+      {toast && (
+        <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
+      )}
     </div>
   );
 }

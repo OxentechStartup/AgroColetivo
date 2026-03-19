@@ -1,10 +1,7 @@
 import { useState } from "react";
-import {
-  Menu,
-  ExternalLink,
-  LogOut,
-} from "lucide-react";
+import { Menu, ExternalLink, LogOut } from "lucide-react";
 import { ROLES } from "../constants/roles";
+import { NotificationBell } from "./NotificationBell";
 import styles from "./Topbar.module.css";
 
 const LOGO_URL = "https://i.imgur.com/clDJyAh.png";
@@ -77,6 +74,11 @@ export function Topbar({
           </button>
         )}
       </div>
+
+      {/* Notificações — apenas para gestores/admins */}
+      {(role === ROLES.GESTOR || role === ROLES.ADMIN) && (
+        <NotificationBell userId={user?.id} />
+      )}
 
       {/* Botão sair — visível no mobile */}
       <button className={styles.logoutBtn} onClick={onLogout} title="Sair">
