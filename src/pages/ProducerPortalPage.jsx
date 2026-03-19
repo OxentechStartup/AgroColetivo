@@ -876,7 +876,8 @@ function CartModal({
                       <div
                         style={{
                           height: "100%",
-                          background: "linear-gradient(90deg, #16A34A, #15803d)",
+                          background:
+                            "linear-gradient(90deg, #16A34A, #15803d)",
                           width: `${Math.min(100, campaign.approval)}%`,
                         }}
                       />
@@ -944,7 +945,10 @@ function CartModal({
                   }}
                 >
                   <span style={{ color: "var(--text3)" }}>
-                    {item.qty} × {campaign.pricePerUnit ? `R$ ${campaign.pricePerUnit.toFixed(2)}` : "C.O."}
+                    {item.qty} ×{" "}
+                    {campaign.pricePerUnit
+                      ? `R$ ${campaign.pricePerUnit.toFixed(2)}`
+                      : "C.O."}
                   </span>
                   <span
                     style={{
@@ -973,22 +977,37 @@ function CartModal({
             marginBottom: "20px",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              marginBottom: "8px",
+            }}
+          >
             <span style={{ color: "var(--text2)" }}>Itens no carrinho</span>
             <span style={{ fontWeight: 600 }}>{totalItems}</span>
           </div>
           {(() => {
             const total = cartItems.reduce((sum, item) => {
               const c = campaigns.find((c) => c.id === item.campaignId);
-              return sum + ((c?.pricePerUnit || 0) * item.qty);
+              return sum + (c?.pricePerUnit || 0) * item.qty;
             }, 0);
             const hasMissingPrice = cartItems.some(
-              (item) => !(campaigns.find((c) => c.id === item.campaignId)?.pricePerUnit)
+              (item) =>
+                !campaigns.find((c) => c.id === item.campaignId)?.pricePerUnit,
             );
             return (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--primary)" }}>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between" }}
+                >
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1.05rem",
+                      color: "var(--primary)",
+                    }}
+                  >
                     Total estimado
                   </span>
                   <span
@@ -1002,7 +1021,13 @@ function CartModal({
                   </span>
                 </div>
                 {hasMissingPrice && (
-                  <p style={{ fontSize: ".75rem", margin: "8px 0 0 0", color: "var(--text3)" }}>
+                  <p
+                    style={{
+                      fontSize: ".75rem",
+                      margin: "8px 0 0 0",
+                      color: "var(--text3)",
+                    }}
+                  >
                     Alguns preços serão confirmados após aceitação
                   </p>
                 )}
@@ -1116,13 +1141,21 @@ function CartModal({
             Continuar
           </button>
           <button
-            onClick={() =>
+            onClick={() => {
+              // Salvar dados do produtor para próxima vez
+              const cleaned = unmaskPhone(phone);
+              localStorage.setItem("agro_producer", JSON.stringify({
+                name: producerName.trim(),
+                phone: cleaned,
+              }));
+              localStorage.setItem("agro_producer_phone", cleaned);
+              
               onSubmit({
                 items: cartItems,
                 producerName: producerName.trim(),
-                phone: unmaskPhone(phone),
+                phone: cleaned,
               })
-            }
+            }}
             disabled={!canSubmit || submitting}
             style={{
               flex: 1,
@@ -1151,7 +1184,14 @@ function CartModal({
   );
 }
 
-function DuplicateItemModal({ campaign, newQty, existingQty, onClose, onReplace, onAdd }) {
+function DuplicateItemModal({
+  campaign,
+  newQty,
+  existingQty,
+  onClose,
+  onReplace,
+  onAdd,
+}) {
   return (
     <div
       style={{
@@ -1175,7 +1215,14 @@ function DuplicateItemModal({ campaign, newQty, existingQty, onClose, onReplace,
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "16px",
+          }}
+        >
           <AlertCircle size={24} color="#16A34A" />
           <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>
             Produto já no carrinho
@@ -1183,12 +1230,32 @@ function DuplicateItemModal({ campaign, newQty, existingQty, onClose, onReplace,
         </div>
 
         <p style={{ color: "var(--text2)", marginBottom: "16px" }}>
-          <strong>{campaign.product}</strong> já está no carrinho com {existingQty} {campaign.unit}. O que deseja fazer?
+          <strong>{campaign.product}</strong> já está no carrinho com{" "}
+          {existingQty} {campaign.unit}. O que deseja fazer?
         </p>
 
-        <div style={{ background: "var(--surface2)", borderRadius: "8px", padding: "12px", marginBottom: "20px", fontSize: ".85rem", color: "var(--text3)" }}>
-          <p style={{ margin: 0 }}>Quantidade atual: <strong>{existingQty} {campaign.unit}</strong></p>
-          <p style={{ margin: "6px 0 0 0" }}>Nova quantidade: <strong>{newQty} {campaign.unit}</strong></p>
+        <div
+          style={{
+            background: "var(--surface2)",
+            borderRadius: "8px",
+            padding: "12px",
+            marginBottom: "20px",
+            fontSize: ".85rem",
+            color: "var(--text3)",
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            Quantidade atual:{" "}
+            <strong>
+              {existingQty} {campaign.unit}
+            </strong>
+          </p>
+          <p style={{ margin: "6px 0 0 0" }}>
+            Nova quantidade:{" "}
+            <strong>
+              {newQty} {campaign.unit}
+            </strong>
+          </p>
         </div>
 
         <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
@@ -1353,8 +1420,10 @@ export function ProducerPortalPage({ onSubmit }) {
 
   const handleConfirmAddToCart = (qty) => {
     if (addToCartCampaign) {
-      const existingIndex = cartItems.findIndex((item) => item.campaignId === addToCartCampaign.id);
-      
+      const existingIndex = cartItems.findIndex(
+        (item) => item.campaignId === addToCartCampaign.id,
+      );
+
       if (existingIndex !== -1) {
         // Produto já está no carrinho - mostrar modal
         setDuplicateData({
@@ -1413,18 +1482,39 @@ export function ProducerPortalPage({ onSubmit }) {
   const handleSubmitCart = async (data) => {
     setSubmitting(true);
     try {
+      const submitted = [];
       for (const item of data.items) {
         const campaign = campaigns.find((c) => c.id === item.campaignId);
         if (campaign) {
-          await onSubmit(item.campaignId, {
-            producerName: data.producerName,
-            phone: data.phone,
-            qty: item.qty,
-            confirmedAt: new Date().toISOString().slice(0, 10),
-          });
+          try {
+            await onSubmit(item.campaignId, {
+              producerName: data.producerName,
+              phone: data.phone,
+              qty: item.qty,
+              confirmedAt: new Date().toISOString().slice(0, 10),
+            });
+            submitted.push(item.campaignId);
+          } catch (itemErr) {
+            console.error(
+              `Erro ao submeter pedido para ${campaign.product}:`,
+              itemErr,
+            );
+            alert(
+              `Erro ao enviar pedido para "${campaign.product}": ${itemErr.message}`,
+            );
+            setSubmitting(false);
+            return; // Parar aqui - não continuar com outros items
+          }
         }
       }
-      setSuccessCount(data.items.length);
+
+      if (submitted.length === 0) {
+        alert("Nenhum pedido foi enviado. Tente novamente.");
+        setSubmitting(false);
+        return;
+      }
+
+      setSuccessCount(submitted.length);
       setSuccessName(data.producerName);
       setCartItems([]);
       setShowCartModal(false);

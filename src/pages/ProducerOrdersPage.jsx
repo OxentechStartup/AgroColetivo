@@ -14,16 +14,24 @@ async function fetchProducerOrders(phone) {
   const cleanPhone = unmaskPhone(phone);
 
   // Passo 1: Buscar o buyer pelo telefone
-  const { data: buyers } = await supabase
+  const { data: buyers, error: buyerError } = await supabase
     .from("buyers")
     .select("id")
     .eq("phone", cleanPhone)
-    .single();
+    .maybeSingle();
 
-  if (!buyers) return [];
+  if (buyerError) {
+    console.error("Erro ao buscar buyer:", buyerError);
+    throw buyerError;
+  }
+
+  if (!buyers) {
+    console.warn(`Nenhum buyer encontrado para o telefone: ${cleanPhone}`);
+    return [];
+  }
 
   // Passo 2: Buscar os pedidos do buyer
-  const { data: orders } = await supabase
+  const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
       `
@@ -36,6 +44,11 @@ async function fetchProducerOrders(phone) {
     )
     .eq("buyer_id", buyers.id)
     .order("submitted_at", { ascending: false });
+
+  if (ordersError) {
+    console.error("Erro ao buscar pedidos:", ordersError);
+    throw ordersError;
+  }
 
   const grouped = {};
   (orders ?? []).forEach((order) => {
@@ -380,9 +393,13 @@ export function ProducerOrdersPage() {
     try {
       const data = await fetchProducerOrders(phoneNum);
       setOrders(data);
+      if (data.length === 0) {
+        console.warn(`Nenhum pedido encontrado para telefone: ${phoneNum}`);
+      }
     } catch (err) {
-      console.error(err);
-      alert("Erro ao carregar pedidos");
+      console.error("Erro ao carregar pedidos:", err);
+      alert(`Erro ao carregar pedidos: ${err?.message || "Tente novamente"}`);
+      setPhone(null);
     } finally {
       setLoading(false);
     }
@@ -395,8 +412,8 @@ export function ProducerOrdersPage() {
       localStorage.setItem("agro_producer_phone", phoneNum);
       await loadOrders(phoneNum);
     } catch (err) {
-      console.error(err);
-      alert("Erro ao acessar pedidos");
+      console.error("Erro no login:", err);
+      alert(`Erro ao acessar pedidos: ${err?.message || "Tente novamente"}`);
       setPhone(null);
       localStorage.removeItem("agro_producer_phone");
     } finally {
