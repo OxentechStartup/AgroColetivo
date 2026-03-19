@@ -100,7 +100,7 @@ export function useAuth() {
         email: pendingUser.email,
         id: pendingUser.id,
       });
-      localStorage.setItem("agro_auth", JSON.stringify(pendingUser));
+      localStorage.setItem("agro_pending_registration", JSON.stringify(pendingUser));
       setPendingVerificationUser(pendingUser);
     } catch (err) {
       setError(err?.message || "Erro desconhecido ao registrar");

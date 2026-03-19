@@ -15,7 +15,7 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
   const [resendCountdown, setResendCountdown] = useState(0);
 
   // Pega o email e pendingId da localStorage (salvo no signUp)
-  const user = JSON.parse(localStorage.getItem("agro_auth") || "{}");
+  const user = JSON.parse(localStorage.getItem("agro_pending_registration") || "{}");
   const email = user?.email || "";
   const pendingId = user?.id || "";
 
@@ -27,7 +27,7 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
 
   // Verificar localStorage imediatamente quando a página carrega
   useEffect(() => {
-    const rawData = localStorage.getItem("agro_auth");
+    const rawData = localStorage.getItem("agro_pending_registration");
     console.log("💾 localStorage.getItem('agro_auth'):", rawData);
     if (rawData) {
       try {
@@ -92,7 +92,7 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
       } else {
         // Rota direta /auth/confirmar-email: redireciona para login
         setTimeout(() => {
-          localStorage.removeItem("agro_auth");
+          localStorage.removeItem("agro_pending_registration");
           window.location.href = "/";
         }, 2000);
       }
