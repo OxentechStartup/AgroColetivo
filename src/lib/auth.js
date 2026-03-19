@@ -368,7 +368,9 @@ export async function verifyEmail(pendingId, code) {
       notes: pending.notes,
       active: true,
     })
-    .select("id, name, email, phone, role, city, notes, active, profile_photo_url")
+    .select(
+      "id, name, email, phone, role, city, notes, active, profile_photo_url",
+    )
     .single();
 
   if (insertError) {

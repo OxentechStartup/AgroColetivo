@@ -17,8 +17,10 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    // ⚠️ IMPORTANTE: Desabilitar persistSession e autoRefreshToken
+    // Usuarios manuais não têm tokens Supabase, causando logout ao refresh
+    persistSession: false,
+    autoRefreshToken: false,
     detectSessionInUrl: false,
     storageKey: "agro_auth",
   },
@@ -27,12 +29,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   },
 });
 
-// Intercepta erros de refresh token inválido e faz logout automático
+// Intercepta erros de refresh token inválido
+// ⚠️ NÃO remove localStorage em SIGNED_OUT porque usuários manuais precisam manter a sessão
 supabase.auth.onAuthStateChange((event, session) => {
-  // Se o token expirou ou foi inválido, faz logout silencioso
-  if (event === "SIGNED_OUT" && !session) {
-    try {
-      localStorage.removeItem("agro_auth");
-    } catch {}
+  // Para contas Supabase Auth: se session expirou, será feito logout
+  // Para contas manuais: ignorar changeEvents de Supabase, manter localStorage
+  if (import.meta.env.DEV && event !== "INITIAL_SESSION") {
+    console.log(`🔐 Auth event: ${event}`, session ? "with session" : "no session");
   }
 });
