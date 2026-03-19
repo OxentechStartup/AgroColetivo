@@ -325,6 +325,7 @@ function CampaignCard({ campaign, onAddToCart }) {
 
   return (
     <div
+      onClick={() => onAddToCart(campaign)}
       style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",
@@ -334,6 +335,7 @@ function CampaignCard({ campaign, onAddToCart }) {
         display: "flex",
         flexDirection: "column",
         height: "100%",
+        cursor: "pointer",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#16A34A";
@@ -473,7 +475,6 @@ function CampaignCard({ campaign, onAddToCart }) {
 
         {/* Button */}
         <button
-          onClick={() => onAddToCart(campaign)}
           style={{
             width: "100%",
             padding: "8px",
@@ -489,9 +490,8 @@ function CampaignCard({ campaign, onAddToCart }) {
             justifyContent: "center",
             gap: "4px",
             transition: "all 0.2s",
+            pointerEvents: "none",
           }}
-          onMouseEnter={(e) => (e.target.style.background = "#15803d")}
-          onMouseLeave={(e) => (e.target.style.background = "#16A34A")}
         >
           <Plus size={14} /> Adicionar
         </button>
@@ -1144,17 +1144,20 @@ function CartModal({
             onClick={() => {
               // Salvar dados do produtor para próxima vez
               const cleaned = unmaskPhone(phone);
-              localStorage.setItem("agro_producer", JSON.stringify({
-                name: producerName.trim(),
-                phone: cleaned,
-              }));
+              localStorage.setItem(
+                "agro_producer",
+                JSON.stringify({
+                  name: producerName.trim(),
+                  phone: cleaned,
+                }),
+              );
               localStorage.setItem("agro_producer_phone", cleaned);
-              
+
               onSubmit({
                 items: cartItems,
                 producerName: producerName.trim(),
                 phone: cleaned,
-              })
+              });
             }}
             disabled={!canSubmit || submitting}
             style={{
@@ -1577,7 +1580,7 @@ export function ProducerPortalPage({ onSubmit }) {
           style={{
             flex: 1,
             padding: "20px",
-            maxWidth: 640,
+            maxWidth: 900,
             margin: "0 auto",
             width: "100%",
           }}
