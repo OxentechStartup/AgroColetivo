@@ -22,8 +22,13 @@ export function useKeepAlive(intervalMs = 600000) {
 
     const pingServer = async () => {
       try {
+        // Usar window.location.origin automaticamente (produção) ou localhost (dev)
         const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-        const response = await fetch(`${appUrl}/api/ping`, {
+        const pingUrl = `${appUrl}/api/ping`;
+
+        // Debug: mostrar qual URL está sendo usada
+        console.debug(`[Keep-Alive] Tentando ping em: ${pingUrl}`);
+        const response = await fetch(pingUrl, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
