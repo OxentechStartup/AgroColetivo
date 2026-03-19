@@ -15,14 +15,57 @@ import {
   Sprout,
   Wheat,
   Search,
+  Leaf,
+  Droplet,
+  Zap,
+  LayoutGrid,
+  ShoppingCart,
+  Clock,
+  TrendingUp,
+  Star,
+  Filter,
+  X,
 } from "lucide-react";
-import { ProgressBar } from "../components/ProgressBar";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { daysUntilDeadline } from "../utils/data";
 import { supabase } from "../lib/supabase";
 import styles from "./ProducerPortalPage.module.css";
 
-// Busca TODAS as cotações abertas COM as informações do gestor, sem filtro de gestor (portal é público)
+// Categorias de produtos
+const CATEGORIES = [
+  { id: "all", name: "Todos", icon: LayoutGrid, color: "#16A34A" },
+  { id: "grains", name: "Grãos", icon: Wheat, color: "#DC2626" },
+  { id: "seeds", name: "Sementes", icon: Leaf, color: "#7C3AED" },
+  { id: "nutrients", name: "Nutrientes", icon: Droplet, color: "#0EA5E9" },
+  { id: "tools", name: "Equipamentos", icon: Zap, color: "#F59E0B" },
+];
+
+// Função helper para categorizar produto
+function getCategoryId(product) {
+  const text = product.toLowerCase();
+  if (text.includes("semente") || text.includes("semilla")) return "seeds";
+  if (
+    text.includes("milho") ||
+    text.includes("soja") ||
+    text.includes("arroz") ||
+    text.includes("trigo") ||
+    text.includes("feijão") ||
+    text.includes("cereal") ||
+    text.includes("grão")
+  )
+    return "grains";
+  if (text.includes("nutritente") || text.includes("ração") || text.includes("adubo"))
+    return "nutrients";
+  if (
+    text.includes("equipamento") ||
+    text.includes("máquina") ||
+    text.includes("bomba") ||
+    text.includes("irrigação")
+  )
+    return "tools";
+  return "all";
+}
+
 async function fetchOpenCampaigns() {
   const { data, error } = await supabase
     .from("v_campaign_summary")
@@ -40,71 +83,207 @@ async function fetchOpenCampaigns() {
     status: row.status,
     deadline: row.deadline,
     totalOrdered: Number(row.total_ordered ?? 0),
-    orders: [],
+    approval: Number(row.progress_pct ?? 0),
     imageUrl: row.image_url,
     pivoId: row.pivo_id,
     gestorName: row.gestor_name?.[0]?.name || "Gestor",
+    gestorPhone: row.gestor_name?.[0]?.phone || "",
+    category: getCategoryId(row.product),
   }));
 }
 
-// ── helpers de URL ────────────────────────────────────────────────────────
-function getCidFromURL() {
-  return new URLSearchParams(window.location.search).get("c") ?? "";
-}
-function setCidInURL(cid, replace = false) {
-  const url = new URL(window.location.href);
-  if (cid) url.searchParams.set("c", cid);
-  else url.searchParams.delete("c");
-  if (replace)
-    window.history.replaceState({ cid: cid || null }, "", url.toString());
-  else window.history.pushState({ cid: cid || null }, "", url.toString());
-}
-
-// ── formata "2025-06-30" → "30/06/2025" ─────────────────────────────────
 function fmtDate(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
 
-// ── Card de cotação com imagem (para abas) ───────────────────────────────────
-function CampaignCardWithImage({ campaign, onJoin, showGestor = false }) {
-  const ordered = campaign.totalOrdered ?? 0;
-  const pct =
-    campaign.goalQty > 0
-      ? Math.min(100, Math.round((ordered / campaign.goalQty) * 100))
-      : 0;
+// ══════════════════════════════════════════════════════════════════════════════
+// COMPONENTES
+// ══════════════════════════════════════════════════════════════════════════════
 
+function Header() {
   return (
     <div
       style={{
+        background: "linear-gradient(135deg, var(--primary) 0%, #15803d 100%)",
+        color: "white",
+        padding: "20px 24px",
+        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+      }}
+    >
+      <div style={{ maxWidth: 640, margin: "0 auto", width: "100%" }}>
+        <h1
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            margin: "0 0 4px 0",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <ShoppingCart size={24} />
+          AgroColetivo
+        </h1>
+        <p style={{ fontSize: ".85rem", margin: 0, opacity: 0.9 }}>
+          Compras coletivas direto do produtor
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CategoryFilter({ categories, active, onChange }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "8px",
+        overflowX: "auto",
+        padding: "12px 0",
+        marginBottom: "16px",
+        scrollBehavior: "smooth",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {categories.map((cat) => {
+        const Icon = cat.icon;
+        const isActive = cat.id === active;
+        return (
+          <button
+            key={cat.id}
+            onClick={() => onChange(cat.id)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "8px 14px",
+              borderRadius: "20px",
+              border: `2px solid ${isActive ? cat.color : "var(--border)"}`,
+              background: isActive ? `${cat.color}15` : "var(--surface2)",
+              color: isActive ? cat.color : "var(--text2)",
+              fontSize: ".85rem",
+              fontWeight: isActive ? 600 : 500,
+              cursor: "pointer",
+              transition: "all 0.2s",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.target.style.borderColor = cat.color;
+                e.target.style.background = `${cat.color}08`;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.target.style.borderColor = "var(--border)";
+                e.target.style.background = "var(--surface2)";
+              }
+            }}
+          >
+            <Icon size={14} />
+            {cat.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SearchBar({ value, onChange, placeholder = "Buscar cotações..." }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        background: "var(--surface2)",
+        border: "1px solid var(--border)",
+        borderRadius: "8px",
+        padding: "10px 14px",
+        marginBottom: "20px",
+      }}
+    >
+      <Search size={16} color="var(--text3)" />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          flex: 1,
+          border: "none",
+          background: "none",
+          outline: "none",
+          fontSize: ".9rem",
+          color: "var(--text1)",
+        }}
+      />
+      {value && (
+        <button
+          onClick={() => onChange("")}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "4px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--text3)",
+          }}
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function CampaignCard({ campaign, onJoin }) {
+  const progress = Math.min(100, Math.round(campaign.approval));
+  const daysLeft =
+    campaign.deadline && daysUntilDeadline(campaign.deadline);
+  const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+
+  return (
+    <div
+      onClick={() => onJoin(campaign.id)}
+      style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",
-        borderRadius: "var(--r-xl)",
+        borderRadius: "12px",
         overflow: "hidden",
+        cursor: "pointer",
+        transition: "all 0.3s",
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        cursor: "pointer",
-        transition: "all 0.2s",
       }}
-      onClick={() => onJoin(campaign.id)}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "var(--primary)";
-        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = "0 8px 16px rgba(22,163,74,0.12)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = "var(--border)";
         e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "none";
       }}
     >
       {/* Imagem */}
       <div
         style={{
           width: "100%",
-          height: 160,
-          background: "var(--surface2)",
+          height: 180,
+          background: "linear-gradient(135deg, var(--surface2) 0%, var(--surface3) 100%)",
           overflow: "hidden",
+          position: "relative",
         }}
       >
         {campaign.imageUrl ? (
@@ -116,14 +295,6 @@ function CampaignCardWithImage({ campaign, onJoin, showGestor = false }) {
               height: "100%",
               objectFit: "cover",
             }}
-            onError={(e) => {
-              e.target.style.display = "none";
-              e.target.parentElement.innerHTML = `
-                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--text3);">
-                  <span>Erro ao carregar imagem</span>
-                </div>
-              `;
-            }}
           />
         ) : (
           <div
@@ -133,305 +304,133 @@ function CampaignCardWithImage({ campaign, onJoin, showGestor = false }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "var(--text3)",
+              background: "linear-gradient(135deg, var(--primary-dim) 0%, var(--surface2) 100%)",
             }}
           >
-            <Package size={32} />
+            <Package size={42} color="var(--primary)" opacity={0.3} />
+          </div>
+        )}
+        {isUrgent && (
+          <div
+            style={{
+              position: "absolute",
+              top: "8px",
+              right: "8px",
+              background: "#DC2626",
+              color: "white",
+              padding: "4px 10px",
+              borderRadius: "6px",
+              fontSize: ".7rem",
+              fontWeight: 700,
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            <Clock size={12} /> {daysLeft}d
           </div>
         )}
       </div>
 
       {/* Conteúdo */}
-      <div
-        style={{
-          padding: "12px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-          flex: 1,
-        }}
-      >
-        <h3
-          style={{
-            fontSize: ".95rem",
-            fontWeight: 600,
-            margin: 0,
-            lineHeight: 1.3,
-          }}
-        >
+      <div style={{ padding: "14px", display: "flex", flexDirection: "column", flex: 1 }}>
+        <h3 style={{ fontSize: ".95rem", fontWeight: 700, margin: "0 0 8px 0", lineHeight: 1.2 }}>
           {campaign.product}
         </h3>
 
-        <div
-          style={{
-            fontSize: ".8rem",
-            color: "var(--text2)",
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-          }}
-        >
-          <Target size={12} />
-          Meta: {campaign.goalQty} {campaign.unit}
-        </div>
-
-        {/* Progress */}
-        <div style={{ marginTop: "auto" }}>
+        <div style={{ marginBottom: "10px" }}>
           <div
             style={{
-              height: 4,
+              height: "6px",
               background: "var(--surface2)",
-              borderRadius: 2,
+              borderRadius: "3px",
               overflow: "hidden",
-              marginBottom: 4,
+              marginBottom: "6px",
             }}
           >
             <div
               style={{
                 height: "100%",
-                background: "var(--primary)",
-                width: `${pct}%`,
-                transition: "width 0.3s",
+                background: `linear-gradient(90deg, var(--primary), #15803d)`,
+                width: `${progress}%`,
+                transition: "width 0.6s ease",
               }}
             />
           </div>
-          <div style={{ fontSize: ".72rem", color: "var(--text3)" }}>
-            {pct}% · Faltam {Math.max(0, campaign.goalQty - ordered)}{" "}
-            {campaign.unit.toLowerCase()}
+          <div style={{ fontSize: ".75rem", color: "var(--text3)", display: "flex", justifyContent: "space-between" }}>
+            <span>{progress}% completo</span>
+            <span>{campaign.goalQty} {campaign.unit}</span>
           </div>
         </div>
 
-        {/* Gestor */}
-        {showGestor && (
-          <div
-            style={{
-              fontSize: ".75rem",
-              color: "var(--text3)",
-              borderTop: "1px solid var(--border)",
-              paddingTop: "8px",
-              marginTop: "8px",
-            }}
-          >
-            Gestor: <strong>{campaign.gestorName}</strong>
+        {campaign.deadline && (
+          <div style={{ fontSize: ".75rem", color: "var(--text3)", marginBottom: "10px", display: "flex", alignItems: "center", gap: "4px" }}>
+            <CalendarDays size={12} />
+            {daysLeft === 0 ? "Encerra hoje!" : `${fmtDate(campaign.deadline)}`}
           </div>
         )}
+
+        <div style={{ fontSize: ".8rem", color: "var(--text2)", marginTop: "auto", paddingTop: "10px", borderTop: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <User size={12} />
+            <strong>{campaign.gestorName}</strong>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Carrossel com abas e busca ──────────────────────────────────────────────
-function CampaignsBrowser({ campaigns, onJoin }) {
-  const [tab, setTab] = useState("carousel"); // 'carousel' | 'browse'
-  const [search, setSearch] = useState("");
-  const [idx, setIdx] = useState(0);
-  const [dir, setDir] = useState("next");
-  const [animKey, setAnimKey] = useState(0);
-  const timerRef = useRef(null);
-
-  const filtered = campaigns.filter(
-    (c) =>
-      search === "" ||
-      c.product.toLowerCase().includes(search.toLowerCase()) ||
-      c.gestorName.toLowerCase().includes(search.toLowerCase()),
-  );
-  const open = campaigns;
-  const carouselCampaigns = tab === "carousel" ? open : filtered;
-  const total = carouselCampaigns.length;
-
-  const startTimer = () => {
-    clearInterval(timerRef.current);
-    if (total < 2 || tab !== "carousel") return;
-    timerRef.current = setInterval(() => {
-      setDir("next");
-      setIdx((i) => (i + 1) % total);
-      setAnimKey((k) => k + 1);
-    }, 5000);
-  };
-
-  useEffect(() => {
-    setIdx(0);
-    startTimer();
-    return () => clearInterval(timerRef.current);
-  }, [total, tab]);
-
-  const go = (next) => {
-    const newIdx = (next + total) % total;
-    setDir(
-      newIdx > idx || (idx === total - 1 && newIdx === 0) ? "next" : "prev",
-    );
-    setIdx(newIdx);
-    setAnimKey((k) => k + 1);
-    startTimer();
-  };
-
-  if (total === 0)
-    return (
-      <div style={{ textAlign: "center", padding: "40px 20px" }}>
-        <Package size={48} style={{ margin: "0 auto 12px", opacity: 0.2 }} />
-        <p style={{ color: "var(--text3)" }}>Nenhuma cotação encontrada</p>
-      </div>
-    );
+function BrowseView({ campaigns, selectedCategory, searchQuery, onJoin, onCategoryChange, onSearchChange }) {
+  const filtered = campaigns.filter((c) => {
+    const matchCategory = selectedCategory === "all" || c.category === selectedCategory;
+    const matchSearch =
+      searchQuery === "" ||
+      c.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.gestorName.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCategory && matchSearch;
+  });
 
   return (
-    <div>
-      {/* Abas */}
-      <div
-        style={{
-          display: "flex",
-          gap: "16px",
-          borderBottom: "1px solid var(--border)",
-          marginBottom: "20px",
-          paddingBottom: "12px",
-        }}
-      >
-        <button
-          onClick={() => {
-            setTab("carousel");
-            setSearch("");
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: ".95rem",
-            fontWeight: tab === "carousel" ? 600 : 500,
-            color: tab === "carousel" ? "var(--primary)" : "var(--text2)",
-            borderBottom:
-              tab === "carousel" ? "2px solid var(--primary)" : "none",
-            paddingBottom: "4px",
-            transition: "all 0.2s",
-          }}
-        >
-          Carrossel
-        </button>
-        <button
-          onClick={() => {
-            setTab("browse");
-            setSearch("");
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontSize: ".95rem",
-            fontWeight: tab === "browse" ? 600 : 500,
-            color: tab === "browse" ? "var(--primary)" : "var(--text2)",
-            borderBottom:
-              tab === "browse" ? "2px solid var(--primary)" : "none",
-            paddingBottom: "4px",
-            transition: "all 0.2s",
-          }}
-        >
-          Procurar
-        </button>
-      </div>
+    <div style={{ flex: 1, padding: "20px", paddingTop: 0, maxWidth: 640, margin: "0 auto", width: "100%" }}>
+      <CategoryFilter categories={CATEGORIES} active={selectedCategory} onChange={onCategoryChange} />
+      {filtered.length > 3 && <SearchBar value={searchQuery} onChange={onSearchChange} />}
 
-      {/* Busca (visível em ambas abas) */}
-      {campaigns.length > 3 && (
-        <div style={{ marginBottom: "16px" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "var(--surface2)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--r)",
-              padding: "8px 12px",
-            }}
-          >
-            <Search size={16} color="var(--text3)" />
-            <input
-              type="text"
-              placeholder="Buscar por produto ou gestor..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setIdx(0);
-              }}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px" }}>
+          <Package size={48} style={{ margin: "0 auto 16px", opacity: 0.2 }} />
+          <p style={{ color: "var(--text3)", fontSize: ".95rem", margin: 0 }}>
+            Nenhuma cotação encontrada
+          </p>
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange("")}
               style={{
-                flex: 1,
+                marginTop: "16px",
+                background: "var(--primary)",
+                color: "white",
                 border: "none",
-                background: "none",
-                outline: "none",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                cursor: "pointer",
                 fontSize: ".85rem",
-                color: "var(--text1)",
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Carrossel */}
-      {tab === "carousel" && (
-        <div className={styles.carousel}>
-          <div
-            className={styles.carouselHeader}
-            style={{ marginBottom: "16px" }}
-          >
-            <span className={styles.carouselLabel}>Cotações populares</span>
-            {total > 1 && (
-              <div className={styles.carouselNav}>
-                <button className={styles.navBtn} onClick={() => go(idx - 1)}>
-                  <ChevronLeft size={14} />
-                </button>
-                <div className={styles.dots}>
-                  {carouselCampaigns.map((_, i) => (
-                    <button
-                      key={i}
-                      className={`${styles.dot} ${i === idx ? styles.dotActive : ""}`}
-                      onClick={() => go(i)}
-                    />
-                  ))}
-                </div>
-                <button className={styles.navBtn} onClick={() => go(idx + 1)}>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div
-            key={animKey}
-            className={`${styles.cardSlide} ${styles[`slide_${dir}`]}`}
-          >
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)",
-                padding: "20px",
-                minHeight: 360,
+                fontWeight: 600,
               }}
             >
-              {carouselCampaigns[idx] && (
-                <CampaignCardCarouselStyle
-                  campaign={carouselCampaigns[idx]}
-                  onJoin={onJoin}
-                />
-              )}
-            </div>
-          </div>
+              Limpar busca
+            </button>
+          )}
         </div>
-      )}
-
-      {/* Grid Browse */}
-      {tab === "browse" && (
+      ) : (
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: "16px",
+            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+            gap: "12px",
           }}
         >
           {filtered.map((c) => (
-            <CampaignCardWithImage
-              key={c.id}
-              campaign={c}
-              onJoin={onJoin}
-              showGestor={true}
-            />
+            <CampaignCard key={c.id} campaign={c} onJoin={onJoin} />
           ))}
         </div>
       )}
@@ -439,557 +438,378 @@ function CampaignsBrowser({ campaigns, onJoin }) {
   );
 }
 
-// ── Card carrossel (estilo antigo, para não quebrar animação) ─────────────────
-function CampaignCardCarouselStyle({ campaign, onJoin }) {
-  const ordered = campaign.totalOrdered ?? 0;
-  const pct =
-    campaign.goalQty > 0
-      ? Math.min(100, Math.round((ordered / campaign.goalQty) * 100))
-      : 0;
+function FormView({ campaign, onSubmit, onBack, saving }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [qty, setQty] = useState("");
+  const [error, setError] = useState(null);
+
+  // Carrega dados salvos
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("agro_producer") ?? "null");
+      if (saved) {
+        setName(saved.name || "");
+        setPhone(maskPhone(saved.phone) || "");
+      }
+    } catch {}
+  }, []);
+
+  const qtyNum = +qty;
+  const qtyOk = qtyNum >= campaign.minQty && (campaign.maxQty === null || qtyNum <= campaign.maxQty);
+  const canSubmit = name.trim().length > 2 && qtyOk && !saving;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setError(null);
+    try {
+      const cleanPhone = unmaskPhone(phone);
+      localStorage.setItem(
+        "agro_producer",
+        JSON.stringify({ name: name.trim(), phone: cleanPhone }),
+      );
+      await onSubmit({
+        campaignId: campaign.id,
+        producerName: name.trim(),
+        phone: cleanPhone,
+        qty: qtyNum,
+      });
+    } catch (e) {
+      setError(e?.message || "Erro ao enviar");
+    }
+  };
 
   return (
-    <div>
-      <span
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        padding: "20px",
+        maxWidth: 640,
+        margin: "0 auto",
+        width: "100%",
+      }}
+    >
+      <button
+        onClick={onBack}
         style={{
-          fontSize: ".75rem",
-          color: "var(--text3)",
-          textTransform: "uppercase",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          background: "none",
+          border: "none",
+          color: "var(--primary)",
+          cursor: "pointer",
+          fontSize: ".9rem",
+          fontWeight: 600,
+          marginBottom: "20px",
+          padding: "4px 0",
         }}
       >
-        Cotação Aberta
-      </span>
-      <h3 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "8px 0 12px" }}>
-        {campaign.product}
-      </h3>
+        <ChevronLeft size={18} /> Voltar
+      </button>
 
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "8px",
-          marginBottom: "16px",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "12px",
+          padding: "24px",
+          marginBottom: "20px",
         }}
       >
-        <div
-          style={{
-            fontSize: ".85rem",
-            color: "var(--text2)",
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-          }}
-        >
-          <Target size={12} />
-          <span>
-            Meta: {campaign.goalQty} {campaign.unit}
-          </span>
-        </div>
-        {campaign.deadline &&
-          (() => {
-            const days = daysUntilDeadline(campaign.deadline);
-            const urgent = days !== null && days <= 3 && days >= 0;
-            return (
-              <div
-                style={{
-                  fontSize: ".85rem",
-                  color: urgent ? "var(--red)" : "var(--text2)",
-                  fontWeight: urgent ? 700 : 400,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                <CalendarDays size={12} />
-                <span>
-                  {days === 0
-                    ? "⚠ Encerra hoje!"
-                    : urgent
-                      ? `⚠ Encerra em ${days} dia${days > 1 ? "s" : ""}!`
-                      : `Prazo: ${fmtDate(campaign.deadline)}`}
-                </span>
-              </div>
-            );
-          })()}
+        <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: "0 0 8px 0" }}>Cotação</h2>
+        <p style={{ fontSize: ".85rem", color: "var(--text2)", margin: 0 }}>
+          {campaign.product} · Meta: {campaign.goalQty} {campaign.unit}
+        </p>
       </div>
 
-      <div style={{ marginBottom: "16px" }}>
-        <div
-          style={{
-            height: 6,
-            background: "var(--surface2)",
-            borderRadius: 3,
-            overflow: "hidden",
-            marginBottom: "6px",
-          }}
-        >
-          <div
+      <div style={{ flex: 1 }}>
+        {/* Nome */}
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: ".85rem", fontWeight: 600, marginBottom: "6px", color: "var(--text)" }}>
+            <User size={14} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+            Nome completo *
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Seu nome"
+            autoFocus
             style={{
-              height: "100%",
-              background: "var(--primary)",
-              width: `${pct}%`,
-              transition: "width 0.3s",
+              width: "100%",
+              padding: "10px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              fontSize: ".9rem",
+              boxSizing: "border-box",
+              background: "var(--surface2)",
             }}
           />
         </div>
-        <div style={{ fontSize: ".8rem", color: "var(--text3)" }}>
-          {pct}% · Faltam {Math.max(0, campaign.goalQty - ordered)}{" "}
-          {campaign.unit.toLowerCase()}
-        </div>
-      </div>
 
-      <div
-        style={{
-          fontSize: ".75rem",
-          color: "var(--text3)",
-          borderTop: "1px solid var(--border)",
-          paddingTop: "12px",
-          marginBottom: "16px",
-        }}
-      >
-        Gestor: <strong>{campaign.gestorName}</strong>
+        {/* Telefone */}
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: ".85rem", fontWeight: 600, marginBottom: "6px", color: "var(--text)" }}>
+            <Phone size={14} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+            Telefone/WhatsApp *
+          </label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(maskPhone(e.target.value))}
+            placeholder="(00) 0000-0000"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              fontSize: ".9rem",
+              boxSizing: "border-box",
+              background: "var(--surface2)",
+            }}
+          />
+        </div>
+
+        {/* Quantidade */}
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: ".85rem", fontWeight: 600, marginBottom: "6px", color: "var(--text)" }}>
+            <Target size={14} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+            Quantidade ({campaign.unit}) *
+          </label>
+          <input
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            placeholder="0"
+            min={campaign.minQty}
+            max={campaign.maxQty || undefined}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              border: `1px solid ${!qtyOk && qty ? "var(--red)" : "var(--border)"}`,
+              borderRadius: "8px",
+              fontSize: ".9rem",
+              boxSizing: "border-box",
+              background: "var(--surface2)",
+            }}
+          />
+          <div style={{ fontSize: ".75rem", color: "var(--text3)", marginTop: "4px" }}>
+            Mínimo: {campaign.minQty} {campaign.unit}
+            {campaign.maxQty && ` | Máximo: ${campaign.maxQty}`}
+          </div>
+        </div>
+
+        {error && (
+          <div style={{ padding: "10px", background: "#FEE2E2", border: "1px solid #FCA5A5", borderRadius: "6px", color: "#DC2626", fontSize: ".85rem", marginBottom: "16px" }}>
+            {error}
+          </div>
+        )}
       </div>
 
       <button
-        onClick={() => onJoin(campaign.id)}
+        onClick={handleSubmit}
+        disabled={!canSubmit}
         style={{
           width: "100%",
-          background: "var(--primary)",
-          color: "white",
+          padding: "12px",
+          background: canSubmit ? "var(--primary)" : "var(--surface3)",
+          color: canSubmit ? "white" : "var(--text3)",
           border: "none",
-          borderRadius: "var(--r)",
-          padding: "10px",
-          fontSize: ".85rem",
+          borderRadius: "8px",
+          fontSize: ".95rem",
           fontWeight: 600,
-          cursor: "pointer",
+          cursor: canSubmit ? "pointer" : "not-allowed",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: "6px",
-          transition: "background 0.2s",
+          gap: "8px",
+          transition: "all 0.2s",
         }}
-        onMouseEnter={(e) =>
-          (e.target.style.background = "var(--primary-dark)")
-        }
-        onMouseLeave={(e) => (e.target.style.background = "var(--primary)")}
+        onMouseEnter={(e) => {
+          if (canSubmit) {
+            e.target.style.background = "#15803d";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (canSubmit) {
+            e.target.style.background = "var(--primary)";
+          }
+        }}
       >
-        Participar desta cotação <ArrowRight size={14} />
+        {saving ? (
+          <>
+            <Loader size={16} style={{ animation: "spin 1s linear infinite" }} />
+            Enviando...
+          </>
+        ) : (
+          <>
+            <ShoppingCart size={16} />
+            Fazer pedido
+          </>
+        )}
       </button>
     </div>
   );
 }
 
-// ── Página principal ──────────────────────────────────────────────────────
-export function ProducerPortalPage({ onSubmit }) {
-  const initialCid = getCidFromURL();
-
-  // Carrega todas as cotações abertas diretamente (independente do usuário logado)
-  const [allCampaigns, setAllCampaigns] = useState([]);
-  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
-  useEffect(() => {
-    fetchOpenCampaigns()
-      .then(setAllCampaigns)
-      .catch(() => {})
-      .finally(() => setLoadingCampaigns(false));
-  }, []);
-
-  // Lembra os dados do fazendeiro entre visitas
-  const savedProducer = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("agro_producer") ?? "null");
-    } catch {
-      return null;
-    }
-  })();
-
-  const [step, setStep] = useState(initialCid ? "form" : "browse");
-  const [cId, setCId] = useState(initialCid);
-  const [name, setName] = useState(savedProducer?.name ?? "");
-  const [phone, setPhone] = useState(
-    savedProducer?.phone ? maskPhone(savedProducer.phone) : "",
-  );
-  const [qty, setQty] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const [isKnown, setIsKnown] = useState(!!savedProducer);
-
-  const open = allCampaigns;
-  const active = open.find((c) => c.id === cId) ?? null;
-  const orderedInActive = active ? active.totalOrdered : 0;
-  const tons =
-    active && qty
-      ? ((+qty * (active.unitWeight ?? 25)) / 1000).toFixed(2)
-      : null;
-  const minQty = active?.minQty ?? 1;
-  const maxQty = active?.maxQty ?? null;
-  const qtyNum = +qty;
-  const qtyOk = qtyNum >= minQty && (maxQty === null || qtyNum <= maxQty);
-  const canSend = active && name.trim().length > 1 && qtyOk;
-
-  // Sincroniza estado com o botão Voltar/Avançar do navegador
-  useEffect(() => {
-    const onPop = () => {
-      const cid = getCidFromURL();
-      setCId(cid);
-      setStep(cid ? "form" : "browse");
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
-
-  // Participar de uma cotação → muda URL para /portalforms?c=ID
-  const handleJoin = (id) => {
-    setCId(id);
-    setCidInURL(id);
-    setStep("form");
-  };
-
-  const handleBack = () => {
-    setCidInURL("");
-    setStep("browse");
-  };
-
-  const handleSubmit = async () => {
-    if (!canSend) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const cleanPhone = unmaskPhone(phone);
-      // Salva dados do produtor para próxima visita
-      localStorage.setItem(
-        "agro_producer",
-        JSON.stringify({ name: name.trim(), phone: cleanPhone }),
-      );
-      await onSubmit(cId, {
-        producerName: name.trim(),
-        phone: cleanPhone,
-        qty: +qty,
-        confirmedAt: new Date().toISOString().slice(0, 10),
-      });
-      setCidInURL("");
-      setStep("done");
-    } catch (e) {
-      setError(e?.message || "Erro ao enviar pedido");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const reset = () => {
-    setStep("browse");
-    setCId("");
-    setName("");
-    setPhone("");
-    setQty("");
-    setError(null);
-    setCidInURL("");
-  };
-
-  // ── Sucesso ──────────────────────────────────────────────────────────────
-  if (step === "done")
-    return (
-      <div className={styles.portal}>
-        <Bg />
-        <Header />
-        <div className={styles.centerWrap}>
-          <div className={styles.successCard}>
-            <CheckCircle size={48} className={styles.successIcon} />
-            <h2>Pedido enviado!</h2>
-            <p>
-              Recebido com sucesso. O gestor confirma via WhatsApp em breve.
-            </p>
-            <button className={styles.resetBtn} onClick={reset}>
-              Fazer outro pedido
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-
-  // ── Formulário ───────────────────────────────────────────────────────────
-  if (step === "form")
-    return (
-      <div className={styles.portal}>
-        <Bg />
-        <Header />
-        <div className={styles.formWrap}>
-          <button className={styles.backBtn} onClick={handleBack}>
-            <ChevronLeft size={14} /> Voltar
-          </button>
-
-          <div className={styles.formCard}>
-            {active && (
-              <div className={styles.formBadge}>
-                <span className={styles.formBadgeName}>{active.product}</span>
-                <span className={styles.formBadgeSub}>
-                  meta: {active.goalQty} {active.unit}
-                </span>
-              </div>
-            )}
-
-            <h2 className={styles.formTitle}>Registrar Pedido</h2>
-            <p className={styles.formSub}>
-              Preencha os dados. O gestor confirma via WhatsApp.
-            </p>
-
-            {isKnown && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: "var(--primary-dim)",
-                  border: "1px solid var(--primary-border)",
-                  borderRadius: "var(--r)",
-                  padding: "9px 14px",
-                  fontSize: ".8rem",
-                  color: "var(--primary)",
-                  marginBottom: 4,
-                }}
-              >
-                <span style={{ fontSize: "1rem" }}>👋</span>
-                <span>
-                  Bem-vindo de volta, <strong>{name}</strong>! Seus dados foram
-                  preenchidos automaticamente.
-                </span>
-                <button
-                  style={{
-                    marginLeft: "auto",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: ".7rem",
-                    color: "var(--text3)",
-                    textDecoration: "underline",
-                  }}
-                  onClick={() => {
-                    setName("");
-                    setPhone("");
-                    setIsKnown(false);
-                  }}
-                >
-                  Trocar
-                </button>
-              </div>
-            )}
-
-            {/* Select manual só se não veio do carrossel */}
-            {!cId && (
-              <div className="form-group">
-                <label className="form-label">Cotação</label>
-                <select
-                  className="form-select"
-                  value={cId}
-                  onChange={(e) => {
-                    setCId(e.target.value);
-                    setCidInURL(e.target.value);
-                  }}
-                >
-                  <option value="">— Selecione —</option>
-                  {open.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.product}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {active && (
-              <div className={styles.formProgress}>
-                <ProgressBar
-                  value={orderedInActive}
-                  goal={active.goalQty}
-                  unit={active.unit}
-                />
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">
-                <User
-                  size={11}
-                  style={{ marginRight: 5, verticalAlign: "middle" }}
-                />
-                Nome completo
-              </label>
-              <input
-                className="form-input"
-                placeholder="João Ferreira"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <Phone
-                  size={11}
-                  style={{ marginRight: 5, verticalAlign: "middle" }}
-                />
-                WhatsApp
-              </label>
-              <input
-                className="form-input"
-                placeholder="(38) 99123-4567"
-                value={phone}
-                onChange={(e) => setPhone(maskPhone(e.target.value))}
-                inputMode="tel"
-              />
-              <span className="form-hint">
-                Para avisar sobre preço e confirmação.
-              </span>
-            </div>
-
-            {active && (
-              <div className="form-group">
-                <label className="form-label">
-                  <Package
-                    size={11}
-                    style={{ marginRight: 5, verticalAlign: "middle" }}
-                  />
-                  Quantidade ({active.unit})
-                  {minQty > 1 && (
-                    <span style={{ color: "var(--text3)", fontWeight: 400 }}>
-                      {" "}
-                      · mín. {minQty}
-                    </span>
-                  )}
-                  {maxQty && (
-                    <span style={{ color: "var(--text3)", fontWeight: 400 }}>
-                      {" "}
-                      · máx. {maxQty}
-                    </span>
-                  )}
-                </label>
-                <input
-                  type="number"
-                  className={`form-input ${styles.qtyInput}`}
-                  placeholder={
-                    maxQty ? `${minQty}–${maxQty}` : `Mín. ${minQty}`
-                  }
-                  value={qty}
-                  min={minQty}
-                  max={maxQty ?? undefined}
-                  onChange={(e) => setQty(e.target.value)}
-                  inputMode="numeric"
-                />
-                {qty && qtyNum < minQty && (
-                  <span className="form-hint" style={{ color: "var(--red)" }}>
-                    Mínimo: {minQty} {active.unit}
-                  </span>
-                )}
-                {qty && maxQty && qtyNum > maxQty && (
-                  <span className="form-hint" style={{ color: "var(--red)" }}>
-                    Máximo: {maxQty} {active.unit}
-                  </span>
-                )}
-                {tons && qtyOk && (
-                  <span className="form-hint" style={{ color: "var(--amber)" }}>
-                    ≈ {tons} toneladas
-                  </span>
-                )}
-              </div>
-            )}
-
-            {error && <div className={styles.errBox}>{error}</div>}
-
-            <button
-              className={styles.submitBtn}
-              disabled={!canSend || saving}
-              onClick={handleSubmit}
-            >
-              {saving ? (
-                <Loader size={16} className={styles.spin} />
-              ) : (
-                <>
-                  Enviar Pedido <ArrowRight size={15} />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-
-  // ── Browse (página inicial) ──────────────────────────────────────────────
+function SuccessView({ campaign, producerName, onReset }) {
   return (
-    <div className={styles.portal}>
-      <Bg />
-      <Header />
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "40px 20px",
+        textAlign: "center",
+      }}
+    >
+      <CheckCircle size={64} color="var(--primary)" style={{ marginBottom: "16px" }} />
+      <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 8px 0" }}>Pedido enviado!</h2>
+      <p style={{ color: "var(--text2)", marginBottom: "20px" }}>
+        {campaign.gestorName} receberá seu pedido via WhatsApp em breve.
+      </p>
 
-      <div className={styles.hero}>
-        <span className={styles.heroTag}>
-          <MapPin size={12} /> Tabuleiro do Norte, CE
-        </span>
-        <h1 className={styles.heroTitle}>Compras Coletivas</h1>
-        <p className={styles.heroSub}>
-          Unidos compramos melhor. Participe do grupo e economize.
+      <div
+        style={{
+          background: "var(--primary-dim)",
+          border: "1px solid var(--primary-border)",
+          borderRadius: "8px",
+          padding: "16px",
+          textAlign: "left",
+          marginBottom: "24px",
+          width: "100%",
+        }}
+      >
+        <p style={{ fontSize: ".85rem", margin: "0 0 6px 0" }}>
+          <strong>{campaign.product}</strong>
+        </p>
+        <p style={{ fontSize: ".8rem", color: "var(--text2)", margin: 0 }}>
+          Solicitante: <strong>{producerName}</strong>
         </p>
       </div>
 
-      <div className={styles.browseWrap}>
-        {loadingCampaigns ? (
-          <div className={styles.empty}>
-            <Loader
-              size={28}
-              className={styles.spin}
-              style={{ color: "var(--primary)" }}
-            />
-            <p>Carregando cotações…</p>
-          </div>
-        ) : open.length > 0 ? (
-          <CampaignsBrowser campaigns={open} onJoin={handleJoin} />
-        ) : (
-          <div className={styles.empty}>
-            <Sprout size={32} style={{ color: "var(--text3)" }} />
-            <p>Nenhuma cotação aberta no momento.</p>
-            <span className={styles.emptySub}>
-              Volte em breve ou contate o gestor.
-            </span>
-          </div>
-        )}
-
-        <button className={styles.manualBtn} onClick={() => setStep("form")}>
-          Registrar pedido manualmente
-        </button>
-      </div>
-
-      <Footer />
+      <button
+        onClick={onReset}
+        style={{
+          background: "var(--primary)",
+          color: "white",
+          border: "none",
+          padding: "12px 32px",
+          borderRadius: "8px",
+          fontSize: ".95rem",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Fazer outro pedido
+      </button>
     </div>
   );
 }
 
-function Bg() {
+// ══════════════════════════════════════════════════════════════════════════════
+// PÁGINA PRINCIPAL
+// ══════════════════════════════════════════════════════════════════════════════
+
+export function ProducerPortalPage({ onSubmit }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [step, setStep] = useState("browse"); // browse | form | success
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [processingSubmit, setProcessingSubmit] = useState(false);
+  const [submittedProducerName, setSubmittedProducerName] = useState("");
+
+  useEffect(() => {
+    fetchOpenCampaigns()
+      .then(setCampaigns)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleJoin = (campaignId) => {
+    const campaign = campaigns.find((c) => c.id === campaignId);
+    if (campaign) {
+      setSelectedCampaign(campaign);
+      setStep("form");
+    }
+  };
+
+  const handleFormSubmit = async (data) => {
+    setProcessingSubmit(true);
+    try {
+      await onSubmit(data.campaignId, {
+        producerName: data.producerName,
+        phone: data.phone,
+        qty: data.qty,
+        confirmedAt: new Date().toISOString().slice(0, 10),
+      });
+      setSubmittedProducerName(data.producerName);
+      setStep("success");
+    } finally {
+      setProcessingSubmit(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSelectedCampaign(null);
+    setSelectedCategory("all");
+    setSearchQuery("");
+    setStep("browse");
+    setSubmittedProducerName("");
+  };
+
   return (
-    <div className={styles.bg}>
-      <div className={styles.glow1} />
-      <div className={styles.glow2} />
+    <div
+      style={{
+        minHeight: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+      }}
+    >
+      <Header />
+
+      {loading ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Loader size={32} color="var(--primary)" style={{ animation: "spin 1s linear infinite" }} />
+        </div>
+      ) : step === "browse" ? (
+        <BrowseView
+          campaigns={campaigns}
+          selectedCategory={selectedCategory}
+          searchQuery={searchQuery}
+          onJoin={handleJoin}
+          onCategoryChange={setSelectedCategory}
+          onSearchChange={setSearchQuery}
+        />
+      ) : step === "form" && selectedCampaign ? (
+        <FormView
+          campaign={selectedCampaign}
+          onSubmit={handleFormSubmit}
+          onBack={handleReset}
+          saving={processingSubmit}
+        />
+      ) : step === "success" ? (
+        <SuccessView
+          campaign={selectedCampaign}
+          producerName={submittedProducerName}
+          onReset={handleReset}
+        />
+      ) : null}
+
+      <style>${`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className={styles.header}>
-      <img
-        src="https://i.imgur.com/clDJyAh.png"
-        alt="AgroColetivo"
-        width="32"
-        height="32"
-        style={{ borderRadius: 8, objectFit: "cover" }}
-      />
-      <span className={styles.logoText}>AgroColetivo</span>
-    </header>
-  );
-}
-
-function Footer() {
-  return (
-    <p className={styles.footer}>
-      AgroColetivo · Coordenação Tabuleiro do Norte/CE
-    </p>
   );
 }

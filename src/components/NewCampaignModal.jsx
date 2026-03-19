@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Wheat, Scale, Target, Calendar, Info, Image, X } from "lucide-react";
+import {
+  Wheat,
+  Target,
+  Calendar,
+  Image,
+  X,
+  ChevronDown,
+  AlertCircle,
+} from "lucide-react";
 import { Modal, ModalHeader, ModalBody, ModalFooter } from "./Modal";
 import { Button } from "./Button";
 import { createImageUrl } from "../lib/imageUpload";
@@ -37,8 +45,6 @@ export function NewCampaignModal({ onClose, onSave }) {
         return;
       }
       setError(null);
-
-      // createImageUrl faz todas as validações: tipo, tamanho, dimensões
       const url = await createImageUrl(file);
       setImagePreview(url);
       setForm((f) => ({ ...f, imageUrl: url }));
@@ -76,52 +82,73 @@ export function NewCampaignModal({ onClose, onSave }) {
   return (
     <Modal onClose={onClose}>
       <ModalHeader title="Nova Cotação" onClose={onClose} />
-      <ModalBody>
+      <ModalBody
+        style={{ maxHeight: "70dvh", overflowY: "auto", paddingBottom: "20px" }}
+      >
         {/* Produto */}
-        <div className="form-group">
-          <label className="form-label">
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: ".9rem",
+              fontWeight: 600,
+              marginBottom: "8px",
+              color: "var(--text1)",
+            }}
+          >
             <Wheat
-              size={12}
-              style={{ marginRight: 4, verticalAlign: "middle" }}
+              size={14}
+              style={{ marginRight: "4px", verticalAlign: "middle" }}
             />
             Produto *
           </label>
           <input
-            className="form-input"
+            type="text"
             placeholder="Ex: Ração de Milho 22%"
             value={form.product}
             onChange={set("product")}
             autoFocus
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              fontSize: "1rem",
+              background: "var(--surface2)",
+              boxSizing: "border-box",
+              transition: "all 0.2s",
+            }}
           />
         </div>
 
         {/* Imagem */}
-        <div className="form-group">
-          <label className="form-label">
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: ".9rem",
+              fontWeight: 600,
+              marginBottom: "8px",
+              color: "var(--text1)",
+            }}
+          >
             <Image
-              size={12}
-              style={{ marginRight: 4, verticalAlign: "middle" }}
+              size={14}
+              style={{ marginRight: "4px", verticalAlign: "middle" }}
             />
             Imagem (opcional)
           </label>
-
           {imagePreview ? (
-            <div style={{ position: "relative", marginBottom: 8 }}>
+            <div style={{ position: "relative" }}>
               <img
                 src={imagePreview}
                 alt="Preview"
                 style={{
                   width: "100%",
-                  height: 150,
+                  height: 160,
                   objectFit: "cover",
-                  borderRadius: "var(--r)",
+                  borderRadius: "8px",
                   border: "1px solid var(--border)",
-                }}
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  setError(
-                    "Erro ao carregar imagem de preview. Tente novamente.",
-                  );
                 }}
               />
               <button
@@ -131,20 +158,19 @@ export function NewCampaignModal({ onClose, onSave }) {
                   position: "absolute",
                   top: 6,
                   right: 6,
-                  background: "rgba(0,0,0,0.7)",
+                  background: "rgba(0,0,0,0.8)",
                   color: "white",
                   border: "none",
                   borderRadius: "50%",
-                  width: 28,
-                  height: 28,
+                  width: 32,
+                  height: 32,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
-                title="Remover imagem"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             </div>
           ) : (
@@ -152,195 +178,299 @@ export function NewCampaignModal({ onClose, onSave }) {
               style={{
                 display: "block",
                 border: "2px dashed var(--border)",
-                borderRadius: "var(--r)",
-                padding: "24px",
+                borderRadius: "8px",
+                padding: "32px 20px",
                 textAlign: "center",
                 cursor: "pointer",
-                transition: "all 0.2s",
+                background: "var(--surface2)",
               }}
             >
               <Image
-                size={24}
-                style={{ margin: "0 auto 6px", color: "var(--text3)" }}
+                size={28}
+                style={{ margin: "0 auto 8px", color: "var(--text3)" }}
               />
-              <span style={{ fontSize: ".85rem", color: "var(--text2)" }}>
-                Clique para adicionar imagem
+              <span
+                style={{ fontSize: ".9rem", fontWeight: 500, display: "block" }}
+              >
+                Clique para adicionar
               </span>
               <span
                 style={{
-                  display: "block",
                   fontSize: ".75rem",
                   color: "var(--text3)",
-                  marginTop: 4,
+                  marginTop: 6,
+                  display: "block",
                 }}
               >
-                JPG, PNG, WebP · Máx. 5 MB
+                JPG, PNG, WebP · Máx 5MB
               </span>
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/*"
                 onChange={handleImageSelect}
                 style={{ display: "none" }}
               />
             </label>
           )}
-
           {error && (
-            <span
+            <div
               style={{
                 fontSize: ".8rem",
                 color: "var(--red)",
-                marginTop: 4,
-                display: "block",
+                marginTop: 8,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
+              <AlertCircle size={14} />
               {error}
-            </span>
+            </div>
           )}
         </div>
 
-        {/* Unidade + Peso */}
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">Unidade</label>
-            <select
-              className="form-select"
-              value={form.unit}
-              onChange={set("unit")}
+        {/* Grid 2x2 */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "12px",
+            marginBottom: "20px",
+          }}
+        >
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: ".85rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
             >
-              <option value="sacos">Sacos</option>
-              <option value="toneladas">Toneladas</option>
-              <option value="kg">Kg</option>
-              <option value="fardos">Fardos</option>
-              <option value="litros">Litros</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">
-              <Scale
-                size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
+              Unidade *
+            </label>
+            <div style={{ position: "relative" }}>
+              <select
+                value={form.unit}
+                onChange={set("unit")}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px",
+                  fontSize: ".9rem",
+                  background: "var(--surface2)",
+                  cursor: "pointer",
+                  appearance: "none",
+                  paddingRight: "32px",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option>Sacos</option>
+                <option>Toneladas</option>
+                <option>Quilos</option>
+                <option>Fardos</option>
+                <option>Litros</option>
+                <option>Caixas</option>
+              </select>
+              <ChevronDown
+                size={14}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  color: "var(--text3)",
+                }}
               />
-              Peso/unidade (kg)
+            </div>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: ".85rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
+              Peso/un (kg)
             </label>
             <input
               type="number"
-              className="form-input"
               placeholder="25"
               value={form.unitWeight}
               onChange={set("unitWeight")}
               min="0"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                fontSize: ".9rem",
+                background: "var(--surface2)",
+                boxSizing: "border-box",
+              }}
             />
           </div>
-        </div>
 
-        {/* Metas */}
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">
-              <Target
-                size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
-              />
-              Meta (caminhão cheio) *
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: ".85rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
+              Meta *
             </label>
             <input
               type="number"
-              className="form-input"
               placeholder="300"
               value={form.goalQty}
               onChange={set("goalQty")}
               min="1"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                fontSize: ".9rem",
+                background: "var(--surface2)",
+                boxSizing: "border-box",
+              }}
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">Mínimo por pedido *</label>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: ".85rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
+              Mínimo *
+            </label>
             <input
               type="number"
-              className="form-input"
               placeholder="10"
               value={form.minQty}
               onChange={set("minQty")}
               min="1"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                fontSize: ".9rem",
+                background: "var(--surface2)",
+                boxSizing: "border-box",
+              }}
             />
           </div>
-        </div>
 
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">Máximo por pedido</label>
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: ".85rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
+              Máximo
+            </label>
             <input
               type="number"
-              className="form-input"
               placeholder="Sem limite"
               value={form.maxQty}
               onChange={set("maxQty")}
               min={form.minQty || 1}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                fontSize: ".9rem",
+                background: "var(--surface2)",
+                boxSizing: "border-box",
+              }}
             />
-            {form.maxQty && +form.maxQty < +form.minQty && (
-              <span style={{ fontSize: ".78rem", color: "var(--red)" }}>
-                Máximo não pode ser menor que o mínimo
-              </span>
-            )}
           </div>
-          <div className="form-group">
-            <label className="form-label">
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: ".85rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
               <Calendar
                 size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
+                style={{ marginRight: "3px", verticalAlign: "middle" }}
               />
               Prazo
             </label>
             <input
               type="date"
-              className="form-input"
               value={form.deadline}
               onChange={set("deadline")}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                fontSize: ".9rem",
+                background: "var(--surface2)",
+                boxSizing: "border-box",
+              }}
             />
           </div>
         </div>
 
+        {/* Resumo */}
         {+form.goalQty > 0 && +form.unitWeight > 0 && (
           <div
             style={{
               background: "var(--primary-dim)",
               border: "1px solid var(--primary-border)",
-              borderRadius: "var(--r)",
-              padding: "10px 14px",
-              fontSize: ".78rem",
+              borderRadius: "6px",
+              padding: "10px",
+              fontSize: ".75rem",
               color: "var(--primary)",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
+              marginBottom: "20px",
             }}
           >
-            <Info size={12} />
-            Meta equivale a{" "}
-            <strong>
-              {((+form.goalQty * +form.unitWeight) / 1000).toFixed(1)} toneladas
-            </strong>
+            <strong>Meta:</strong>{" "}
+            {((+form.goalQty * +form.unitWeight) / 1000).toFixed(1)} tons
             {+form.minQty > 0 && (
               <>
                 {" "}
-                · Mínimo:{" "}
-                <strong>
-                  {((+form.minQty * +form.unitWeight) / 1000).toFixed(1)} t
-                </strong>
+                | <strong>Mín:</strong>{" "}
+                {((+form.minQty * +form.unitWeight) / 1000).toFixed(1)} tons
               </>
             )}
           </div>
         )}
       </ModalBody>
+
       <ModalFooter>
-        <Button variant="outline" onClick={onClose}>
+        <Button variant="secondary" onClick={onClose} disabled={saving}>
           Cancelar
         </Button>
         <Button
-          variant="primary"
-          disabled={!canSave || saving}
           onClick={handleSave}
+          disabled={!canSave || saving}
+          loading={saving}
         >
-          {saving ? "Criando…" : "Criar Cotação"}
+          Criar cotação
         </Button>
       </ModalFooter>
     </Modal>
