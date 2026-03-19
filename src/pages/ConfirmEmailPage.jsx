@@ -15,7 +15,9 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
   const [resendCountdown, setResendCountdown] = useState(0);
 
   // Pega o email e pendingId da localStorage (salvo no signUp)
-  const user = JSON.parse(localStorage.getItem("agro_pending_registration") || "{}");
+  const user = JSON.parse(
+    localStorage.getItem("agro_pending_registration") || "{}",
+  );
   const email = user?.email || "";
   const pendingId = user?.id || "";
 
@@ -83,12 +85,12 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
     setError("");
 
     try {
-      await verifyEmail(pendingId, code);
+      const verifyResult = await verifyEmail(pendingId, code);
       setSuccess("Email verificado com sucesso! Entrando no sistema...");
 
       // Se veio da tela de registro/login bloqueado, chama callback para fazer login real
       if (typeof onVerified === "function") {
-        setTimeout(() => onVerified(), 1500);
+        setTimeout(() => onVerified(verifyResult), 1500);
       } else {
         // Rota direta /auth/confirmar-email: redireciona para login
         setTimeout(() => {

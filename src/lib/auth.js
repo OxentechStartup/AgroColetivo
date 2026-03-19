@@ -404,7 +404,11 @@ export async function verifyEmail(pendingId, code) {
     "User created after email verification",
   );
 
-  return { message: "Email verificado! Conta criada com sucesso." };
+  return {
+    message: "Email verificado! Conta criada com sucesso.",
+    user: newUser,
+    password: pending.password_hash, // Senha em plaintext para fazer login imediato
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

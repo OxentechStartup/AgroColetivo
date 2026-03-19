@@ -100,7 +100,10 @@ export function useAuth() {
         email: pendingUser.email,
         id: pendingUser.id,
       });
-      localStorage.setItem("agro_pending_registration", JSON.stringify(pendingUser));
+      localStorage.setItem(
+        "agro_pending_registration",
+        JSON.stringify(pendingUser),
+      );
       setPendingVerificationUser(pendingUser);
     } catch (err) {
       setError(err?.message || "Erro desconhecido ao registrar");
@@ -113,24 +116,51 @@ export function useAuth() {
   }, []);
 
   // Chamado pela ConfirmEmailPage quando o email for verificado com sucesso
-  // Neste ponto o usuário JÁ foi criado em `users` pelo verifyEmail()
-  const onEmailVerified = useCallback(async () => {
-    if (!pendingVerificationUser) return;
+  // Recebe os dados retornados por verifyEmail() incluindo email, senha e user
+  const onEmailVerified = useCallback(async (verifyResult) => {
+    if (!verifyResult || !verifyResult.user) return;
+    
     try {
-      const { data } = await supabase
-        .from("users")
-        .select("id, name, email, phone, role, city, notes, active")
-        .eq("email", pendingVerificationUser.email)
-        .single();
-      if (data) {
-        const sessionUser = { ...data, blocked: data.active === false };
+      const { user: userData, password } = verifyResult;
+      
+      // Fazer login automático no Supabase Auth
+      const { data: session, error: loginError } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: password,
+      });
+
+      if (loginError) {
+        console.error("⚠️ Erro ao fazer login automático:", loginError);
+        // Mesmo se falhar o login Supabase, o usuário foi criado em `users`
+        // Então salvamos a sessão manual de qualquer forma
+      } else if (session) {
+        console.log("✅ Login Supabase Auth bem-sucedido");
+      }
+
+      // Salvar dados do usuário independente do login Supabase
+      const sessionUser = {
+        ...userData,
+        blocked: userData.active === false,
+      };
+      saveSession(sessionUser);
+      setUser(sessionUser);
+    } catch (err) {
+      console.error("Erro ao processar verificação de email:", err);
+      // Ainda assim salvamos a sessão
+      if (verifyResult.user) {
+        const sessionUser = {
+          ...verifyResult.user,
+          blocked: verifyResult.user.active === false,
+        };
         saveSession(sessionUser);
         setUser(sessionUser);
       }
-    } catch {}
+    }
+    
+    // Limpar dados do registro pendente
     setPendingVerificationUser(null);
-    localStorage.removeItem("agro_auth");
-  }, [pendingVerificationUser]);
+    localStorage.removeItem("agro_pending_registration");
+  }, []);
 
   const signOut = useCallback(async () => {
     clearSession();
