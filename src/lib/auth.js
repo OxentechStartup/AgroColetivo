@@ -48,7 +48,7 @@ export async function login(email, password) {
   const { data: userData, error: userError } = await supabase
     .from("users")
     .select(
-      "id, name, email, phone, role, city, notes, active, email_verified, password_hash",
+      "id, name, email, phone, role, city, notes, active, email_verified, password_hash, profile_photo_url",
     )
     .eq("email", email)
     .maybeSingle();
@@ -368,7 +368,7 @@ export async function verifyEmail(pendingId, code) {
       notes: pending.notes,
       active: true,
     })
-    .select("id, name, email, phone, role, city, notes, active")
+    .select("id, name, email, phone, role, city, notes, active, profile_photo_url")
     .single();
 
   if (insertError) {
