@@ -51,11 +51,7 @@ const ALLOWED = {
     "financial",
     "pivo-profile",
   ],
-  [ROLES.VENDOR]: [
-    "vendor-dashboard",
-    "vendor-profile",
-    "vendor-pivos",
-  ],
+  [ROLES.VENDOR]: ["vendor-dashboard", "vendor-profile", "vendor-pivos"],
   [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "financial"],
 };
 

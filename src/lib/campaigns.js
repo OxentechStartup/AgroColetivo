@@ -103,7 +103,6 @@ export async function createCampaign(c, gestorId) {
     unit_weight_kg: Number(c.unitWeight),
     goal_qty: Number(c.goalQty),
     min_qty: Number(c.minQty),
-    max_qty: c.maxQty ? Number(c.maxQty) : null,
     deadline: c.deadline || null,
     status: "open",
     pivo_id: validGestorId,
