@@ -35,6 +35,9 @@ supabase.auth.onAuthStateChange((event, session) => {
   // Para contas Supabase Auth: se session expirou, será feito logout
   // Para contas manuais: ignorar changeEvents de Supabase, manter localStorage
   if (import.meta.env.DEV && event !== "INITIAL_SESSION") {
-    console.log(`🔐 Auth event: ${event}`, session ? "with session" : "no session");
+    console.log(
+      `🔐 Auth event: ${event}`,
+      session ? "with session" : "no session",
+    );
   }
 });

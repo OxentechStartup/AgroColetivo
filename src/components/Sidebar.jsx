@@ -23,7 +23,6 @@ const NAV_ADMIN = [
 
 const NAV_VENDOR = [
   { id: "vendor-dashboard", label: "Propostas",      Icon: Send },
-  { id: "vendor-products",  label: "Meus Produtos",  Icon: Package },
   { id: "vendor-profile",   label: "Meu Perfil",     Icon: UserSquare2 },
   { id: "vendor-pivos",     label: "Gestores",       Icon: Users },
 ];

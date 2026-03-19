@@ -13,13 +13,11 @@ import { ProducersPage } from "./pages/ProducersPage";
 import { AdminPage } from "./pages/AdminPage";
 import { FinancialPage } from "./pages/FinancialPage";
 import { VendorDashboardPage } from "./pages/VendorDashboardPage";
-import { VendorProductsPage } from "./pages/VendorProductsPage";
 import { VendorProfilePage } from "./pages/VendorProfilePage";
 import { PivoProfilePage } from "./pages/PivoProfilePage";
 import { VendorPivosPage } from "./pages/VendorPivosPage";
 import { ProducerPortalPage } from "./pages/ProducerPortalPage";
 import { useCampaigns } from "./hooks/useCampaigns";
-import { useVendorProducts } from "./hooks/useVendorProducts";
 import { useGestores } from "./hooks/useGestores";
 import { useAuth } from "./hooks/useAuth";
 import { useKeepAlive } from "./hooks/useKeepAlive";
@@ -56,7 +54,6 @@ const ALLOWED = {
   [ROLES.VENDOR]: [
     "vendor-dashboard",
     "vendor-profile",
-    "vendor-products",
     "vendor-pivos",
   ],
   [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "financial"],
@@ -70,7 +67,6 @@ const PAGE_TITLES = {
   financial: "Financeiro",
   "vendor-dashboard": "Propostas",
   "vendor-profile": "Meu Perfil",
-  "vendor-products": "Meus Produtos",
   "vendor-pivos": "Gestores",
   "pivo-profile": "Meu Perfil",
 };
@@ -156,16 +152,6 @@ export default function App() {
       ? (ownVendor ?? null)
       : (vendors?.find((v) => v.user_id === user?.id) ?? null);
   const vendorId = vendor?.id ?? null;
-
-  // Produtos do vendor
-  const {
-    products,
-    loading: productsLoading,
-    saveProduct,
-    removeProduct,
-    addPromo,
-    removePromo,
-  } = useVendorProducts(user?.role === ROLES.VENDOR ? vendorId : null);
 
   // Gestores (para tela vendor-pivos)
   const { gestores, loading: gestoresLoading } = useGestores(user);
@@ -322,20 +308,6 @@ export default function App() {
             vendors={vendors}
             vendor={vendor}
             user={user}
-          />
-        );
-
-      case "vendor-products":
-        return (
-          <VendorProductsPage
-            user={user}
-            vendor={vendor}
-            products={products}
-            loading={productsLoading}
-            onSave={saveProduct}
-            onDelete={removeProduct}
-            onAddPromo={addPromo}
-            onDeletePromo={removePromo}
           />
         );
 
