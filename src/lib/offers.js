@@ -4,13 +4,33 @@ import { supabase } from "./supabase.js";
 export async function fetchOffers(campaignId) {
   const { data, error } = await supabase
     .from("vendor_campaign_offers")
-    .select("*, vendors(id, name, phone, city)")
+    .select("*")
     .eq("campaign_id", campaignId)
     .order("price_per_unit", { ascending: true });
   if (error)
     throw new Error(
       "Erro ao buscar ofertas: " + (error?.message || "Erro desconhecido"),
     );
+  
+  // Buscar dados dos vendors separadamente
+  if (data && data.length > 0) {
+    const vendorIds = [...new Set(data.map(o => o.vendor_id))];
+    const { data: vendors } = await supabase
+      .from("vendors")
+      .select("id, name, phone, city")
+      .in("id", vendorIds);
+    
+    const vendorMap = {};
+    (vendors ?? []).forEach(v => {
+      vendorMap[v.id] = v;
+    });
+    
+    return data.map(o => ({
+      ...normalizeOffer(o),
+      vendors: vendorMap[o.vendor_id] || null
+    }));
+  }
+  
   return (data ?? []).map(normalizeOffer);
 }
 
