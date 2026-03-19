@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Menu, ExternalLink, LogOut, User, ChevronDown } from "lucide-react";
+import { Menu, ExternalLink, LogOut } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import { NotificationBell } from "./NotificationBell";
 import styles from "./Topbar.module.css";
@@ -22,13 +21,7 @@ export function Topbar({
   onLogout,
   onProfile,
 }) {
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const role = user?.role ?? ROLES.GESTOR;
-
-  const getInitial = () => {
-    if (user?.name) return user.name[0].toUpperCase();
-    return "U";
-  };
 
   return (
     <header className={styles.topbar}>
@@ -85,80 +78,6 @@ export function Topbar({
       {(role === ROLES.GESTOR || role === ROLES.ADMIN) && (
         <NotificationBell userId={user?.id} />
       )}
-
-      {/* Perfil com dropdown */}
-      <div style={{ position: "relative" }}>
-        <button
-          className={styles.userBtn}
-          onClick={() => setShowUserMenu(!showUserMenu)}
-          title={user?.name || "Perfil"}
-        >
-          {user?.profile_photo_url ? (
-            <img
-              src={user.profile_photo_url}
-              alt={user.name}
-              className={styles.avatar}
-            />
-          ) : (
-            <div className={styles.avatar}>{getInitial()}</div>
-          )}
-          <div className={styles.userInfo}>
-            <span className={styles.userName}>{user?.name || "Usuário"}</span>
-            <span className={styles.userRole}>{ROLE_DISPLAY[role]}</span>
-          </div>
-          <ChevronDown size={16} style={{ marginLeft: "auto" }} />
-        </button>
-
-        {/* Dropdown menu */}
-        {showUserMenu && (
-          <>
-            <div
-              className={styles.dropdown}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {onProfile && (
-                <button
-                  className={styles.dropItem}
-                  onClick={() => {
-                    onProfile();
-                    setShowUserMenu(false);
-                  }}
-                >
-                  <User size={16} />
-                  Editar Perfil
-                </button>
-              )}
-              {onProfile && <div className={styles.dropDivider} />}
-              <button
-                className={styles.dropItem}
-                onClick={() => {
-                  onLogout();
-                  setShowUserMenu(false);
-                }}
-              >
-                <LogOut size={16} />
-                Sair
-              </button>
-            </div>
-            <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: 999,
-              }}
-              onClick={() => setShowUserMenu(false)}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Botão sair — visível no mobile Se ainda precisar */}
-      {/* <button className={styles.logoutBtn} onClick={onLogout} title="Sair">
-        <LogOut size={15} />
-      </button> */}
     </header>
   );
 }
