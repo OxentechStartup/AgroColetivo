@@ -121,34 +121,28 @@ export function useAuth() {
     if (!verifyResult || !verifyResult.user) return;
 
     try {
-      const { user: userData, password } = verifyResult;
+      const { user: userData } = verifyResult;
 
-      // Fazer login automático no Supabase Auth
-      const { data: session, error: loginError } =
-        await supabase.auth.signInWithPassword({
-          email: userData.email,
-          password: password,
-        });
+      // ⚠️ NÃO tentar fazer login Supabase Auth
+      // Usuário foi criado manualmente, não existe em auth.users
+      // Usar apenas sessão manual (localStorage)
 
-      if (loginError) {
-        console.error("⚠️ Erro ao fazer login automático:", loginError);
-        // Mesmo se falhar o login Supabase, o usuário foi criado em `users`
-        // Então salvamos a sessão manual de qualquer forma
-      } else if (session) {
-        console.log("✅ Login Supabase Auth bem-sucedido");
-      }
-
-      // Salvar dados do usuário independente do login Supabase
+      // Salvar dados do usuário na sessão
       const sessionUser = {
         ...userData,
         blocked: userData.active === false,
       };
       saveSession(sessionUser);
       setUser(sessionUser);
+
+      console.log("✅ Usuário verificado e sessão salva:", {
+        id: sessionUser.id,
+        email: sessionUser.email,
+      });
     } catch (err) {
       console.error("Erro ao processar verificação de email:", err);
-      // Ainda assim salvamos a sessão
-      if (verifyResult.user) {
+      // Ainda assim salvamos a sessão se houver dados
+      if (verifyResult?.user) {
         const sessionUser = {
           ...verifyResult.user,
           blocked: verifyResult.user.active === false,
