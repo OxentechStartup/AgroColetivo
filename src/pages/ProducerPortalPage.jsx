@@ -53,7 +53,11 @@ function getCategoryId(product) {
     text.includes("grão")
   )
     return "grains";
-  if (text.includes("nutrient") || text.includes("ração") || text.includes("adubo"))
+  if (
+    text.includes("nutrient") ||
+    text.includes("ração") ||
+    text.includes("adubo")
+  )
     return "nutrients";
   if (
     text.includes("equipament") ||
@@ -125,16 +129,43 @@ function Header({ cartCount, onCartClick }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <img
-            src="https://i.imgur.com/clDJyAh.png"
-            alt="AgroColetivo"
-            style={{ height: 56, width: "auto", objectFit: "contain" }}
-          />
+          <div
+            style={{
+              background: "white",
+              borderRadius: "50%",
+              width: 48,
+              height: 48,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src="https://i.imgur.com/clDJyAh.png"
+              alt="AgroColetivo"
+              style={{ height: 40, width: "auto", objectFit: "contain" }}
+            />
+          </div>
           <div>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "0 0 2px 0", color: "white" }}>
+            <h1
+              style={{
+                fontSize: "1.4rem",
+                fontWeight: 700,
+                margin: "0 0 2px 0",
+                color: "white",
+              }}
+            >
               AgroColetivo
             </h1>
-            <p style={{ fontSize: ".8rem", margin: 0, opacity: 0.95, color: "white" }}>
+            <p
+              style={{
+                fontSize: ".8rem",
+                margin: 0,
+                opacity: 0.95,
+                color: "white",
+              }}
+            >
               Compras coletivas
             </p>
           </div>
@@ -371,7 +402,14 @@ function CampaignCard({ campaign, onAddToCart }) {
       </div>
 
       {/* Conteúdo */}
-      <div style={{ padding: "12px", display: "flex", flexDirection: "column", flex: 1 }}>
+      <div
+        style={{
+          padding: "12px",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+        }}
+      >
         <h3
           style={{
             fontSize: ".95rem",
@@ -413,7 +451,9 @@ function CampaignCard({ campaign, onAddToCart }) {
             }}
           >
             <span>{progress}% completo</span>
-            <span>{campaign.goalQty} {campaign.unit}</span>
+            <span>
+              {campaign.goalQty} {campaign.unit}
+            </span>
           </div>
         </div>
 
@@ -463,7 +503,9 @@ function CampaignCard({ campaign, onAddToCart }) {
 function AddToCartModal({ campaign, onClose, onAdd }) {
   const [qty, setQty] = useState(campaign.minQty.toString());
   const qtyNum = +qty;
-  const qtyOk = qtyNum >= campaign.minQty && (!campaign.maxQty || qtyNum <= campaign.maxQty);
+  const qtyOk =
+    qtyNum >= campaign.minQty &&
+    (!campaign.maxQty || qtyNum <= campaign.maxQty);
 
   return (
     <div
@@ -488,8 +530,22 @@ function AddToCartModal({ campaign, onClose, onAdd }) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0, color: "var(--text1)" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "16px",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              margin: 0,
+              color: "var(--text1)",
+            }}
+          >
             {campaign.product}
           </h2>
           <button
@@ -527,8 +583,18 @@ function AddToCartModal({ campaign, onClose, onAdd }) {
         </div>
 
         <div style={{ marginBottom: "20px" }}>
-          <label style={{ display: "block", fontSize: ".9rem", fontWeight: 600, marginBottom: "8px" }}>
-            <Target size={14} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+          <label
+            style={{
+              display: "block",
+              fontSize: ".9rem",
+              fontWeight: 600,
+              marginBottom: "8px",
+            }}
+          >
+            <Target
+              size={14}
+              style={{ marginRight: "4px", verticalAlign: "middle" }}
+            />
             Quantidade ({campaign.unit}) *
           </label>
           <input
@@ -590,7 +656,15 @@ function AddToCartModal({ campaign, onClose, onAdd }) {
   );
 }
 
-function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSubmit, submitting }) {
+function CartModal({
+  cartItems,
+  campaigns,
+  onClose,
+  onUpdateQty,
+  onRemove,
+  onSubmit,
+  submitting,
+}) {
   const [producerName, setProducerName] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -628,8 +702,17 @@ function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSub
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <ShoppingCart size={48} style={{ margin: "0 auto 16px", opacity: 0.3 }} />
-          <p style={{ color: "var(--text2)", fontSize: ".95rem", fontWeight: 500 }}>
+          <ShoppingCart
+            size={48}
+            style={{ margin: "0 auto 16px", opacity: 0.3 }}
+          />
+          <p
+            style={{
+              color: "var(--text2)",
+              fontSize: ".95rem",
+              fontWeight: 500,
+            }}
+          >
             Seu carrinho está vazio
           </p>
           <button
@@ -727,14 +810,29 @@ function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSub
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: ".95rem", fontWeight: 600, margin: "0 0 4px 0", color: "var(--text1)" }}>
+                  <p
+                    style={{
+                      fontSize: ".95rem",
+                      fontWeight: 600,
+                      margin: "0 0 4px 0",
+                      color: "var(--text1)",
+                    }}
+                  >
                     {campaign.product}
                   </p>
-                  <p style={{ fontSize: ".8rem", color: "var(--text3)", margin: 0 }}>
+                  <p
+                    style={{
+                      fontSize: ".8rem",
+                      color: "var(--text3)",
+                      margin: 0,
+                    }}
+                  >
                     {item.qty} {campaign.unit} • Gestor: {campaign.gestorName}
                   </p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
                   <input
                     type="number"
                     value={item.qty}
@@ -776,13 +874,30 @@ function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSub
             marginBottom: "20px",
           }}
         >
-          <h3 style={{ fontSize: ".95rem", fontWeight: 700, marginBottom: "12px", color: "var(--text1)" }}>
+          <h3
+            style={{
+              fontSize: ".95rem",
+              fontWeight: 700,
+              marginBottom: "12px",
+              color: "var(--text1)",
+            }}
+          >
             Seus dados
           </h3>
 
           <div style={{ marginBottom: "12px" }}>
-            <label style={{ display: "block", fontSize: ".8rem", fontWeight: 600, marginBottom: "6px" }}>
-              <User size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+            <label
+              style={{
+                display: "block",
+                fontSize: ".8rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
+              <User
+                size={12}
+                style={{ marginRight: "4px", verticalAlign: "middle" }}
+              />
               Nome completo *
             </label>
             <input
@@ -803,8 +918,18 @@ function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSub
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: ".8rem", fontWeight: 600, marginBottom: "6px" }}>
-              <Phone size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+            <label
+              style={{
+                display: "block",
+                fontSize: ".8rem",
+                fontWeight: 600,
+                marginBottom: "6px",
+              }}
+            >
+              <Phone
+                size={12}
+                style={{ marginRight: "4px", verticalAlign: "middle" }}
+              />
               Telefone/WhatsApp *
             </label>
             <input
@@ -857,7 +982,8 @@ function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSub
             style={{
               flex: 1,
               padding: "12px",
-              background: canSubmit && !submitting ? "#16A34A" : "var(--surface3)",
+              background:
+                canSubmit && !submitting ? "#16A34A" : "var(--surface3)",
               color: canSubmit && !submitting ? "white" : "var(--text3)",
               border: "none",
               borderRadius: "6px",
@@ -873,6 +999,113 @@ function CartModal({ cartItems, campaigns, onClose, onUpdateQty, onRemove, onSub
           >
             <Send size={14} />
             {submitting ? "Enviando..." : "Enviar pedidos"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DuplicateItemModal({ campaign, newQty, existingQty, onClose, onReplace, onAdd }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 101,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "var(--surface)",
+          borderRadius: "12px",
+          padding: "28px",
+          maxWidth: 400,
+          margin: "0 20px",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+          <AlertCircle size={24} color="#16A34A" />
+          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>
+            Produto já no carrinho
+          </h2>
+        </div>
+
+        <p style={{ color: "var(--text2)", marginBottom: "16px" }}>
+          <strong>{campaign.product}</strong> já está no carrinho com {existingQty} {campaign.unit}. O que deseja fazer?
+        </p>
+
+        <div style={{ background: "var(--surface2)", borderRadius: "8px", padding: "12px", marginBottom: "20px", fontSize: ".85rem", color: "var(--text3)" }}>
+          <p style={{ margin: 0 }}>Quantidade atual: <strong>{existingQty} {campaign.unit}</strong></p>
+          <p style={{ margin: "6px 0 0 0" }}>Nova quantidade: <strong>{newQty} {campaign.unit}</strong></p>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
+          <button
+            onClick={() => onReplace(newQty)}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "#16A34A",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: ".9rem",
+              fontWeight: 600,
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => (e.target.style.background = "#15803d")}
+            onMouseLeave={(e) => (e.target.style.background = "#16A34A")}
+          >
+            ✌ Substituir por {newQty}
+          </button>
+          <button
+            onClick={() => onAdd(newQty)}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "var(--surface2)",
+              color: "var(--text1)",
+              border: "1px solid var(--border)",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: ".9rem",
+              fontWeight: 600,
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = "var(--surface3)";
+              e.target.style.borderColor = "var(--primary)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = "var(--surface2)";
+              e.target.style.borderColor = "var(--border)";
+            }}
+          >
+            ➕ Adicionar {newQty} (total: {existingQty + newQty})
+          </button>
+          <button
+            onClick={onClose}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "none",
+              color: "var(--text3)",
+              border: "1px solid var(--border)",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: ".9rem",
+              fontWeight: 500,
+            }}
+          >
+            Cancelar
           </button>
         </div>
       </div>
@@ -898,7 +1131,8 @@ function SuccessView({ itemCount, producerName, onReset }) {
         Pedidos enviados!
       </h2>
       <p style={{ color: "var(--text2)", marginBottom: "20px" }}>
-        {itemCount} cotação{itemCount > 1 ? "s" : ""} adicionada{itemCount > 1 ? "s" : ""}. Os gestores receberão via WhatsApp em breve.
+        {itemCount} cotação{itemCount > 1 ? "s" : ""} adicionada
+        {itemCount > 1 ? "s" : ""}. Os gestores receberão via WhatsApp em breve.
       </p>
 
       <button
@@ -942,6 +1176,8 @@ export function ProducerPortalPage({ onSubmit }) {
   const [submitting, setSubmitting] = useState(false);
   const [successCount, setSuccessCount] = useState(0);
   const [successName, setSuccessName] = useState("");
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateData, setDuplicateData] = useState(null);
 
   // Carregar campanhas
   useEffect(() => {
@@ -957,7 +1193,8 @@ export function ProducerPortalPage({ onSubmit }) {
   }, [cartItems]);
 
   const filtered = campaigns.filter((c) => {
-    const matchCategory = selectedCategory === "all" || c.category === selectedCategory;
+    const matchCategory =
+      selectedCategory === "all" || c.category === selectedCategory;
     const matchSearch =
       searchQuery === "" ||
       c.product.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -971,13 +1208,49 @@ export function ProducerPortalPage({ onSubmit }) {
 
   const handleConfirmAddToCart = (qty) => {
     if (addToCartCampaign) {
-      setCartItems([
-        ...cartItems,
-        {
+      const existingIndex = cartItems.findIndex((item) => item.campaignId === addToCartCampaign.id);
+      
+      if (existingIndex !== -1) {
+        // Produto já está no carrinho - mostrar modal
+        setDuplicateData({
           campaignId: addToCartCampaign.id,
-          qty,
-        },
-      ]);
+          newQty: qty,
+          existingQty: cartItems[existingIndex].qty,
+          existingIndex,
+        });
+        setShowDuplicateModal(true);
+      } else {
+        // Produto novo - adicionar normalmente
+        setCartItems([
+          ...cartItems,
+          {
+            campaignId: addToCartCampaign.id,
+            qty,
+          },
+        ]);
+        setAddToCartCampaign(null);
+      }
+    }
+  };
+
+  const handleReplaceItem = (newQty) => {
+    if (duplicateData) {
+      const newCart = [...cartItems];
+      newCart[duplicateData.existingIndex].qty = newQty;
+      setCartItems(newCart);
+      setShowDuplicateModal(false);
+      setDuplicateData(null);
+      setAddToCartCampaign(null);
+    }
+  };
+
+  const handleAddDuplicateItem = (addQty) => {
+    if (duplicateData) {
+      const newCart = [...cartItems];
+      newCart[duplicateData.existingIndex].qty += addQty;
+      setCartItems(newCart);
+      setShowDuplicateModal(false);
+      setDuplicateData(null);
       setAddToCartCampaign(null);
     }
   };
@@ -1035,7 +1308,11 @@ export function ProducerPortalPage({ onSubmit }) {
           background: "var(--bg)",
         }}
       >
-        <Package size={32} color="var(--primary)" style={{ animation: "spin 1s linear infinite" }} />
+        <Package
+          size={32}
+          color="var(--primary)"
+          style={{ animation: "spin 1s linear infinite" }}
+        />
       </div>
     );
   }
@@ -1049,19 +1326,45 @@ export function ProducerPortalPage({ onSubmit }) {
         background: "var(--bg)",
       }}
     >
-      <Header cartCount={cartItems.length} onCartClick={() => setShowCartModal(true)} />
+      <Header
+        cartCount={cartItems.length}
+        onCartClick={() => setShowCartModal(true)}
+      />
 
       {step === "success" ? (
-        <SuccessView itemCount={successCount} producerName={successName} onReset={handleReset} />
+        <SuccessView
+          itemCount={successCount}
+          producerName={successName}
+          onReset={handleReset}
+        />
       ) : (
-        <div style={{ flex: 1, padding: "20px", maxWidth: 640, margin: "0 auto", width: "100%" }}>
-          <CategoryFilter categories={CATEGORIES} active={selectedCategory} onChange={setSelectedCategory} />
-          {filtered.length > 3 && <SearchBar value={searchQuery} onChange={setSearchQuery} />}
+        <div
+          style={{
+            flex: 1,
+            padding: "20px",
+            maxWidth: 640,
+            margin: "0 auto",
+            width: "100%",
+          }}
+        >
+          <CategoryFilter
+            categories={CATEGORIES}
+            active={selectedCategory}
+            onChange={setSelectedCategory}
+          />
+          {filtered.length > 3 && (
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+          )}
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <Package size={48} style={{ margin: "0 auto 16px", opacity: 0.2 }} />
-              <p style={{ color: "var(--text3)" }}>Nenhuma cotação encontrada</p>
+              <Package
+                size={48}
+                style={{ margin: "0 auto 16px", opacity: 0.2 }}
+              />
+              <p style={{ color: "var(--text3)" }}>
+                Nenhuma cotação encontrada
+              </p>
             </div>
           ) : (
             <div
@@ -1072,7 +1375,11 @@ export function ProducerPortalPage({ onSubmit }) {
               }}
             >
               {filtered.map((c) => (
-                <CampaignCard key={c.id} campaign={c} onAddToCart={handleAddToCart} />
+                <CampaignCard
+                  key={c.id}
+                  campaign={c}
+                  onAddToCart={handleAddToCart}
+                />
               ))}
             </div>
           )}
@@ -1088,6 +1395,20 @@ export function ProducerPortalPage({ onSubmit }) {
         />
       )}
 
+      {showDuplicateModal && duplicateData && (
+        <DuplicateItemModal
+          campaign={campaigns.find((c) => c.id === duplicateData.campaignId)}
+          newQty={duplicateData.newQty}
+          existingQty={duplicateData.existingQty}
+          onClose={() => {
+            setShowDuplicateModal(false);
+            setAddToCartCampaign(null);
+          }}
+          onReplace={handleReplaceItem}
+          onAdd={handleAddDuplicateItem}
+        />
+      )}
+
       {showCartModal && (
         <CartModal
           cartItems={cartItems}
@@ -1100,12 +1421,15 @@ export function ProducerPortalPage({ onSubmit }) {
         />
       )}
 
-      <style>${`
+      <style>
+        $
+        {`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-      `}</style>
+      `}
+      </style>
     </div>
   );
 }
