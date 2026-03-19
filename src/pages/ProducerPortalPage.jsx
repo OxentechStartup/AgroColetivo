@@ -124,14 +124,20 @@ function Header({ cartCount, onCartClick }) {
           width: "100%",
         }}
       >
-        <div>
-          <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 4px 0", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Leaf size={24} />
-            AgroColetivo
-          </h1>
-          <p style={{ fontSize: ".85rem", margin: 0, opacity: 0.9 }}>
-            Compras coletivas
-          </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img
+            src="https://i.imgur.com/clDJyAh.png"
+            alt="AgroColetivo"
+            style={{ height: 40, width: "auto", objectFit: "contain" }}
+          />
+          <div>
+            <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 2px 0" }}>
+              AgroColetivo
+            </h1>
+            <p style={{ fontSize: ".75rem", margin: 0, opacity: 0.9 }}>
+              Compras coletivas
+            </p>
+          </div>
         </div>
         <button
           onClick={onCartClick}
