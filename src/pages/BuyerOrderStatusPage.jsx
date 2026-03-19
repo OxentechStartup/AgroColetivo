@@ -110,7 +110,7 @@ async function fetchBuyerOrdersWithOffers(phone) {
   };
 }
 
-function OrderCard({ order, onCancel, canceling }) {
+function OrderCard({ order, onCancel, canceling, onSetCancelConfirm }) {
   const [expanded, setExpanded] = useState(false);
   const hasApprovedOffer = order.approvedOffer !== null;
 
@@ -356,7 +356,7 @@ function OrderCard({ order, onCancel, canceling }) {
           {/* Botão cancelar */}
           <button
             onClick={() => {
-              setCancelConfirm({
+              onSetCancelConfirm({
                 open: true,
                 orderId: order.id,
                 product: order.campaign.product,
@@ -954,6 +954,7 @@ export function BuyerOrderStatusPage() {
                   order={order}
                   onCancel={handleCancelOrder}
                   canceling={canceling}
+                  onSetCancelConfirm={setCancelConfirm}
                 />
               ))}
             </div>
