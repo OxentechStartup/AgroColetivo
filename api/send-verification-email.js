@@ -7,7 +7,7 @@
  *   SENDGRID_FROM_EMAIL = seu.email@gmail.com
  */
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -132,4 +132,4 @@ module.exports = async function handler(req, res) {
       message: "Serviço temporariamente indisponível - try again later",
     });
   }
-};
+}

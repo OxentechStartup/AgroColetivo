@@ -2,16 +2,18 @@
  * Production Server para Render
  * Serve os arquivos estáticos do Vite build
  */
-const express = require("express");
-const path = require("path");
-const fs = require("fs");
+import express from "express";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import sendVerificationEmailHandler from "./api/send-verification-email.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const distPath = path.join(__dirname, "dist");
-
-// Importar serverless functions
-const sendVerificationEmailHandler = require("./api/send-verification-email.js");
 
 // Middleware
 app.use(express.json());
