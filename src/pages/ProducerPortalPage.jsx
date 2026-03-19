@@ -322,6 +322,10 @@ function CampaignCard({ campaign, onAddToCart }) {
   const progress = Math.min(100, Math.round(campaign.approval));
   const daysLeft = campaign.deadline && daysUntilDeadline(campaign.deadline);
   const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
+  
+  // Mapear a categoria para exibição
+  const categoryInfo = CATEGORIES.find(c => c.id === campaign.category) || CATEGORIES[0];
+  const Icon = categoryInfo.icon;
 
   return (
     <div
@@ -336,6 +340,9 @@ function CampaignCard({ campaign, onAddToCart }) {
         flexDirection: "column",
         height: "100%",
         cursor: "pointer",
+        WebkitTapHighlightColor: "transparent",
+        WebkitUserSelect: "none",
+        userSelect: "none",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#16A34A";
@@ -412,6 +419,23 @@ function CampaignCard({ campaign, onAddToCart }) {
           flex: 1,
         }}
       >
+        {/* Badge de categoria */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            marginBottom: "8px",
+            fontSize: ".7rem",
+            fontWeight: 600,
+            color: categoryInfo.color,
+            opacity: 0.8,
+          }}
+        >
+          <Icon size={12} />
+          {categoryInfo.name}
+        </div>
+
         <h3
           style={{
             fontSize: ".95rem",
@@ -1590,9 +1614,9 @@ export function ProducerPortalPage({ onSubmit }) {
             active={selectedCategory}
             onChange={setSelectedCategory}
           />
-          {filtered.length > 3 && (
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-          )}
+          
+          {/* SearchBar sempre visível */}
+          <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px" }}>
@@ -1601,15 +1625,17 @@ export function ProducerPortalPage({ onSubmit }) {
                 style={{ margin: "0 auto 16px", opacity: 0.2 }}
               />
               <p style={{ color: "var(--text3)" }}>
-                Nenhuma cotação encontrada
+                {searchQuery
+                  ? "Nenhuma cotação encontrada"
+                  : "Nenhuma cotação nesta categoria"}
               </p>
             </div>
           ) : (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
-                gap: "12px",
+                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                gap: "16px",
               }}
             >
               {filtered.map((c) => (
