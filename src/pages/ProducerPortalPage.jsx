@@ -124,17 +124,17 @@ function Header({ cartCount, onCartClick }) {
           width: "100%",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <img
             src="https://i.imgur.com/clDJyAh.png"
             alt="AgroColetivo"
-            style={{ height: 40, width: "auto", objectFit: "contain" }}
+            style={{ height: 56, width: "auto", objectFit: "contain" }}
           />
           <div>
-            <h1 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 2px 0" }}>
+            <h1 style={{ fontSize: "1.4rem", fontWeight: 700, margin: "0 0 2px 0", color: "white" }}>
               AgroColetivo
             </h1>
-            <p style={{ fontSize: ".75rem", margin: 0, opacity: 0.9 }}>
+            <p style={{ fontSize: ".8rem", margin: 0, opacity: 0.95, color: "white" }}>
               Compras coletivas
             </p>
           </div>
