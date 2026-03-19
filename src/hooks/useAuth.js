@@ -51,10 +51,16 @@ export function useAuth() {
             .eq("email", email)
             .maybeSingle();
           if (data) {
-            const pendingUser = { id: data.id, name: data.name, email: data.email };
+            const pendingUser = {
+              id: data.id,
+              name: data.name,
+              email: data.email,
+            };
             localStorage.setItem("agro_auth", JSON.stringify(pendingUser));
             setPendingVerificationUser(pendingUser);
-            setError("Confirme seu email antes de entrar. Verifique sua caixa de entrada.");
+            setError(
+              "Confirme seu email antes de entrar. Verifique sua caixa de entrada.",
+            );
           } else {
             // Email não existe na tabela users
             setError("Email ou senha incorretos.");
@@ -70,7 +76,9 @@ export function useAuth() {
       }
     } finally {
       setLoading(false);
-      setTimeout(() => { manualAuthInProgress.current = false; }, 500);
+      setTimeout(() => {
+        manualAuthInProgress.current = false;
+      }, 500);
     }
   }, []);
 
@@ -85,16 +93,22 @@ export function useAuth() {
         id: result.id,
         name: result.name,
         email: result.email,
-        devCode: result.devCode,       // código visível só em dev quando email falha
-        emailSent: result.emailSent,   // se o email foi enviado com sucesso
+        devCode: result.devCode, // código visível só em dev quando email falha
+        emailSent: result.emailSent, // se o email foi enviado com sucesso
       };
+      console.log("✅ Signup bem-sucedido - dados salvos:", {
+        email: pendingUser.email,
+        id: pendingUser.id,
+      });
       localStorage.setItem("agro_auth", JSON.stringify(pendingUser));
       setPendingVerificationUser(pendingUser);
     } catch (err) {
       setError(err?.message || "Erro desconhecido ao registrar");
     } finally {
       setLoading(false);
-      setTimeout(() => { manualAuthInProgress.current = false; }, 500);
+      setTimeout(() => {
+        manualAuthInProgress.current = false;
+      }, 500);
     }
   }, []);
 
@@ -123,7 +137,9 @@ export function useAuth() {
     setUser(null);
     setError(null);
     setPendingVerificationUser(null);
-    try { await logout(); } catch {}
+    try {
+      await logout();
+    } catch {}
   }, []);
 
   const deleteUserAccount = useCallback(
@@ -145,27 +161,32 @@ export function useAuth() {
   );
 
   // Recarrega dados do usuário do banco e atualiza sessão
-  const refreshUser = useCallback(async (updatedData) => {
-    if (updatedData) {
-      // Se os dados já foram passados (ex: do updateUser), apenas atualiza
-      const updated = { ...user, ...updatedData };
-      saveSession(updated);
-      setUser(updated);
-    } else if (user?.id) {
-      try {
-        const { data } = await supabase
-          .from("users")
-          .select("id, name, email, phone, role, city, notes, active, profile_photo_url")
-          .eq("id", user.id)
-          .single();
-        if (data) {
-          const updated = { ...user, ...data };
-          saveSession(updated);
-          setUser(updated);
-        }
-      } catch {}
-    }
-  }, [user]);
+  const refreshUser = useCallback(
+    async (updatedData) => {
+      if (updatedData) {
+        // Se os dados já foram passados (ex: do updateUser), apenas atualiza
+        const updated = { ...user, ...updatedData };
+        saveSession(updated);
+        setUser(updated);
+      } else if (user?.id) {
+        try {
+          const { data } = await supabase
+            .from("users")
+            .select(
+              "id, name, email, phone, role, city, notes, active, profile_photo_url",
+            )
+            .eq("id", user.id)
+            .single();
+          if (data) {
+            const updated = { ...user, ...data };
+            saveSession(updated);
+            setUser(updated);
+          }
+        } catch {}
+      }
+    },
+    [user],
+  );
 
   return {
     user,

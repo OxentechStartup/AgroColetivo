@@ -144,6 +144,12 @@ export async function login(email, password) {
 const REGISTERABLE_ROLES = [ROLES.VENDOR, ROLES.GESTOR];
 
 export async function register(email, password, role, extra = {}) {
+  console.log("📝 register() INICIADO:", {
+    email,
+    role,
+    hasPassword: !!password,
+  });
+
   if (!REGISTERABLE_ROLES.includes(role))
     throw new Error("Tipo de conta inválido.");
 
@@ -221,11 +227,26 @@ export async function register(email, password, role, extra = {}) {
   }
 
   // Buscar o registro recém inserido para pegar o id
-  const { data: pending } = await supabase
+  const { data: pending, error: fetchError } = await supabase
     .from("pending_registrations")
     .select("id")
     .eq("email", email)
-    .single();
+    .maybeSingle();
+
+  console.log("🔍 Buscando ID do pending_registrations para email:", email);
+  console.log("📊 Resultado da query:", { pending, fetchError });
+
+  if (fetchError) {
+    console.error("❌ Erro ao buscar ID do registro pendente:", fetchError);
+    throw new Error("Erro ao processar cadastro. Tente novamente.");
+  }
+
+  if (!pending || !pending.id) {
+    console.error("❌ Registro pendente não encontrado ou sem ID:", {
+      pending,
+    });
+    throw new Error("Erro ao processar cadastro. Tente novamente.");
+  }
 
   // Enviar email com o código
   let emailSent = false;
@@ -249,7 +270,7 @@ export async function register(email, password, role, extra = {}) {
     `email=${email} role=${role} emailSent=${emailSent}`,
   );
 
-  return {
+  const response = {
     id: pending?.id,
     email,
     name,
@@ -260,6 +281,10 @@ export async function register(email, password, role, extra = {}) {
       ? "Código de verificação enviado! Verifique seu email."
       : "Não foi possível enviar o email. Use 'Reenviar Código' na próxima tela.",
   };
+
+  console.log("📤 register() vai retornar:", response);
+
+  return response;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

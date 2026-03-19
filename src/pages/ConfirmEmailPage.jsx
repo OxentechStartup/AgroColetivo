@@ -19,6 +19,30 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
   const email = user?.email || "";
   const pendingId = user?.id || "";
 
+  console.log("📧 ConfirmEmailPage carregada - dados recuperados:", {
+    email,
+    pendingId,
+    fullUser: user,
+  });
+
+  // Verificar localStorage imediatamente quando a página carrega
+  useEffect(() => {
+    const rawData = localStorage.getItem("agro_auth");
+    console.log("💾 localStorage.getItem('agro_auth'):", rawData);
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        console.log("✅ JSON.parse bem-sucedido:", parsed);
+        console.log("  - id:", parsed?.id, typeof parsed?.id);
+        console.log("  - email:", parsed?.email);
+      } catch (e) {
+        console.error("❌ Erro ao fazer parse do localStorage:", e.message);
+      }
+    } else {
+      console.error("❌ localStorage.agro_auth está vazio/null!");
+    }
+  }, []);
+
   // Countdown para reenviar email
   useEffect(() => {
     if (resendCountdown > 0) {
@@ -43,6 +67,15 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
 
     if (code.length !== 6) {
       setError("Por favor, insira todos os 6 dígitos do código.");
+      return;
+    }
+
+    if (!pendingId) {
+      setError("ID do cadastro não encontrado. Tente registrar novamente.");
+      console.error("❌ pendingId está vazio/undefined:", {
+        pendingId,
+        fullUser: user,
+      });
       return;
     }
 
@@ -104,18 +137,28 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
             <p className={styles.email}>{email || "seu email"}</p>
             {/* Mostra código em desenvolvimento quando email não foi enviado */}
             {devCode && (
-              <div style={{
-                background: "#fff3cd",
-                border: "1px solid #ffc107",
-                borderRadius: 8,
-                padding: "12px 16px",
-                marginTop: 12,
-                textAlign: "center",
-              }}>
+              <div
+                style={{
+                  background: "#fff3cd",
+                  border: "1px solid #ffc107",
+                  borderRadius: 8,
+                  padding: "12px 16px",
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
                 <p style={{ margin: 0, fontSize: 12, color: "#856404" }}>
                   🛠️ Modo dev — código gerado:
                 </p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: "bold", letterSpacing: 6, color: "#856404" }}>
+                <p
+                  style={{
+                    margin: "4px 0 0",
+                    fontSize: 28,
+                    fontWeight: "bold",
+                    letterSpacing: 6,
+                    color: "#856404",
+                  }}
+                >
                   {devCode}
                 </p>
               </div>
@@ -183,8 +226,17 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
           <p>Já tem conta verificada?</p>
           <button
             type="button"
-            style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => { localStorage.removeItem("agro_auth"); window.location.reload(); }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--primary)",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+            onClick={() => {
+              localStorage.removeItem("agro_auth");
+              window.location.reload();
+            }}
           >
             Voltar ao Login
           </button>
