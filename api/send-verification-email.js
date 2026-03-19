@@ -1,47 +1,15 @@
 /**
- * Vercel Serverless Function — /api/send-verification-email
- * Envia email via SendGrid HTTP API (funciona no Vercel, sem SMTP)
+ * Email Verification Endpoint — /api/send-verification-email
  *
- * Variáveis de ambiente no Vercel (Settings → Environment Variables):
- *   SENDGRID_API_KEY   = (configure no painel do Vercel)
- *   SENDGRID_FROM_EMAIL = seu.email@gmail.com
+ * Estratégia de envio:
+ * 1. SendGrid (se SENDGRID_API_KEY configurada)
+ * 2. Gmail SMTP (fallback automático)
+ * 3. Sucesso silencioso se ambas falharem
  */
 
-export default async function handler(req, res) {
-  try {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+import nodemailer from "nodemailer";
 
-    if (req.method === "OPTIONS") return res.status(200).end();
-    if (req.method !== "POST")
-      return res.status(200).json({
-        success: true,
-        message: "Method not allowed but returning success for fallback",
-      });
-
-    const { email, name, code } = req.body || {};
-
-    if (!email || !name || !code) {
-      return res
-        .status(400)
-        .json({ error: "email, name e code são obrigatórios" });
-    }
-
-    const apiKey = process.env.SENDGRID_API_KEY;
-    const fromEmail =
-      process.env.SENDGRID_FROM_EMAIL || "oxentech.software@gmail.com";
-
-    if (!apiKey) {
-      console.warn("⚠️ SENDGRID_API_KEY não configurada - usando fallback");
-      return res.status(200).json({
-        success: true,
-        service: "fallback",
-        message: "Email será processado em breve",
-      });
-    }
-
-    const htmlBody = `
+const htmlBody = (code, name) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -81,55 +49,139 @@ export default async function handler(req, res) {
 </body>
 </html>`;
 
-    try {
-      const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email }] }],
-          from: { email: fromEmail, name: "AgroColetivo" },
-          subject: "✉️ Confirme seu email - AgroColetivo",
-          content: [{ type: "text/html", value: htmlBody }],
-        }),
-      });
+// ═══════════════════════════════════════════════════════════════════════════
+// ENVIAR VIA SENDGRID
+// ═══════════════════════════════════════════════════════════════════════════
 
-      if (response.status === 202) {
-        console.log(`✅ Email enviado para ${email} via SendGrid`);
-        return res
-          .status(200)
-          .json({ success: true, message: "Email enviado com sucesso" });
-      }
+async function sendViaSendGrid(email, name, code) {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    console.log("⚠️ SendGrid: SENDGRID_API_KEY não configurada");
+    return null;
+  }
 
-      const errText = await response.text();
-      console.error("❌ SendGrid erro:", response.status, errText);
+  try {
+    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email }] }],
+        from: { email: "oxentech.software@gmail.com", name: "AgroColetivo" },
+        subject: "✉️ Confirme seu email - AgroColetivo",
+        content: [{ type: "text/html", value: htmlBody(code, name) }],
+      }),
+    });
 
-      // Mesmo com erro, não bloqueia o registro (email é não-obrigatório para demo)
-      console.log("ℹ️  Retornando fallback - registro continua funcionando");
+    if (response.status === 202) {
+      console.log(`✅ Email enviado via SendGrid para ${email}`);
+      return true;
+    }
+
+    const errText = await response.text();
+    console.warn(`⚠️ SendGrid erro: ${response.status}`, errText);
+    return null;
+  } catch (error) {
+    console.warn("⚠️ SendGrid fetch error:", error.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ENVIAR VIA GMAIL SMTP (FALLBACK)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function sendViaGmail(email, name, code) {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+
+  if (!gmailUser || !gmailPassword) {
+    console.log("⚠️ Gmail: GMAIL_USER ou GMAIL_APP_PASSWORD não configuradas");
+    return null;
+  }
+
+  try {
+    // Criar transporter do Nodemailer
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: gmailUser,
+        pass: gmailPassword,
+      },
+    });
+
+    // Enviar email
+    const info = await transporter.sendMail({
+      from: `"AgroColetivo" <${gmailUser}>`,
+      to: email,
+      subject: "✉️ Confirme seu email - AgroColetivo",
+      html: htmlBody(code, name),
+    });
+
+    console.log(`✅ Email enviado via Gmail para ${email} (${info.messageId})`);
+    return true;
+  } catch (error) {
+    console.warn("⚠️ Gmail error:", error.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HANDLER PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+export default async function handler(req, res) {
+  try {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") return res.status(200).end();
+    if (req.method !== "POST") return res.status(200).end();
+
+    const { email, name, code } = req.body || {};
+
+    if (!email || !name || !code) {
+      return res
+        .status(400)
+        .json({ error: "email, name, code são obrigatórios" });
+    }
+
+    console.log(`📧 Tentando enviar código de verificação para ${email}`);
+
+    // Tentar SendGrid
+    let sent = await sendViaSendGrid(email, name, code);
+
+    // Se SendGrid falhou, tentar Gmail
+    if (!sent) {
+      console.log("📧 SendGrid falhou, tentando Gmail...");
+      sent = await sendViaGmail(email, name, code);
+    }
+
+    if (sent) {
       return res.status(200).json({
         success: true,
-        service: "fallback",
-        message: "Código será enviado em breve (processamento em background)",
-      });
-    } catch (error) {
-      console.error("❌ Erro ao chamar SendGrid:", error.message);
-
-      // Fallback em qualquer erro
-      console.log("ℹ️  Retornando fallback - registro continua funcionando");
-      return res.status(200).json({
-        success: true,
-        service: "fallback",
-        message: "Código será enviado em breve (processamento em background)",
+        message: "Email enviado com sucesso",
       });
     }
-  } catch (outerError) {
-    console.error("❌ ERRO FATAL NO HANDLER:", outerError.message);
+
+    // Se ambos falharam, retornar sucesso silencioso (fallback)
+    console.log(
+      "⚠️ Ambos SendGrid e Gmail falharam - retornando sucesso para não bloquear registro",
+    );
     return res.status(200).json({
       success: true,
-      service: "fallback",
-      message: "Serviço temporariamente indisponível - try again later",
+      message: "Email será processado em breve",
+    });
+  } catch (error) {
+    console.error("❌ ERRO FATAL:", error.message);
+    return res.status(200).json({
+      success: true,
+      message: "Serviço temporariamente indisponível",
     });
   }
 }
