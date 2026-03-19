@@ -795,6 +795,7 @@ function CartModal({
           {cartItems.map((item, idx) => {
             const campaign = campaigns.find((c) => c.id === item.campaignId);
             if (!campaign) return null;
+            const itemTotal = (campaign.pricePerUnit || 0) * item.qty;
             return (
               <div
                 key={idx}
@@ -802,68 +803,212 @@ function CartModal({
                   background: "var(--surface2)",
                   border: "1px solid var(--border)",
                   borderRadius: "8px",
-                  padding: "12px",
+                  overflow: "hidden",
                   marginBottom: "12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <p
+                {/* Imagem + Info */}
+                <div style={{ display: "flex", gap: "10px", padding: "10px" }}>
+                  <div
                     style={{
-                      fontSize: ".95rem",
-                      fontWeight: 600,
-                      margin: "0 0 4px 0",
-                      color: "var(--text1)",
+                      width: 70,
+                      height: 70,
+                      borderRadius: "6px",
+                      background: "var(--surface)",
+                      overflow: "hidden",
+                      flexShrink: 0,
                     }}
                   >
-                    {campaign.product}
-                  </p>
-                  <p
+                    {campaign.imageUrl ? (
+                      <img
+                        src={campaign.imageUrl}
+                        alt={campaign.product}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "#16A34A15",
+                        }}
+                      >
+                        <Package size={28} opacity={0.3} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <p
+                      style={{
+                        fontSize: ".95rem",
+                        fontWeight: 600,
+                        margin: "0 0 4px 0",
+                        color: "var(--text1)",
+                      }}
+                    >
+                      {campaign.product}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: ".75rem",
+                        color: "var(--text3)",
+                        margin: "0 0 6px 0",
+                      }}
+                    >
+                      {campaign.gestorName}
+                    </p>
+                    <div
+                      style={{
+                        height: "4px",
+                        background: "var(--surface)",
+                        borderRadius: "2px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          background: "linear-gradient(90deg, #16A34A, #15803d)",
+                          width: `${Math.min(100, campaign.approval)}%`,
+                        }}
+                      />
+                    </div>
+                    <p
+                      style={{
+                        fontSize: ".7rem",
+                        color: "var(--text3)",
+                        margin: "4px 0 0 0",
+                      }}
+                    >
+                      {campaign.approval.toFixed(0)}% agora
+                    </p>
+                  </div>
+
+                  <div
                     style={{
-                      fontSize: ".8rem",
-                      color: "var(--text3)",
-                      margin: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: "6px",
                     }}
                   >
-                    {item.qty} {campaign.unit} • Gestor: {campaign.gestorName}
-                  </p>
+                    <input
+                      type="number"
+                      value={item.qty}
+                      onChange={(e) => onUpdateQty(idx, +e.target.value)}
+                      min={campaign.minQty}
+                      max={campaign.maxQty || 999}
+                      style={{
+                        width: "60px",
+                        padding: "4px 6px",
+                        border: "1px solid var(--border)",
+                        borderRadius: "4px",
+                        fontSize: ".8rem",
+                        textAlign: "center",
+                      }}
+                    />
+                    <button
+                      onClick={() => onRemove(idx)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "var(--red)",
+                        padding: "4px",
+                        display: "flex",
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
+
+                {/* Preço e Quantidade */}
                 <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  style={{
+                    background: "var(--surface)",
+                    padding: "8px 10px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    borderTop: "1px solid var(--border)",
+                    fontSize: ".85rem",
+                  }}
                 >
-                  <input
-                    type="number"
-                    value={item.qty}
-                    onChange={(e) => onUpdateQty(idx, +e.target.value)}
-                    min={campaign.minQty}
-                    max={campaign.maxQty || 999}
+                  <span style={{ color: "var(--text3)" }}>
+                    {item.qty} × {campaign.pricePerUnit ? `R$ ${campaign.pricePerUnit.toFixed(2)}` : "C.O."}
+                  </span>
+                  <span
                     style={{
-                      width: "50px",
-                      padding: "6px",
-                      border: "1px solid var(--border)",
-                      borderRadius: "4px",
-                      fontSize: ".85rem",
-                      textAlign: "center",
-                    }}
-                  />
-                  <button
-                    onClick={() => onRemove(idx)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "var(--red)",
-                      padding: "4px",
+                      fontWeight: 700,
+                      color: "var(--primary)",
+                      fontSize: ".95rem",
                     }}
                   >
-                    <Trash2 size={16} />
-                  </button>
+                    {campaign.pricePerUnit
+                      ? `R$ ${itemTotal.toFixed(2)}`
+                      : "Cotação"}
+                  </span>
                 </div>
               </div>
             );
           })}
+        </div>
+
+        {/* Resumo de Totais */}
+        <div
+          style={{
+            background: "linear-gradient(135deg, #16A34A12 0%, #16A34A08 100%)",
+            border: "1px solid #16A34A30",
+            borderRadius: "8px",
+            padding: "14px",
+            marginBottom: "20px",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span style={{ color: "var(--text2)" }}>Itens no carrinho</span>
+            <span style={{ fontWeight: 600 }}>{totalItems}</span>
+          </div>
+          {(() => {
+            const total = cartItems.reduce((sum, item) => {
+              const c = campaigns.find((c) => c.id === item.campaignId);
+              return sum + ((c?.pricePerUnit || 0) * item.qty);
+            }, 0);
+            const hasMissingPrice = cartItems.some(
+              (item) => !(campaigns.find((c) => c.id === item.campaignId)?.pricePerUnit)
+            );
+            return (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--primary)" }}>
+                    Total estimado
+                  </span>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontSize: "1.15rem",
+                      color: "var(--primary)",
+                    }}
+                  >
+                    {hasMissingPrice ? "—" : `R$ ${total.toFixed(2)}`}
+                  </span>
+                </div>
+                {hasMissingPrice && (
+                  <p style={{ fontSize: ".75rem", margin: "8px 0 0 0", color: "var(--text3)" }}>
+                    Alguns preços serão confirmados após aceitação
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Dados */}
