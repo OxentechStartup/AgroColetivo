@@ -24,6 +24,7 @@ import { useToast } from "../hooks/useToast";
 import { STATUS_LABEL } from "../utils/data";
 import { formatCurrency, maskCurrency, unmaskCurrency } from "../utils/masks";
 import { createOffer, fetchVendorOffers } from "../lib/offers";
+import { supabase } from "../lib/supabase";
 import styles from "./VendorDashboardPage.module.css";
 
 function fmtDate(iso) {
@@ -628,6 +629,28 @@ export function VendorDashboardPage({
 
   useEffect(() => {
     loadOffers();
+
+    // Realtime subscription para atualizar propostas automaticamente
+    if (!vendor?.id) return;
+    const subscription = supabase
+      .channel(`vendor_offers_${vendor.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "vendor_campaign_offers",
+          filter: `vendor_id=eq.${vendor.id}`,
+        },
+        () => {
+          loadOffers();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [vendor?.id]); // eslint-disable-line
 
   const handleSent = () => {

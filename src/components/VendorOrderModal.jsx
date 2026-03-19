@@ -86,3 +86,11 @@ export function VendorOrderModal({ campaign, vendors, onClose }) {
     </Modal>
   )
 }
+                  </div>
+
+                  <button className={styles.waBtn} onClick={() => sendWA(lot, vendorName)}>
+                    <MessageCircle size={15} /> Enviar Pedido via WhatsApp
+                  </button>
+                </div>
+              )
+            })}

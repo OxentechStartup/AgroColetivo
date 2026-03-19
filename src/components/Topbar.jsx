@@ -3,8 +3,6 @@ import {
   Menu,
   ExternalLink,
   LogOut,
-  ChevronDown,
-  UserCircle,
 } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import styles from "./Topbar.module.css";
@@ -27,13 +25,7 @@ export function Topbar({
   onLogout,
   onProfile,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const role = user?.role ?? ROLES.GESTOR;
-  const displayName = user?.name ?? "Usuário";
-  const roleLabel = ROLE_DISPLAY[role] ?? role;
-  const photoUrl = user?.profile_photo_url ?? null;
-
-  const closeMenu = () => setMenuOpen(false);
 
   return (
     <header className={styles.topbar}>
@@ -84,90 +76,12 @@ export function Topbar({
             <span>Meus Pedidos</span>
           </button>
         )}
-
-        {/* Dropdown do usuário */}
-        <div style={{ position: "relative" }}>
-          <button
-            className={styles.userBtn}
-            onClick={() => setMenuOpen((s) => !s)}
-            title={displayName}
-          >
-            <div className={styles.avatar}>
-              {photoUrl ? (
-                <img
-                  src={photoUrl}
-                  alt={displayName}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    borderRadius: "50%",
-                  }}
-                  onError={(e) => {
-                    e.target.style.display = "none";
-                    e.target.nextSibling.style.display = "flex";
-                  }}
-                />
-              ) : null}
-              <span
-                style={{
-                  display: photoUrl ? "none" : "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "100%",
-                  height: "100%",
-                }}
-              >
-                {displayName[0]?.toUpperCase() ?? "A"}
-              </span>
-            </div>
-            <div className={styles.userInfo}>
-              <span className={styles.userName}>{displayName}</span>
-              <span className={styles.userRole}>{roleLabel}</span>
-            </div>
-            <ChevronDown size={14} style={{ marginLeft: 4, opacity: 0.6 }} />
-          </button>
-
-          {menuOpen && (
-            <div className={styles.dropdown}>
-              <button
-                className={styles.dropItem}
-                onClick={() => {
-                  closeMenu();
-                  onProfile?.();
-                }}
-              >
-                <UserCircle size={15} />
-                Meu Perfil
-              </button>
-              <div className={styles.dropDivider} />
-              <button
-                className={`${styles.dropItem} ${styles.dropItemDanger}`}
-                onClick={() => {
-                  closeMenu();
-                  onLogout?.();
-                }}
-              >
-                <LogOut size={15} />
-                Sair
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Botão sair — visível no mobile */}
-        <button className={styles.logoutBtn} onClick={onLogout} title="Sair">
-          <LogOut size={15} />
-        </button>
       </div>
 
-      {/* Overlay para fechar dropdown */}
-      {menuOpen && (
-        <div
-          onClick={closeMenu}
-          style={{ position: "fixed", inset: 0, zIndex: 999 }}
-        />
-      )}
+      {/* Botão sair — visível no mobile */}
+      <button className={styles.logoutBtn} onClick={onLogout} title="Sair">
+        <LogOut size={15} />
+      </button>
     </header>
   );
 }

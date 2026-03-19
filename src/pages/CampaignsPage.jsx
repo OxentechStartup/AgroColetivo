@@ -63,6 +63,7 @@ import {
   settleOffersAfterAccept,
 } from "../lib/offers";
 import { createLot } from "../lib/lots";
+import { supabase } from "../lib/supabase";
 import { ROLES } from "../constants/roles";
 import styles from "./CampaignsPage.module.css";
 
@@ -529,7 +530,28 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
 
   useEffect(() => {
     reload();
-  }, [reload]);
+
+    // Realtime subscription para atualizar ofertas automaticamente
+    const subscription = supabase
+      .channel(`vendor_offers_${campaign.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "vendor_campaign_offers",
+          filter: `campaign_id=eq.${campaign.id}`,
+        },
+        () => {
+          reload();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [reload, campaign.id]);
 
   const handleAccept = async (offer) => {
     setAccepting(offer.id);
