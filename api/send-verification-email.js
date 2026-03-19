@@ -103,24 +103,33 @@ async function sendViaGmail(email, name, code) {
   }
 
   try {
-    // Criar transporter do Nodemailer
+    // Criar transporter do Nodemailer COM TIMEOUT
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
       secure: false,
+      connectionTimeout: 5000, // 5 segundos
+      socketTimeout: 5000, // 5 segundos
       auth: {
         user: gmailUser,
         pass: gmailPassword,
       },
     });
 
-    // Enviar email
-    const info = await transporter.sendMail({
+    // Enviar email com promise timeout de 10 segundos
+    const sendPromise = transporter.sendMail({
       from: `"AgroColetivo" <${gmailUser}>`,
       to: email,
       subject: "✉️ Confirme seu email - AgroColetivo",
       html: htmlBody(code, name),
     });
+
+    // Adicionar timeout max 10 segundos
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Gmail timeout")), 10000),
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
 
     console.log(`✅ Email enviado via Gmail para ${email} (${info.messageId})`);
     return true;
