@@ -136,7 +136,6 @@ export async function logSecurityEvent(
         console.warn(
           "[audit] Falha ao persistir evento:",
           error?.message || "unknown",
-          payload,
         );
       }
     }
@@ -144,12 +143,15 @@ export async function logSecurityEvent(
     // Ignora erros de rede — auditoria nunca deve bloquear o fluxo principal
   }
 
-  // Mantém log local em desenvolvimento para facilitar debug
+  // Mantém log local SANITIZADO em desenvolvimento para facilitar debug
+  // NÃO faz log de dados sensíveis (email, phone, IDs de usuário, URLs de API)
   if (import.meta.env.DEV) {
-    console.log("SECURITY EVENT:", {
-      ...payload,
+    const sanitized = {
+      action: payload.p_action,
+      resource: payload.p_resource,
       timestamp: new Date().toISOString(),
-    });
+    };
+    console.log("[security]", sanitized);
   }
 }
 

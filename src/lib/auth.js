@@ -144,12 +144,6 @@ export async function login(email, password) {
 const REGISTERABLE_ROLES = [ROLES.VENDOR, ROLES.GESTOR];
 
 export async function register(email, password, role, extra = {}) {
-  console.log("📝 register() INICIADO:", {
-    email,
-    role,
-    hasPassword: !!password,
-  });
-
   if (!REGISTERABLE_ROLES.includes(role))
     throw new Error("Tipo de conta inválido.");
 
@@ -233,18 +227,11 @@ export async function register(email, password, role, extra = {}) {
     .eq("email", email)
     .maybeSingle();
 
-  console.log("🔍 Buscando ID do pending_registrations para email:", email);
-  console.log("📊 Resultado da query:", { pending, fetchError });
-
   if (fetchError) {
-    console.error("❌ Erro ao buscar ID do registro pendente:", fetchError);
     throw new Error("Erro ao processar cadastro. Tente novamente.");
   }
 
   if (!pending || !pending.id) {
-    console.error("❌ Registro pendente não encontrado ou sem ID:", {
-      pending,
-    });
     throw new Error("Erro ao processar cadastro. Tente novamente.");
   }
 

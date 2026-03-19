@@ -612,8 +612,8 @@
   }
 
   .summaryBar {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
   .statsGrid {
     grid-template-columns: repeat(2, 1fr);
@@ -632,11 +632,11 @@
 
 @media (max-width: 480px) {
   .summaryBar {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 5px;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
   .summaryItem {
-    padding: 8px 10px;
+    padding: 10px 12px;
   }
   .statsGrid {
     grid-template-columns: repeat(2, 1fr);
