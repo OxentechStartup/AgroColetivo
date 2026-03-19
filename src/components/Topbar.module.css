@@ -22,11 +22,20 @@
 .menuBtn:hover { background: var(--surface3); color: var(--text); }
 
 .mobileLogo {
-  display: none; align-items: center; gap: 8px; flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 0;
 }
 .mobileLogoText {
-  font-size: .92rem; font-weight: 800;
-  color: var(--text); letter-spacing: -.02em;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .title {
@@ -110,18 +119,21 @@
 
 /* ── Mobile ── */
 @media (max-width: 768px) {
-  .menuBtn    { display: flex !important; }
-  .portalBtn  { display: none; }
+  .menuBtn { display: flex !important; }
+  .portalBtn { display: none; }
   .mobileLogo { display: flex; }
-  .title      { display: none; }
-  .userName   { font-size: .76rem; }
-  .userBtn    { padding: 5px 8px; }
-  .logoutBtn  {
+  .title { display: none; }
+  .userName { font-size: 0.76rem; }
+  .userBtn { padding: 5px 8px; }
+  .logoutBtn {
     display: flex !important;
-    background: var(--red-dim); border-color: var(--red-border); color: var(--red);
+    background: var(--red-dim);
+    border-color: var(--red-border);
+    color: var(--red);
   }
 }
-@media (max-width: 380px) {
-  .topbar   { padding: 0 10px; gap: 6px; }
+@media (max-width: 480px) {
+  .topbar { padding: 0 12px; gap: 8px; }
+  .mobileLogoText { display: none; }
   .userInfo { display: none; }
 }
