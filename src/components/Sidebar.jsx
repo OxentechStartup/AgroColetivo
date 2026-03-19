@@ -18,7 +18,6 @@ const NAV_GESTOR = [
   { id: "campaigns", label: "Cotações", Icon: ClipboardList },
   { id: "producers", label: "Parceiros", Icon: Users },
   { id: "financial", label: "Financeiro", Icon: DollarSign },
-  { id: "pivo-profile", label: "Meu Perfil", Icon: UserSquare2 },
 ];
 
 const NAV_ADMIN = [
@@ -31,7 +30,6 @@ const NAV_ADMIN = [
 
 const NAV_VENDOR = [
   { id: "vendor-dashboard", label: "Propostas", Icon: Send },
-  { id: "vendor-profile", label: "Meu Perfil", Icon: UserSquare2 },
   { id: "vendor-pivos", label: "Gestores", Icon: Users },
 ];
 

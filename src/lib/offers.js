@@ -4,7 +4,7 @@ import { supabase } from "./supabase.js";
 export async function fetchOffers(campaignId) {
   const { data, error } = await supabase
     .from("vendor_campaign_offers")
-    .select("*, vendors(id, name, phone, city, users(phone))")
+    .select("*, vendors(id, name, phone, city)")
     .eq("campaign_id", campaignId)
     .order("price_per_unit", { ascending: true });
   if (error)

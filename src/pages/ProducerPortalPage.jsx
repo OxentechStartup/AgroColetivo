@@ -24,10 +24,12 @@ import {
   ChevronLeft,
   Package,
   MapPin,
+  Briefcase,
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { daysUntilDeadline } from "../utils/data";
 import { supabase } from "../lib/supabase";
+import { BuyerOrderStatusPage } from "./BuyerOrderStatusPage";
 import styles from "./ProducerPortalPage.module.css";
 
 // Categorias
@@ -322,9 +324,10 @@ function CampaignCard({ campaign, onAddToCart }) {
   const progress = Math.min(100, Math.round(campaign.approval));
   const daysLeft = campaign.deadline && daysUntilDeadline(campaign.deadline);
   const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
-  
+
   // Mapear a categoria para exibição
-  const categoryInfo = CATEGORIES.find(c => c.id === campaign.category) || CATEGORIES[0];
+  const categoryInfo =
+    CATEGORIES.find((c) => c.id === campaign.category) || CATEGORIES[0];
   const Icon = categoryInfo.icon;
 
   return (
@@ -1398,6 +1401,7 @@ function SuccessView({ itemCount, producerName, onReset }) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export function ProducerPortalPage({ onSubmit }) {
+  const [currentTab, setCurrentTab] = useState("products"); // products | orders
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -1586,107 +1590,208 @@ export function ProducerPortalPage({ onSubmit }) {
         display: "flex",
         flexDirection: "column",
         background: "var(--bg)",
+        paddingBottom: "70px",
       }}
     >
-      <Header
-        cartCount={cartItems.length}
-        onCartClick={() => setShowCartModal(true)}
-      />
-
-      {step === "success" ? (
-        <SuccessView
-          itemCount={successCount}
-          producerName={successName}
-          onReset={handleReset}
-        />
-      ) : (
-        <div
-          style={{
-            flex: 1,
-            padding: "20px",
-            maxWidth: 900,
-            margin: "0 auto",
-            width: "100%",
-          }}
-        >
-          <CategoryFilter
-            categories={CATEGORIES}
-            active={selectedCategory}
-            onChange={setSelectedCategory}
+      {currentTab === "products" ? (
+        <>
+          <Header
+            cartCount={cartItems.length}
+            onCartClick={() => setShowCartModal(true)}
           />
-          
-          {/* SearchBar sempre visível */}
-          <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
-          {filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px" }}>
-              <Package
-                size={48}
-                style={{ margin: "0 auto 16px", opacity: 0.2 }}
-              />
-              <p style={{ color: "var(--text3)" }}>
-                {searchQuery
-                  ? "Nenhuma cotação encontrada"
-                  : "Nenhuma cotação nesta categoria"}
-              </p>
-            </div>
+          {step === "success" ? (
+            <SuccessView
+              itemCount={successCount}
+              producerName={successName}
+              onReset={handleReset}
+            />
           ) : (
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                gap: "16px",
+                flex: 1,
+                padding: "20px",
+                maxWidth: 900,
+                margin: "0 auto",
+                width: "100%",
               }}
             >
-              {filtered.map((c) => (
-                <CampaignCard
-                  key={c.id}
-                  campaign={c}
-                  onAddToCart={handleAddToCart}
-                />
-              ))}
+              <CategoryFilter
+                categories={CATEGORIES}
+                active={selectedCategory}
+                onChange={setSelectedCategory}
+              />
+
+              {/* SearchBar sempre visível */}
+              <SearchBar value={searchQuery} onChange={setSearchQuery} />
+
+              {filtered.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                  <Package
+                    size={48}
+                    style={{ margin: "0 auto 16px", opacity: 0.2 }}
+                  />
+                  <p style={{ color: "var(--text3)" }}>
+                    {searchQuery
+                      ? "Nenhuma cotação encontrada"
+                      : "Nenhuma cotação nesta categoria"}
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(200px, 1fr))",
+                    gap: "16px",
+                  }}
+                >
+                  {filtered.map((c) => (
+                    <CampaignCard
+                      key={c.id}
+                      campaign={c}
+                      onAddToCart={handleAddToCart}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
+
+          {/* Modals */}
+          {addToCartCampaign && (
+            <AddToCartModal
+              campaign={addToCartCampaign}
+              onClose={() => setAddToCartCampaign(null)}
+              onAdd={handleConfirmAddToCart}
+            />
+          )}
+
+          {showDuplicateModal && duplicateData && (
+            <DuplicateItemModal
+              campaign={campaigns.find(
+                (c) => c.id === duplicateData.campaignId,
+              )}
+              newQty={duplicateData.newQty}
+              existingQty={duplicateData.existingQty}
+              onClose={() => {
+                setShowDuplicateModal(false);
+                setAddToCartCampaign(null);
+              }}
+              onReplace={handleReplaceItem}
+              onAdd={handleAddDuplicateItem}
+            />
+          )}
+
+          {showCartModal && (
+            <CartModal
+              cartItems={cartItems}
+              campaigns={campaigns}
+              onClose={() => setShowCartModal(false)}
+              onUpdateQty={handleUpdateQty}
+              onRemove={handleRemoveItem}
+              onSubmit={handleSubmitCart}
+              submitting={submitting}
+            />
+          )}
+        </>
+      ) : (
+        <BuyerOrderStatusPage />
       )}
 
-      {/* Modals */}
-      {addToCartCampaign && (
-        <AddToCartModal
-          campaign={addToCartCampaign}
-          onClose={() => setAddToCartCampaign(null)}
-          onAdd={handleConfirmAddToCart}
-        />
-      )}
-
-      {showDuplicateModal && duplicateData && (
-        <DuplicateItemModal
-          campaign={campaigns.find((c) => c.id === duplicateData.campaignId)}
-          newQty={duplicateData.newQty}
-          existingQty={duplicateData.existingQty}
-          onClose={() => {
-            setShowDuplicateModal(false);
-            setAddToCartCampaign(null);
+      {/* Bottom Navigation Bar */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: "70px",
+          background: "white",
+          borderTop: "1px solid #E5E7EB",
+          display: "flex",
+          justifyContent: "space-around",
+          alignItems: "center",
+          zIndex: 50,
+          boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
+        }}
+      >
+        <button
+          onClick={() => setCurrentTab("products")}
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "4px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: currentTab === "products" ? "#16A34A" : "#9CA3AF",
+            transition: "all 0.2s",
+            borderTop:
+              currentTab === "products"
+                ? "3px solid #16A34A"
+                : "3px solid transparent",
+            padding: "8px 0",
           }}
-          onReplace={handleReplaceItem}
-          onAdd={handleAddDuplicateItem}
-        />
-      )}
+        >
+          <ShoppingCart
+            size={24}
+            style={{
+              color: currentTab === "products" ? "#16A34A" : "#9CA3AF",
+            }}
+          />
+          <span
+            style={{
+              fontSize: ".75rem",
+              fontWeight: currentTab === "products" ? 600 : 500,
+            }}
+          >
+            Produtos
+          </span>
+        </button>
 
-      {showCartModal && (
-        <CartModal
-          cartItems={cartItems}
-          campaigns={campaigns}
-          onClose={() => setShowCartModal(false)}
-          onUpdateQty={handleUpdateQty}
-          onRemove={handleRemoveItem}
-          onSubmit={handleSubmitCart}
-          submitting={submitting}
-        />
-      )}
+        <button
+          onClick={() => setCurrentTab("orders")}
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "4px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: currentTab === "orders" ? "#16A34A" : "#9CA3AF",
+            transition: "all 0.2s",
+            borderTop:
+              currentTab === "orders"
+                ? "3px solid #16A34A"
+                : "3px solid transparent",
+            padding: "8px 0",
+          }}
+        >
+          <Briefcase
+            size={24}
+            style={{
+              color: currentTab === "orders" ? "#16A34A" : "#9CA3AF",
+            }}
+          />
+          <span
+            style={{
+              fontSize: ".75rem",
+              fontWeight: currentTab === "orders" ? 600 : 500,
+            }}
+          >
+            Meus Pedidos
+          </span>
+        </button>
+      </div>
 
       <style>
-        $
         {`
         @keyframes spin {
           from { transform: rotate(0deg); }
