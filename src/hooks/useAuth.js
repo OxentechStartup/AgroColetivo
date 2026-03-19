@@ -119,15 +119,16 @@ export function useAuth() {
   // Recebe os dados retornados por verifyEmail() incluindo email, senha e user
   const onEmailVerified = useCallback(async (verifyResult) => {
     if (!verifyResult || !verifyResult.user) return;
-    
+
     try {
       const { user: userData, password } = verifyResult;
-      
+
       // Fazer login automático no Supabase Auth
-      const { data: session, error: loginError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: password,
-      });
+      const { data: session, error: loginError } =
+        await supabase.auth.signInWithPassword({
+          email: userData.email,
+          password: password,
+        });
 
       if (loginError) {
         console.error("⚠️ Erro ao fazer login automático:", loginError);
@@ -156,7 +157,7 @@ export function useAuth() {
         setUser(sessionUser);
       }
     }
-    
+
     // Limpar dados do registro pendente
     setPendingVerificationUser(null);
     localStorage.removeItem("agro_pending_registration");

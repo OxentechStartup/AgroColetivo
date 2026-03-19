@@ -571,10 +571,8 @@ export async function updateUser(userId, updates) {
 
     await logSecurityEvent(
       "user_profile_updated",
-      userId,
+      data,
       null,
-      null,
-      "users",
       userId,
       `Updated fields: ${Object.keys(updates).join(", ")}`,
     );
