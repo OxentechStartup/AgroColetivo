@@ -207,15 +207,16 @@
 .detailHeadLeft {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
 }
 .detailTitle {
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--text);
   margin: 0;
+  line-height: 1.2;
 }
 .detailMeta {
   display: flex;
@@ -611,6 +612,18 @@
     display: flex;
   }
 
+  /* Reorganizar detalhe head para coluna em mobile */
+  .detailHead {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .detailHeadLeft {
+    width: 100%;
+  }
+  .detailTitle {
+    font-size: 1.15rem;
+  }
+
   .summaryBar {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
@@ -648,5 +661,15 @@
   }
   .header {
     padding: 10px var(--page-pad) 8px;
+  }
+  .detailTitle {
+    font-size: 1rem;
+  }
+  .detailsCard {
+    padding: 12px 14px;
+  }
+  .detailsGrid {
+    gap: 16px;
+    grid-template-columns: 1fr;
   }
 }

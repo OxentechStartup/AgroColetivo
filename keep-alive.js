@@ -4,19 +4,24 @@
  * Execute com: node keep-alive.js
  */
 
-const https = require('https');
+const https = require("https");
 
-const SITE_URL = 'https://agrocoletivo.onrender.com';
+const SITE_URL = "https://agrocoletivo.onrender.com";
 const INTERVAL_MINUTES = 10; // A cada 10 minutos
 const INTERVAL_MS = INTERVAL_MINUTES * 60 * 1000;
 
 function keepAlive() {
   https
     .get(SITE_URL, (res) => {
-      console.log(`[${new Date().toISOString()}] Keep-alive ping: ${res.statusCode}`);
+      console.log(
+        `[${new Date().toISOString()}] Keep-alive ping: ${res.statusCode}`,
+      );
     })
-    .on('error', (err) => {
-      console.error(`[${new Date().toISOString()}] Erro no keep-alive:`, err.message);
+    .on("error", (err) => {
+      console.error(
+        `[${new Date().toISOString()}] Erro no keep-alive:`,
+        err.message,
+      );
     });
 }
 
@@ -28,7 +33,7 @@ keepAlive();
 setInterval(keepAlive, INTERVAL_MS);
 
 // Mantém o processo rodando
-process.on('SIGINT', () => {
-  console.log('\n✋ Keep-alive parado');
+process.on("SIGINT", () => {
+  console.log("\n✋ Keep-alive parado");
   process.exit(0);
 });
