@@ -68,7 +68,7 @@ const PAGE_TITLES = {
 };
 
 // ── Sidebar Mobile com estado interno ────────────────────────────────────────
-function SidebarMobile({ page, setPage, user }) {
+function SidebarMobile({ page, setPage, user, role, signOut, navigate }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const h = () => setOpen(true);
@@ -83,6 +83,10 @@ function SidebarMobile({ page, setPage, user }) {
       onClose={() => setOpen(false)}
       user={user}
       blocked={user?.blocked}
+      onProfile={() => {
+        navigate(role === ROLES.VENDOR ? "vendor-profile" : "pivo-profile");
+      }}
+      onLogout={signOut}
     />
   );
 }
@@ -130,6 +134,9 @@ export default function App() {
     finishCampaign,
     reopenCampaign,
     publishToVendors,
+    publishToBuyers,
+    closeToBuyers,
+    publishToVendorsOnly,
     deleteCampaign,
     addPendingOrder,
     approvePending,
@@ -242,6 +249,9 @@ export default function App() {
     finishCampaign,
     reopenCampaign,
     publishToVendors,
+    publishToBuyers,
+    closeToBuyers,
+    publishToVendorsOnly,
     deleteCampaign,
     approvePending,
     rejectPending,
@@ -359,9 +369,20 @@ export default function App() {
         onClose={() => {}}
         user={user}
         blocked={user?.blocked}
+        onProfile={() => {
+          navigate(role === ROLES.VENDOR ? "vendor-profile" : "pivo-profile");
+        }}
+        onLogout={signOut}
       />
       {/* Sidebar mobile — controlada por evento */}
-      <SidebarMobile page={page} setPage={navigate} user={user} />
+      <SidebarMobile
+        page={page}
+        setPage={navigate}
+        user={user}
+        role={role}
+        signOut={signOut}
+        navigate={navigate}
+      />
 
       <div className={styles.main}>
         <Topbar

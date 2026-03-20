@@ -1885,6 +1885,9 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
     finishCampaign,
     reopenCampaign,
     publishToVendors,
+    publishToBuyers,
+    closeToBuyers,
+    publishToVendorsOnly,
     approvePending,
     rejectPending,
     deleteCampaign,
@@ -2181,62 +2184,32 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                     alignItems: "center",
                   }}
                 >
-                  {/* Aberta: Publicar + Parar */}
+                  {/* Status: open = publicado para compradores */}
                   {active.status === "open" && (
                     <>
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => setShowPublish(true)}
-                      >
-                        <Send size={13} /> Publicar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
                         onClick={() =>
-                          setConfirmAction({ type: "stop", id: active.id })
+                          setConfirmAction({ type: "closeToBuyers", id: active.id })
                         }
                       >
-                        <Lock size={13} /> Parar cotação
+                        <Lock size={13} /> Fechar para Compradores
                       </Button>
                     </>
                   )}
 
-                  {/* Negociando: Publicado (inativo) + Parar */}
-                  {active.status === "negotiating" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled
-                        style={{ opacity: 0.5, cursor: "default" }}
-                      >
-                        <Check size={13} /> Publicado
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setConfirmAction({ type: "stop", id: active.id })
-                        }
-                      >
-                        <Lock size={13} /> Parar cotação
-                      </Button>
-                    </>
-                  )}
-
-                  {/* Pausada: Encerrar cotação (definitivo) + Reabrir */}
+                  {/* Status: closed = pode publicar para fornecedores */}
                   {active.status === "closed" && (
                     <>
                       <Button
                         variant="primary"
                         size="sm"
                         onClick={() =>
-                          setConfirmAction({ type: "finish", id: active.id })
+                          setConfirmAction({ type: "publishToVendorsOnly", id: active.id })
                         }
                       >
-                        <CheckCircle size={13} /> Encerrar cotação
+                        <Send size={13} /> Publicar para Fornecedores
                       </Button>
                       <Button
                         variant="outline"
@@ -2245,9 +2218,45 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                           setConfirmAction({ type: "reopen", id: active.id })
                         }
                       >
-                        <Unlock size={13} /> Reabrir
+                        <Unlock size={13} /> Reabrir para Compradores
                       </Button>
                     </>
+                  )}
+
+                  {/* Status: negotiating = publicado para fornecedores */}
+                  {active.status === "negotiating" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled
+                        style={{ opacity: 0.5, cursor: "default" }}
+                      >
+                        <Check size={13} /> Publicado para Fornecedores
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setConfirmAction({ type: "finish", id: active.id })
+                        }
+                      >
+                        <CheckCircle size={13} /> Encerrar
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Novo - mostrar botão publicar para compradores quando em draft */}
+                  {(active.status !== "open" && active.status !== "negotiating" && active.status !== "closed" && active.status !== "finished") && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() =>
+                        setConfirmAction({ type: "publishToBuyers", id: active.id })
+                      }
+                    >
+                      <Send size={13} /> Publicar para Compradores
+                    </Button>
                   )}
 
                   {/* Encerrada: permanente — sem ações */}
@@ -2415,6 +2424,36 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
       {confirmAction &&
         (() => {
           const cfg = {
+            publishToBuyers: {
+              title: "Publicar para Compradores",
+              body: "A cotação será publicada e compradores poderão enviar pedidos. Deseja continuar?",
+              confirmLabel: "Publicar",
+              confirmVariant: "primary",
+              onConfirm: async () => {
+                await run(publishToBuyers, "Publicada para compradores!")(confirmAction.id);
+                setConfirmAction(null);
+              },
+            },
+            closeToBuyers: {
+              title: "Fechar para Compradores",
+              body: "A cotação não aceitará mais pedidos de compradores. Você poderá publicá-la para fornecedores depois.",
+              confirmLabel: "Fechar",
+              confirmVariant: "primary",
+              onConfirm: async () => {
+                await run(closeToBuyers, "Fechada para compradores!")(confirmAction.id);
+                setConfirmAction(null);
+              },
+            },
+            publishToVendorsOnly: {
+              title: "Publicar para Fornecedores",
+              body: "A cotação será publicada apenas para fornecedores. Compradores não poderão mais enviar pedidos.",
+              confirmLabel: "Publicar",
+              confirmVariant: "primary",
+              onConfirm: async () => {
+                await run(publishToVendorsOnly, "Publicada para fornecedores!")(confirmAction.id);
+                setConfirmAction(null);
+              },
+            },
             stop: {
               title: "Parar cotação",
               body: "A cotação será pausada e não aceitará novos pedidos. Você poderá reabri-la a qualquer momento.",

@@ -11,6 +11,8 @@
   bottom: 0;
   z-index: 200;
   transition: transform 0.22s ease;
+  overflow-y: auto;
+  overflow-x: visible;
 }
 
 .brandRow {
@@ -181,44 +183,74 @@
 /* ── User dropdown menu ── */
 .dropdown {
   position: absolute;
-  bottom: calc(100% + 4px);
-  left: 0;
-  right: 0;
+  top: 50%;
+  right: -140px;
+  width: 150px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
-  overflow: hidden;
-  animation: dropUp 0.15s ease;
+  overflow: visible;
+  transform: translateY(-50%);
+  animation: slideRight 0.15s ease;
 }
-@keyframes dropUp {
+
+/* ── User dropdown portal (escape from sidebar overflow) ── */
+.dropdownPortal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999 !important;
+  overflow: visible;
+  animation: fadeIn 0.15s ease;
+  min-width: 180px;
+  padding: 4px 0;
+}
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+  }
+}
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
   }
 }
 .dropItem {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 11px 16px;
+  padding: 12px 16px;
   border: none;
   background: none;
   cursor: pointer;
   font-size: 0.88rem;
-  color: var(--text2);
+  font-weight: 500;
+  color: var(--text);
   text-align: left;
-  transition: background 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
+  box-sizing: border-box;
 }
 .dropItem:hover {
   background: var(--surface3);
-  color: var(--text);
+  color: var(--primary);
+}
+.dropItem svg {
+  flex-shrink: 0;
+  color: inherit;
 }
 .dropDivider {
   height: 1px;

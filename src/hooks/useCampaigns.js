@@ -259,6 +259,27 @@ export function useCampaigns(user) {
       prev.map((c) => (c.id === id ? { ...c, status: "negotiating" } : c)),
     );
   };
+  const publishToBuyers = async (id) => {
+    // Abre apenas para compradores (buyers podem fazer pedidos, vendors não podem)
+    await setCampaignStatus(id, "open");
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: "open", publishedToBuyers: true, publishedToVendors: false } : c)),
+    );
+  };
+  const closeToBuyers = async (id) => {
+    // Fecha para compradores, mas pode abrir para fornecedores
+    await setCampaignStatus(id, "closed");
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: "closed", publishedToBuyers: false } : c)),
+    );
+  };
+  const publishToVendorsOnly = async (id) => {
+    // Abre apenas para fornecedores (quando já fechou para compradores)
+    await setCampaignStatus(id, "negotiating");
+    setCampaigns((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: "negotiating", publishedToBuyers: false, publishedToVendors: true } : c)),
+    );
+  };
   const deleteCampaign = async (id) => {
     await apiDeleteCampaign(id);
     setCampaigns((prev) => prev.filter((c) => c.id !== id));
@@ -338,6 +359,9 @@ export function useCampaigns(user) {
     finishCampaign,
     reopenCampaign,
     publishToVendors,
+    publishToBuyers,
+    closeToBuyers,
+    publishToVendorsOnly,
     addLot,
     removeLot,
     deleteCampaign,
