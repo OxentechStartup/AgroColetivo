@@ -647,6 +647,15 @@ export function BuyerOrderStatusPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (alertModal.open) {
+      const timer = setTimeout(() => {
+        setAlertModal({ open: false, title: "", message: "" });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [alertModal.open]);
+
   const loadOrders = async (phoneNum) => {
     setLoading(true);
     try {
