@@ -4,20 +4,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-    // API Proxy for development - routes /api/* to email-server.cjs on port 3001
-    proxy: {
-      "/api/send-verification-email": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-      },
-    },
     // CORS Configuration
     cors: {
-      origin: [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:3000",
-      ],
+      origin: "http://localhost",
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
