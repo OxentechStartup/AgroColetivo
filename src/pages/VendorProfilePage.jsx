@@ -81,10 +81,14 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
       } else {
         result = await createVendor({ ...payload, user_id: user?.id });
       }
-      // Persiste photo_url na sessão local do vendor (exibido na Topbar via vendor)
+      // Persiste photo_url na sessão local do vendor e do user (exibido na Topbar e Sidebar)
       try {
         const current = JSON.parse(localStorage.getItem("agro_auth") || "{}");
-        localStorage.setItem("agro_auth", JSON.stringify({ ...current, vendor_photo_url: photoUrl || null }));
+        localStorage.setItem("agro_auth", JSON.stringify({ 
+          ...current, 
+          vendor_photo_url: photoUrl || null,
+          profile_photo_url: photoUrl || null,
+        }));
       } catch {}
       showToast("Perfil atualizado!");
       onSaved?.(result);

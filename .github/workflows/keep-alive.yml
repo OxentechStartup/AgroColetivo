@@ -2,8 +2,8 @@ name: Keep-Alive for Onrender
 
 on:
   schedule:
-    # Executa a cada 10 minutos
-    - cron: "*/10 * * * *"
+    # Executa a cada 4 minutos para manter servidor 100% acordado
+    - cron: "*/4 * * * *"
   workflow_dispatch: # Permite executar manualmente
 
 jobs:
@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Keep site awake
         run: |
-          curl -s https://agrocoletivo.onrender.com/ > /dev/null
+          curl -s https://agrocoletivo.onrender.com/api/ping > /dev/null
           echo "✅ Keep-alive ping enviado em $(date)"

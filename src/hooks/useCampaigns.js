@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   fetchCampaigns,
   setCampaignStatus,
+  setPublishStatus,
   createCampaign,
   updateCampaignFinancials,
   createOrder,
@@ -20,6 +21,11 @@ import {
 } from "../lib/lots.js";
 import { fetchVendors, createVendor, deleteVendor } from "../lib/vendors.js";
 import { findOrCreateProducer } from "../lib/producers.js";
+import {
+  notifyManagerNewOrder,
+  notifyVendorNewProposal,
+  notifyManagerProposalReceived,
+} from "../lib/notifications.js";
 import { ROLES } from "../constants/roles.js";
 import { supabase } from "../lib/supabase.js";
 
@@ -95,109 +101,130 @@ export function useCampaigns(user) {
 
     setLoading(true);
     setError(null);
+
+    // Timeout de 30 segundos para evitar carregamento infinito
+    // Essencial para cold starts no Render
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              "Timeout ao carregar cotações. Verifique sua conexão e tente novamente.",
+            ),
+          ),
+        30000,
+      ),
+    );
+
     try {
-      let userWithVendorId = user;
+      await Promise.race([
+        (async () => {
+          let userWithVendorId = user;
 
-      // Resolve vendorId se vendor ainda não tem
-      if (user.role === ROLES.VENDOR && !user.vendorId) {
-        let { data: vRow } = await supabase
-          .from("vendors")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (!vRow && user.phone) {
-          const { data: vByPhone } = await supabase
-            .from("vendors")
-            .select("id")
-            .eq("phone", user.phone.replace(/\D/g, ""))
-            .maybeSingle();
-          if (vByPhone) {
-            await supabase
+          // Resolve vendorId se vendor ainda não tem
+          if (user.role === ROLES.VENDOR && !user.vendorId) {
+            let { data: vRow } = await supabase
               .from("vendors")
-              .update({ user_id: user.id })
-              .eq("id", vByPhone.id);
-            vRow = vByPhone;
+              .select("id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (!vRow && user.phone) {
+              const { data: vByPhone } = await supabase
+                .from("vendors")
+                .select("id")
+                .eq("phone", user.phone.replace(/\D/g, ""))
+                .maybeSingle();
+              if (vByPhone) {
+                await supabase
+                  .from("vendors")
+                  .update({ user_id: user.id })
+                  .eq("id", vByPhone.id);
+                vRow = vByPhone;
+              }
+            }
+            if (vRow) userWithVendorId = { ...user, vendorId: vRow.id };
           }
-        }
-        if (vRow) userWithVendorId = { ...user, vendorId: vRow.id };
-      }
 
-      const isVendor = user.role === ROLES.VENDOR;
-      const vendorId = userWithVendorId?.vendorId ?? null;
+          const isVendor = user.role === ROLES.VENDOR;
+          const vendorId = userWithVendorId?.vendorId ?? null;
 
-      // Busca campanhas e vendors em paralelo
-      const [rawCampaigns, rawVendors] = await Promise.all([
-        fetchCampaigns(userWithVendorId),
-        fetchVendors(user.id, user.role),
-      ]);
+          // Busca campanhas e vendors em paralelo
+          const [rawCampaigns, rawVendors] = await Promise.all([
+            fetchCampaigns(userWithVendorId),
+            fetchVendors(user.id, user.role),
+          ]);
 
-      // Busca vendor próprio se necessário
-      if (isVendor && vendorId) {
-        supabase
-          .from("vendors")
-          .select("*")
-          .eq("id", vendorId)
-          .maybeSingle()
-          .then(({ data: vFull }) => {
-            if (vFull) setOwnVendor({ ...vFull, admin_user_id: vFull.user_id });
+          // Busca vendor próprio se necessário
+          if (isVendor && vendorId) {
+            supabase
+              .from("vendors")
+              .select("*")
+              .eq("id", vendorId)
+              .maybeSingle()
+              .then(({ data: vFull }) => {
+                if (vFull)
+                  setOwnVendor({ ...vFull, admin_user_id: vFull.user_id });
+              });
+          }
+
+          if (rawCampaigns.length === 0) {
+            setCampaigns([]);
+            setVendors(rawVendors);
+            return;
+          }
+
+          // ── OTIMIZAÇÃO: busca orders e lots de TODAS as campanhas de uma vez ──
+          // Antes: 1 query por campanha × N campanhas = N+1 queries
+          // Agora: 2 queries totais independente de quantas campanhas existem
+          const campaignIds = rawCampaigns.map((c) => c.id);
+          const [allOrders, allLots] = await Promise.all([
+            isVendor
+              ? Promise.resolve([])
+              : fetchAllOrdersForCampaigns(campaignIds),
+            fetchAllLotsForCampaigns(campaignIds),
+          ]);
+
+          // Agrupa por campaign_id em memória
+          const ordersByCampaign = groupBy(allOrders, "campaign_id");
+          const lotsByCampaign = groupBy(allLots, "campaign_id");
+
+          const withOrders = rawCampaigns.map((c) => {
+            const orders = ordersByCampaign[c.id] ?? [];
+            const lots = (lotsByCampaign[c.id] ?? []).map(normalizeLotRaw);
+
+            const visibleLots =
+              isVendor && vendorId
+                ? lots.filter((l) => l.vendorId === vendorId)
+                : lots;
+            const totalSupplied = lots.reduce(
+              (s, l) => s + (l.qtyAvailable ?? 0),
+              0,
+            );
+            const approved = orders
+              .filter((o) => o.status === "approved")
+              .map(normalizeOrder);
+            const pending = orders
+              .filter((o) => o.status === "pending")
+              .map(normalizeOrder);
+
+            return {
+              ...c,
+              orders: isVendor ? [] : approved,
+              pendingOrders: isVendor ? [] : pending,
+              lots: visibleLots,
+              totalSupplied,
+              approvedCount: approved.length,
+              totalOrdered: approved.reduce((s, o) => s + o.qty, 0),
+              pendingCount: pending.length,
+            };
           });
-      }
 
-      if (rawCampaigns.length === 0) {
-        setCampaigns([]);
-        setVendors(rawVendors);
-        return;
-      }
-
-      // ── OTIMIZAÇÃO: busca orders e lots de TODAS as campanhas de uma vez ──
-      // Antes: 1 query por campanha × N campanhas = N+1 queries
-      // Agora: 2 queries totais independente de quantas campanhas existem
-      const campaignIds = rawCampaigns.map((c) => c.id);
-      const [allOrders, allLots] = await Promise.all([
-        isVendor
-          ? Promise.resolve([])
-          : fetchAllOrdersForCampaigns(campaignIds),
-        fetchAllLotsForCampaigns(campaignIds),
+          setCampaigns(withOrders);
+          setVendors(rawVendors);
+        })(),
+        timeoutPromise,
       ]);
-
-      // Agrupa por campaign_id em memória
-      const ordersByCampaign = groupBy(allOrders, "campaign_id");
-      const lotsByCampaign = groupBy(allLots, "campaign_id");
-
-      const withOrders = rawCampaigns.map((c) => {
-        const orders = ordersByCampaign[c.id] ?? [];
-        const lots = (lotsByCampaign[c.id] ?? []).map(normalizeLotRaw);
-
-        const visibleLots =
-          isVendor && vendorId
-            ? lots.filter((l) => l.vendorId === vendorId)
-            : lots;
-        const totalSupplied = lots.reduce(
-          (s, l) => s + (l.qtyAvailable ?? 0),
-          0,
-        );
-        const approved = orders
-          .filter((o) => o.status === "approved")
-          .map(normalizeOrder);
-        const pending = orders
-          .filter((o) => o.status === "pending")
-          .map(normalizeOrder);
-
-        return {
-          ...c,
-          orders: isVendor ? [] : approved,
-          pendingOrders: isVendor ? [] : pending,
-          lots: visibleLots,
-          totalSupplied,
-          approvedCount: approved.length,
-          totalOrdered: approved.reduce((s, o) => s + o.qty, 0),
-          pendingCount: pending.length,
-        };
-      });
-
-      setCampaigns(withOrders);
-      setVendors(rawVendors);
     } catch (err) {
       setError(err?.message || "Erro ao carregar cotações");
     } finally {
@@ -254,30 +281,67 @@ export function useCampaigns(user) {
     );
   };
   const publishToVendors = async (id) => {
-    await setCampaignStatus(id, "negotiating");
+    // Publicar para ambos: compradores E fornecedores
+    await setPublishStatus(id, "negotiating", true, true);
     setCampaigns((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "negotiating" } : c)),
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status: "negotiating",
+              publishedToBuyers: true,
+              publishedToVendors: true,
+            }
+          : c,
+      ),
     );
   };
   const publishToBuyers = async (id) => {
-    // Abre apenas para compradores (buyers podem fazer pedidos, vendors não podem)
-    await setCampaignStatus(id, "open");
+    // Abre apenas para compradores
+    await setPublishStatus(id, "open", true, false);
     setCampaigns((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "open", publishedToBuyers: true, publishedToVendors: false } : c)),
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status: "open",
+              publishedToBuyers: true,
+              publishedToVendors: false,
+            }
+          : c,
+      ),
     );
   };
   const closeToBuyers = async (id) => {
     // Fecha para compradores, mas pode abrir para fornecedores
-    await setCampaignStatus(id, "closed");
+    await setPublishStatus(id, "closed", false, false);
     setCampaigns((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "closed", publishedToBuyers: false } : c)),
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status: "closed",
+              publishedToBuyers: false,
+              publishedToVendors: false,
+            }
+          : c,
+      ),
     );
   };
   const publishToVendorsOnly = async (id) => {
     // Abre apenas para fornecedores (quando já fechou para compradores)
-    await setCampaignStatus(id, "negotiating");
+    await setPublishStatus(id, "negotiating", false, true);
     setCampaigns((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "negotiating", publishedToBuyers: false, publishedToVendors: true } : c)),
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              status: "negotiating",
+              publishedToBuyers: false,
+              publishedToVendors: true,
+            }
+          : c,
+      ),
     );
   };
   const deleteCampaign = async (id) => {
@@ -292,6 +356,25 @@ export function useCampaigns(user) {
       { vendorName: lot.vendorName, qty: lot.qty },
       user?.id,
     );
+    
+    // Buscar dados da campanha para enviar no email
+    const campaign = campaigns.find(c => c.id === campaignId);
+    
+    // Enviar email de notificação para o gestor informando que recebeu uma proposta
+    if (user?.email && campaign) {
+      const campaignLink = `${window.location.origin}/#campaigns`;
+      
+      await notifyManagerProposalReceived(user.email, user.name || 'Gestor', {
+        vendorName: lot.vendorName,
+        productName: campaign.product,
+        quantity: lot.qty,
+        unit: campaign.unit || 'unidades',
+        pricePerUnit: lot.price,
+        deliveryDate: lot.deliveryDate || 'A confirmar',
+        campaignLink,
+      }).catch(err => console.warn('⚠️ Não foi possível enviar email de proposta recebida:', err));
+    }
+    
     await reloadCampaign(campaignId);
   };
   const removeLot = async (campaignId, lotId) => {
@@ -300,6 +383,9 @@ export function useCampaigns(user) {
     await reloadCampaign(campaignId);
   };
   const addOrder = async (campaignId, order) => {
+    // Buscar dados da campanha para enviar no email
+    const campaign = campaigns.find(c => c.id === campaignId);
+    
     const buyer = await findOrCreateProducer(order.producerName, order.phone);
     await createOrder(campaignId, buyer.id, order.qty, "approved");
     logEvent(
@@ -308,6 +394,23 @@ export function useCampaigns(user) {
       { producerName: order.producerName, qty: order.qty },
       buyer.id,
     );
+    
+    // Enviar email de notificação para o gestor
+    if (user?.email && campaign) {
+      const campaignLink = `${window.location.origin}/#campaigns`;
+      const fmtDate = new Date().toLocaleDateString('pt-BR');
+      
+      await notifyManagerNewOrder(user.email, user.name || 'Gestor', {
+        productName: campaign.product,
+        quantity: order.qty,
+        unit: campaign.unit || 'unidades',
+        producerName: order.producerName,
+        producerPhone: order.phone,
+        date: fmtDate,
+        campaignLink,
+      }).catch(err => console.warn('⚠️ Não foi possível enviar email de novo pedido:', err));
+    }
+    
     await reloadCampaign(campaignId);
   };
   const removeOrder = async (campaignId, orderId) => {

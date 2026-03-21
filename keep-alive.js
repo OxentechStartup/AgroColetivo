@@ -7,7 +7,7 @@
 const https = require("https");
 
 const SITE_URL = "https://agrocoletivo.onrender.com";
-const INTERVAL_MINUTES = 10; // A cada 10 minutos
+const INTERVAL_MINUTES = 4; // A cada 4 minutos (mais agressivo)
 const INTERVAL_MS = INTERVAL_MINUTES * 60 * 1000;
 
 function keepAlive() {

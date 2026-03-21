@@ -1,19 +1,57 @@
 .wrap {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: calc(100dvh - var(--topbar-h)); gap: 12px; padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100dvh - var(--topbar-h));
+  gap: 12px;
+  padding: 40px;
 }
 .spinner {
-  color: var(--primary); animation: spin .9s linear infinite;
+  color: var(--primary);
+  animation: spin 0.9s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-.msg        { font-size: .84rem; color: var(--text3); }
-.errorIcon  { color: var(--red); }
-.errorTitle { font-size: 1rem; font-weight: 700; color: var(--text); }
-.errorMsg   { font-size: .84rem; color: var(--text2); text-align: center; max-width: 320px; line-height: 1.5; }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.msg {
+  font-size: 0.84rem;
+  color: var(--text3);
+}
+.errorIcon {
+  color: var(--red);
+}
+.errorTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.errorMsg {
+  font-size: 0.84rem;
+  color: var(--text2);
+  text-align: center;
+  max-width: 320px;
+  line-height: 1.5;
+}
 .retryBtn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 18px; background: var(--surface3); border: 1px solid var(--border);
-  border-radius: var(--r); cursor: pointer; font-size: .84rem; color: var(--text2);
-  transition: all .14s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: white;
+  font-weight: 600;
+  transition: all 0.2s;
+  margin-top: 8px;
 }
-.retryBtn:hover { background: var(--border); color: var(--text); }
+.retryBtn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

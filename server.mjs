@@ -7,6 +7,11 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import sendVerificationEmailHandler from "./api/send-verification-email.js";
+import {
+  handleSendOrderEmail,
+  handleSendProposalEmail,
+  handleSendProposalReceivedEmail,
+} from "./api/send-notification-emails.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,6 +32,16 @@ app.get("/api/ping", (req, res) => {
 // Email verification endpoint
 app.post("/api/send-verification-email", sendVerificationEmailHandler);
 app.options("/api/send-verification-email", sendVerificationEmailHandler);
+
+// Notification email endpoints
+app.post("/api/send-order-email", handleSendOrderEmail);
+app.options("/api/send-order-email", handleSendOrderEmail);
+
+app.post("/api/send-proposal-email", handleSendProposalEmail);
+app.options("/api/send-proposal-email", handleSendProposalEmail);
+
+app.post("/api/send-proposal-received-email", handleSendProposalReceivedEmail);
+app.options("/api/send-proposal-received-email", handleSendProposalReceivedEmail);
 
 // SPA fallback: retorna index.html para rotas não encontradas
 app.use((req, res) => {

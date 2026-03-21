@@ -1936,13 +1936,6 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
     try {
       await approvePending(active.id, orderId);
       showToast("Pedido aprovado!");
-      if (order.phone) {
-        const phone = order.phone.replace(/\D/g, "");
-        const msg = encodeURIComponent(
-          `Olá, ${order.producerName}! ✅ Seu pedido de *${order.qty} ${active.unit}* foi aprovado. 🌾`,
-        );
-        window.open(`https://wa.me/55${phone}?text=${msg}`, "_blank");
-      }
     } catch (e) {
       showToast(e?.message || "Erro ao aprovar pedido", "error");
     }
@@ -2191,7 +2184,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                         variant="primary"
                         size="sm"
                         onClick={() =>
-                          setConfirmAction({ type: "closeToBuyers", id: active.id })
+                          setConfirmAction({
+                            type: "closeToBuyers",
+                            id: active.id,
+                          })
                         }
                       >
                         <Lock size={13} /> Fechar para Compradores
@@ -2206,7 +2202,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                         variant="primary"
                         size="sm"
                         onClick={() =>
-                          setConfirmAction({ type: "publishToVendorsOnly", id: active.id })
+                          setConfirmAction({
+                            type: "publishToVendorsOnly",
+                            id: active.id,
+                          })
                         }
                       >
                         <Send size={13} /> Publicar para Fornecedores
@@ -2247,17 +2246,23 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                   )}
 
                   {/* Novo - mostrar botão publicar para compradores quando em draft */}
-                  {(active.status !== "open" && active.status !== "negotiating" && active.status !== "closed" && active.status !== "finished") && (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() =>
-                        setConfirmAction({ type: "publishToBuyers", id: active.id })
-                      }
-                    >
-                      <Send size={13} /> Publicar para Compradores
-                    </Button>
-                  )}
+                  {active.status !== "open" &&
+                    active.status !== "negotiating" &&
+                    active.status !== "closed" &&
+                    active.status !== "finished" && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() =>
+                          setConfirmAction({
+                            type: "publishToBuyers",
+                            id: active.id,
+                          })
+                        }
+                      >
+                        <Send size={13} /> Publicar para Compradores
+                      </Button>
+                    )}
 
                   {/* Encerrada: permanente — sem ações */}
 
@@ -2430,7 +2435,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
               confirmLabel: "Publicar",
               confirmVariant: "primary",
               onConfirm: async () => {
-                await run(publishToBuyers, "Publicada para compradores!")(confirmAction.id);
+                await run(
+                  publishToBuyers,
+                  "Publicada para compradores!",
+                )(confirmAction.id);
                 setConfirmAction(null);
               },
             },
@@ -2440,7 +2448,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
               confirmLabel: "Fechar",
               confirmVariant: "primary",
               onConfirm: async () => {
-                await run(closeToBuyers, "Fechada para compradores!")(confirmAction.id);
+                await run(
+                  closeToBuyers,
+                  "Fechada para compradores!",
+                )(confirmAction.id);
                 setConfirmAction(null);
               },
             },
@@ -2450,7 +2461,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
               confirmLabel: "Publicar",
               confirmVariant: "primary",
               onConfirm: async () => {
-                await run(publishToVendorsOnly, "Publicada para fornecedores!")(confirmAction.id);
+                await run(
+                  publishToVendorsOnly,
+                  "Publicada para fornecedores!",
+                )(confirmAction.id);
                 setConfirmAction(null);
               },
             },

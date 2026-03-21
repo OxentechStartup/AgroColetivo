@@ -16,6 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { ROLES } from "../constants/roles";
+import { supabase } from "../lib/supabase";
 import styles from "./Sidebar.module.css";
 
 const NAV_GESTOR = [
@@ -63,8 +64,32 @@ export function Sidebar({
 }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const [vendorPhoto, setVendorPhoto] = useState(null);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+
+  // Se vendor não tem foto no user, busca direto da tabela vendors como fallback
+  useEffect(() => {
+    if (user?.role === ROLES.VENDOR && !user?.profile_photo_url && user?.id) {
+      const loadVendorPhoto = async () => {
+        try {
+          const { data: vendor } = await supabase
+            .from("vendors")
+            .select("photo_url")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (vendor?.photo_url) {
+            setVendorPhoto(vendor.photo_url);
+          }
+        } catch (err) {
+          console.error("Erro ao carregar foto do vendor:", err);
+        }
+      };
+      loadVendorPhoto();
+    } else {
+      setVendorPhoto(null);
+    }
+  }, [user?.id, user?.role, user?.profile_photo_url]);
 
   // Debug: verificar se props estão sendo passados
   useEffect(() => {
@@ -191,9 +216,9 @@ export function Sidebar({
             style={{ width: "100%", cursor: "pointer" }}
           >
             <div className={styles.userAvatar}>
-              {user?.profile_photo_url ? (
+              {user?.profile_photo_url || vendorPhoto ? (
                 <img
-                  src={user.profile_photo_url}
+                  src={user.profile_photo_url || vendorPhoto}
                   alt={displayName}
                   style={{
                     width: "100%",

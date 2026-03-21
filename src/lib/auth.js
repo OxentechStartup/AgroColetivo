@@ -108,13 +108,13 @@ export async function login(email, password) {
   if (rest.role === ROLES.VENDOR) {
     let { data: vRow } = await supabase
       .from("vendors")
-      .select("id")
+      .select("id, photo_url")
       .eq("user_id", rest.id)
       .maybeSingle();
     if (!vRow && rest.phone) {
       const { data: vByPhone } = await supabase
         .from("vendors")
-        .select("id")
+        .select("id, photo_url")
         .eq("phone", rest.phone)
         .is("user_id", null)
         .maybeSingle();
@@ -126,6 +126,20 @@ export async function login(email, password) {
         vRow = vByPhone;
       }
     }
+
+    // Se vendor tem foto salva, sincroniza com profile_photo_url do user
+    if (vRow?.photo_url) {
+      if (!rest.profile_photo_url) {
+        // Atualiza no banco
+        await supabase
+          .from("users")
+          .update({ profile_photo_url: vRow.photo_url })
+          .eq("id", rest.id);
+      }
+      // Sempre retorna a foto do vendor se existir
+      rest.profile_photo_url = vRow.photo_url;
+    }
+
     return { ...rest, blocked: active === false, vendorId: vRow?.id ?? null };
   }
 

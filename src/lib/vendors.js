@@ -15,7 +15,7 @@ export async function fetchVendors(userId, role) {
   const { data, error } = await supabase
     .from("vendors")
     .select(
-      "id, name, phone, city, notes, user_id, users(id, name, phone, city, role)",
+      "id, name, phone, city, notes, user_id, users(id, name, email, phone, city, role)",
     )
     .order("name", { ascending: true });
 
@@ -24,6 +24,7 @@ export async function fetchVendors(userId, role) {
     ...v,
     admin_user_id: v.user_id,
     company_name: v.users?.name ?? v.name,
+    email: v.users?.email ?? null,
   }));
 }
 
@@ -52,6 +53,14 @@ export async function createVendor(vendor) {
     .single();
 
   if (error) throw new Error(error?.message || "Erro ao criar vendor");
+
+  // Sincroniza photo_url do vendor com profile_photo_url do usuário
+  if (vendor.photo_url && vendor.user_id) {
+    await supabase
+      .from("users")
+      .update({ profile_photo_url: vendor.photo_url })
+      .eq("id", vendor.user_id);
+  }
 
   return { ...data, admin_user_id: data.user_id };
 }
@@ -85,6 +94,14 @@ export async function updateVendor(id, patch) {
 
   if (selectError)
     throw new Error(selectError?.message || "Erro ao carregar vendor");
+
+  // Sincroniza photo_url do vendor com profile_photo_url do usuário
+  if (patch.photo_url !== undefined && data.user_id) {
+    await supabase
+      .from("users")
+      .update({ profile_photo_url: patch.photo_url || null })
+      .eq("id", data.user_id);
+  }
 
   return { ...data, admin_user_id: data.user_id };
 }

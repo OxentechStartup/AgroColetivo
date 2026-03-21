@@ -203,6 +203,22 @@ export function useAuth() {
             .eq("id", user.id)
             .single();
           if (data) {
+            // Para vendors, sincroniza foto da tabela vendors se não existe em profile_photo_url
+            if (data.role === "vendor" && !data.profile_photo_url) {
+              const { data: vendor } = await supabase
+                .from("vendors")
+                .select("photo_url")
+                .eq("user_id", user.id)
+                .maybeSingle();
+              if (vendor?.photo_url) {
+                data.profile_photo_url = vendor.photo_url;
+                // Sincroniza também na tabela users para próximas vezes
+                await supabase
+                  .from("users")
+                  .update({ profile_photo_url: vendor.photo_url })
+                  .eq("id", user.id);
+              }
+            }
             const updated = { ...user, ...data };
             saveSession(updated);
             setUser(updated);

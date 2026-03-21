@@ -9,6 +9,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter } from './Modal'
 import { Button } from './Button'
 import { buildWhatsAppMsg } from '../utils/data'
 import { displayPhone, unmaskPhone } from '../utils/masks'
+import { notifyVendorNewProposal } from '../lib/notifications'
 
 export function PublishToVendorsModal({ campaign, vendors, onPublish, onClose }) {
   // Começa com todos selecionados
@@ -33,6 +34,31 @@ export function PublishToVendorsModal({ campaign, vendors, onPublish, onClose })
     setPublishing(true)
     try {
       await onPublish(campaign.id)
+      
+      // Enviar emails para os fornecedores selecionados
+      const campaignLink = `${window.location.origin}/#campaigns`
+      const selectedVendorsList = vendors.filter(v => selected.has(v.id))
+      
+      for (const vendor of selectedVendorsList) {
+        // Enviar email se o vendor tiver um email configurado
+        if (vendor.email) {
+          notifyVendorNewProposal(
+            vendor.email,
+            vendor.name,
+            {
+              productName: campaign.product,
+              quantity: campaign.goalQty || '?',
+              unit: campaign.unit || 'unidades',
+              deadline: campaign.deadline || 'A combinar',
+              campaignName: campaign.product,
+              campaignLink,
+            }
+          ).catch(err => console.warn(`⚠️ Não foi possível enviar email para ${vendor.name}:`, err))
+        } else {
+          console.warn(`⚠️ Vendor ${vendor.name} não tem email configurado`)
+        }
+      }
+      
       setPublished(true)
     } catch (e) {
       alert('Erro ao publicar: ' + e.message)

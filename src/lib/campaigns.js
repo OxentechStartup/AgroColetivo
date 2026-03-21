@@ -165,6 +165,31 @@ export async function setCampaignStatus(campaignId, status) {
   return data;
 }
 
+export async function setPublishStatus(
+  campaignId,
+  status,
+  publishedToBuyers,
+  publishedToVendors,
+) {
+  const patch = {
+    status,
+    published_to_buyers: publishedToBuyers,
+    published_to_vendors: publishedToVendors,
+  };
+  // Set closed_at when finishing, clear it on reopen/publish
+  if (status === "finished") patch.closed_at = new Date().toISOString();
+  if (status === "open" || status === "negotiating") patch.closed_at = null;
+
+  const { data, error } = await supabase
+    .from("campaigns")
+    .update(patch)
+    .eq("id", campaignId)
+    .select()
+    .single();
+  if (error) throw new Error(error?.message || "Erro ao atualizar publicação");
+  return data;
+}
+
 export async function createOrder(
   campaignId,
   buyerId,
