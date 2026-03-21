@@ -793,7 +793,13 @@ export function BuyerOrderStatusPage({ userPhone }) {
   };
 
   if (!phone) {
-    return <LoginForm onLogin={handleLogin} loading={loading} errorMessage={errorMessage} />;
+    return (
+      <LoginForm
+        onLogin={handleLogin}
+        loading={loading}
+        errorMessage={errorMessage}
+      />
+    );
   }
 
   return (

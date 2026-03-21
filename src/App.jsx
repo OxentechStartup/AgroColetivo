@@ -210,7 +210,6 @@ export default function App() {
     return (
       <ConfirmEmailPage
         onVerified={onEmailVerified}
-        devCode={pendingVerificationUser.devCode}
         emailSent={pendingVerificationUser.emailSent}
       />
     );

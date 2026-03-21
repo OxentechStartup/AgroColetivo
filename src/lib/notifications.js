@@ -7,14 +7,14 @@
  * - Proposta recebida → Gestor
  */
 
-const isDev = import.meta.env.DEV;
-const emailServerUrl = isDev
-  ? (import.meta.env.VITE_EMAIL_SERVER_URL || "http://localhost:3001")
-  : "";
+// ✅ Detecta automaticamente: usa relative URLs em qualquer ambiente
+// Em dev (localhost): chamadas locais funcionam normalmente
+// Em produção (Render): /api funciona pelo mesmo servidor
+const API_BASE_URL = ""; // URL relativa = mesmo origin
 
 async function sendEmailViaAPI(endpoint, payload) {
   try {
-    const url = `${emailServerUrl}/api/${endpoint}`;
+    const url = `${API_BASE_URL}/api/${endpoint}`;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -33,7 +33,7 @@ async function sendEmailViaAPI(endpoint, payload) {
     return {
       success: false,
       error: error?.message,
-      fallback: "Email será enviado manualmente",
+      fallback: "Email será processado em breve",
     };
   }
 }
@@ -41,7 +41,11 @@ async function sendEmailViaAPI(endpoint, payload) {
 /**
  * Enviar email de novo pedido para o gestor
  */
-export async function notifyManagerNewOrder(managerEmail, managerName, orderData) {
+export async function notifyManagerNewOrder(
+  managerEmail,
+  managerName,
+  orderData,
+) {
   return sendEmailViaAPI("send-order-email", {
     managerEmail,
     managerName,
@@ -52,7 +56,11 @@ export async function notifyManagerNewOrder(managerEmail, managerName, orderData
 /**
  * Enviar email de nova proposta para o fornecedor
  */
-export async function notifyVendorNewProposal(vendorEmail, vendorName, proposalData) {
+export async function notifyVendorNewProposal(
+  vendorEmail,
+  vendorName,
+  proposalData,
+) {
   return sendEmailViaAPI("send-proposal-email", {
     vendorEmail,
     vendorName,
@@ -63,7 +71,11 @@ export async function notifyVendorNewProposal(vendorEmail, vendorName, proposalD
 /**
  * Enviar email de proposta recebida para o gestor
  */
-export async function notifyManagerProposalReceived(managerEmail, managerName, proposalData) {
+export async function notifyManagerProposalReceived(
+  managerEmail,
+  managerName,
+  proposalData,
+) {
   return sendEmailViaAPI("send-proposal-received-email", {
     managerEmail,
     managerName,

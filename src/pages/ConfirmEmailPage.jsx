@@ -5,7 +5,7 @@ import { Button } from "../components/Button.jsx";
 import { Toast } from "../components/Toast.jsx";
 import styles from "./ConfirmEmailPage.module.css";
 
-export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
+export function ConfirmEmailPage({ onVerified, emailSent }) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -21,27 +21,16 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
   const email = user?.email || "";
   const pendingId = user?.id || "";
 
-  console.log("📧 ConfirmEmailPage carregada - dados recuperados:", {
-    email,
-    pendingId,
-    fullUser: user,
-  });
-
   // Verificar localStorage imediatamente quando a página carrega
   useEffect(() => {
+    // Validação silenciosa - sem logs
     const rawData = localStorage.getItem("agro_pending_registration");
-    console.log("💾 localStorage.getItem('agro_auth'):", rawData);
     if (rawData) {
       try {
-        const parsed = JSON.parse(rawData);
-        console.log("✅ JSON.parse bem-sucedido:", parsed);
-        console.log("  - id:", parsed?.id, typeof parsed?.id);
-        console.log("  - email:", parsed?.email);
+        JSON.parse(rawData);
       } catch (e) {
-        console.error("❌ Erro ao fazer parse do localStorage:", e.message);
+        // Erro ao fazer parse - ignorado
       }
-    } else {
-      console.error("❌ localStorage.agro_auth está vazio/null!");
     }
   }, []);
 
@@ -74,10 +63,6 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
 
     if (!pendingId) {
       setError("ID do cadastro não encontrado. Tente registrar novamente.");
-      console.error("❌ pendingId está vazio/undefined:", {
-        pendingId,
-        fullUser: user,
-      });
       return;
     }
 
@@ -137,34 +122,6 @@ export function ConfirmEmailPage({ onVerified, devCode, emailSent }) {
                 : "Um código de verificação foi enviado para:"}
             </p>
             <p className={styles.email}>{email || "seu email"}</p>
-            {/* Mostra código em desenvolvimento quando email não foi enviado */}
-            {devCode && (
-              <div
-                style={{
-                  background: "#fff3cd",
-                  border: "1px solid #ffc107",
-                  borderRadius: 8,
-                  padding: "12px 16px",
-                  marginTop: 12,
-                  textAlign: "center",
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 12, color: "#856404" }}>
-                  🛠️ Modo dev — código gerado:
-                </p>
-                <p
-                  style={{
-                    margin: "4px 0 0",
-                    fontSize: 28,
-                    fontWeight: "bold",
-                    letterSpacing: 6,
-                    color: "#856404",
-                  }}
-                >
-                  {devCode}
-                </p>
-              </div>
-            )}
           </div>
 
           <form onSubmit={handleSubmit} className={styles.form}>
