@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../hooks/useAuth";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 
 async function fetchBuyerOrdersWithOffers(phone) {
@@ -624,6 +625,7 @@ function LoginForm({ onLogin, loading }) {
 }
 
 export function BuyerOrderStatusPage() {
+  const { user } = useAuth();
   const [phone, setPhone] = useState(null);
   const [buyerData, setBuyerData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -643,7 +645,7 @@ export function BuyerOrderStatusPage() {
     const saved = localStorage.getItem("agro_buyer_phone");
     if (saved) {
       setPhone(saved);
-      // Carregar dados imediatamente sem esperar setState
+      // Carregar dados do localStorage
       fetchBuyerOrdersWithOffers(saved)
         .then((data) => {
           if (data) {
@@ -651,8 +653,19 @@ export function BuyerOrderStatusPage() {
           }
         })
         .catch((err) => console.error("Erro ao carregar pedidos:", err));
+    } else if (user?.phone) {
+      // Se não tem no localStorage, usar o telefone do usuário logado
+      const cleanPhone = unmaskPhone(user.phone);
+      setPhone(cleanPhone);
+      fetchBuyerOrdersWithOffers(cleanPhone)
+        .then((data) => {
+          if (data) {
+            setBuyerData(data);
+          }
+        })
+        .catch((err) => console.error("Erro ao carregar pedidos:", err));
     }
-  }, []);
+  }, [user?.phone]);
 
   useEffect(() => {
     if (alertModal.open) {
