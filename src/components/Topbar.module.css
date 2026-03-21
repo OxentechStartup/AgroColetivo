@@ -47,6 +47,21 @@
   text-overflow: ellipsis;
 }
 
+/* Logo desktop (PC only) */
+.desktopLogo {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.desktopLogoText {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
 .title {
   font-size: 0.9rem;
   font-weight: 700;
@@ -225,8 +240,8 @@
   .portalBtn {
     display: none;
   }
-  .mobileLogo {
-    display: flex;
+  .desktopLogo {
+    display: none !important;
   }
   .title {
     display: none;
@@ -242,6 +257,13 @@
     background: var(--red-dim);
     border-color: var(--red-border);
     color: var(--red);
+  }
+}
+
+/* ── Desktop (PC) ── */
+@media (min-width: 769px) {
+  .desktopLogo {
+    display: flex;
   }
 }
 @media (max-width: 480px) {

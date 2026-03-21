@@ -34,8 +34,8 @@ export function Topbar({
         <Menu size={18} />
       </button>
 
-      {/* Logo mobile */}
-      <div className={styles.mobileLogo}>
+      {/* Logo desktop (PC only) */}
+      <div className={styles.desktopLogo}>
         <img
           src={LOGO_URL}
           alt="AgroColetivo"
@@ -43,7 +43,7 @@ export function Topbar({
           height="28"
           style={{ borderRadius: 7, objectFit: "cover", flexShrink: 0 }}
         />
-        <span className={styles.mobileLogoText}>AgroColetivo</span>
+        <span className={styles.desktopLogoText}>AgroColetivo</span>
       </div>
 
       <span className={styles.title}>{title}</span>

@@ -11,7 +11,6 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignsPage } from "./pages/CampaignsPage";
 import { ProducersPage } from "./pages/ProducersPage";
 import { AdminPage } from "./pages/AdminPage";
-import { FinancialPage } from "./pages/FinancialPage";
 import { VendorDashboardPage } from "./pages/VendorDashboardPage";
 import { VendorProfilePage } from "./pages/VendorProfilePage";
 import { PivoProfilePage } from "./pages/PivoProfilePage";
@@ -47,11 +46,10 @@ const ALLOWED = {
     "dashboard",
     "campaigns",
     "producers",
-    "financial",
     "pivo-profile",
   ],
   [ROLES.VENDOR]: ["vendor-dashboard", "vendor-profile", "vendor-pivos"],
-  [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin", "financial"],
+  [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin"],
 };
 
 const PAGE_TITLES = {
@@ -59,7 +57,6 @@ const PAGE_TITLES = {
   campaigns: "Cotações",
   producers: "Parceiros",
   admin: "Monitoramento",
-  financial: "Financeiro",
   "vendor-dashboard": "Propostas",
   "vendor-profile": "Meu Perfil",
   "vendor-pivos": "Gestores",
@@ -333,15 +330,6 @@ export default function App() {
               refreshUser(result);
             }}
             onDeleteAccount={() => setShowDeleteModal(true)}
-          />
-        );
-
-      case "financial":
-        return (
-          <FinancialPage
-            campaigns={campaigns}
-            actions={campaignActions}
-            onBack={() => navigate("campaigns")}
           />
         );
 

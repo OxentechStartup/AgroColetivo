@@ -23,7 +23,6 @@ const NAV_GESTOR = [
   { id: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { id: "campaigns", label: "Cotações", Icon: ClipboardList },
   { id: "producers", label: "Parceiros", Icon: Users },
-  { id: "financial", label: "Financeiro", Icon: DollarSign },
 ];
 
 const NAV_ADMIN = [
@@ -31,7 +30,6 @@ const NAV_ADMIN = [
   { id: "campaigns", label: "Cotações", Icon: ClipboardList },
   { id: "producers", label: "Parceiros", Icon: Users },
   { id: "admin", label: "Monitoramento", Icon: ShieldCheck },
-  { id: "financial", label: "Financeiro", Icon: DollarSign },
 ];
 
 const NAV_VENDOR = [
