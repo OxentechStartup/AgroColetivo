@@ -4,27 +4,19 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
-    // API Proxy for development - routes to email-server.cjs
+    // API Proxy for development - routes /api/* to email-server.cjs on port 3001
     proxy: {
-      "/api": {
+      "/api/send-verification-email": {
         target: "http://localhost:3001",
         changeOrigin: true,
-        rewrite: (path) => path,
-        bypass: (req, res, options) => {
-          // Allow ESM loaders to pass through
-          if (req.headers.accept?.includes("application/json")) {
-            return null; // use proxy
-          }
-        },
       },
     },
     // CORS Configuration
     cors: {
       origin: [
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://localhost:3000",
-        "https://agrocoletivo.vercel.app",
-        "https://www.agrocoletivo.com.br",
       ],
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
