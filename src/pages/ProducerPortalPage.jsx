@@ -29,6 +29,7 @@ import {
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { daysUntilDeadline } from "../utils/data";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../hooks/useAuth";
 import { BuyerOrderStatusPage } from "./BuyerOrderStatusPage";
 import styles from "./ProducerPortalPage.module.css";
 
@@ -1401,6 +1402,7 @@ function SuccessView({ itemCount, producerName, onReset }) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export function ProducerPortalPage({ onSubmit }) {
+  const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState("products"); // products | orders
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1724,7 +1726,7 @@ export function ProducerPortalPage({ onSubmit }) {
           )}
         </>
       ) : (
-        <BuyerOrderStatusPage />
+        <BuyerOrderStatusPage userPhone={user?.phone} />
       )}
 
       {/* Bottom Navigation Bar */}

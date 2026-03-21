@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "../hooks/useAuth";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 
 async function fetchBuyerOrdersWithOffers(phone) {
@@ -395,7 +394,7 @@ function OrderCard({ order, onCancel, canceling, onSetCancelConfirm }) {
   );
 }
 
-function LoginForm({ onLogin, loading }) {
+function LoginForm({ onLogin, loading, errorMessage }) {
   const [phone, setPhone] = useState("");
 
   const handleSubmit = (e) => {
@@ -523,6 +522,27 @@ function LoginForm({ onLogin, loading }) {
             Acompanhe suas compras
           </p>
 
+          {/* Mensagem de erro */}
+          {errorMessage && (
+            <div
+              style={{
+                background: "#FEE2E2",
+                border: "1px solid #FECACA",
+                borderRadius: "6px",
+                padding: "12px",
+                marginBottom: "16px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <AlertCircle size={16} color="#DC2626" />
+              <span style={{ fontSize: ".85rem", color: "#991B1B" }}>
+                {errorMessage}
+              </span>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: "20px" }}>
               <label
@@ -624,17 +644,12 @@ function LoginForm({ onLogin, loading }) {
   );
 }
 
-export function BuyerOrderStatusPage() {
-  const { user } = useAuth();
+export function BuyerOrderStatusPage({ userPhone }) {
   const [phone, setPhone] = useState(null);
   const [buyerData, setBuyerData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [canceling, setCanceling] = useState(null);
-  const [alertModal, setAlertModal] = useState({
-    open: false,
-    title: "",
-    message: "",
-  });
+  const [errorMessage, setErrorMessage] = useState(null);
   const [cancelConfirm, setCancelConfirm] = useState({
     open: false,
     orderId: null,
@@ -653,9 +668,9 @@ export function BuyerOrderStatusPage() {
           }
         })
         .catch((err) => console.error("Erro ao carregar pedidos:", err));
-    } else if (user?.phone) {
-      // Se não tem no localStorage, usar o telefone do usuário logado
-      const cleanPhone = unmaskPhone(user.phone);
+    } else if (userPhone) {
+      // Se tem userPhone (dentro do portal), usar automaticamente
+      const cleanPhone = unmaskPhone(userPhone);
       setPhone(cleanPhone);
       fetchBuyerOrdersWithOffers(cleanPhone)
         .then((data) => {
@@ -665,42 +680,36 @@ export function BuyerOrderStatusPage() {
         })
         .catch((err) => console.error("Erro ao carregar pedidos:", err));
     }
-  }, [user?.phone]);
-
-  useEffect(() => {
-    if (alertModal.open) {
-      const timer = setTimeout(() => {
-        handleCloseAlertModal();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [alertModal.open]);
+  }, [userPhone]);
 
   const handleCloseAlertModal = () => {
-    setAlertModal({ open: false, title: "", message: "" });
+    setErrorMessage(null);
     setPhone(null);
   };
 
-  const loadOrders = async (phoneNum) => {
+  const loadOrders = async (phoneNum, showErrorMessage = true) => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchBuyerOrdersWithOffers(phoneNum);
       if (!data) {
-        setAlertModal({
-          open: true,
-          title: "Telefone não encontrado",
-          message: "Nenhum comprador encontrado para este telefone",
-        });
+        if (showErrorMessage) {
+          setErrorMessage("Nenhum comprador encontrado para este telefone");
+          // Desaparecer após 3 segundos
+          setTimeout(() => setErrorMessage(null), 3000);
+        }
         return;
       }
+      // Só salva depois que confirma que o comprador existe
+      setPhone(phoneNum);
+      localStorage.setItem("agro_buyer_phone", phoneNum);
       setBuyerData(data);
     } catch (err) {
       console.error("Erro ao carregar pedidos:", err);
-      setAlertModal({
-        open: true,
-        title: "Erro ao carregar pedidos",
-        message: err?.message || "Tente novamente mais tarde",
-      });
+      if (showErrorMessage) {
+        setErrorMessage(err?.message || "Tente novamente mais tarde");
+        setTimeout(() => setErrorMessage(null), 3000);
+      }
     } finally {
       setLoading(false);
     }
@@ -708,17 +717,14 @@ export function BuyerOrderStatusPage() {
 
   const handleLogin = async (phoneNum) => {
     setLoading(true);
+    setErrorMessage(null);
     try {
-      setPhone(phoneNum);
-      localStorage.setItem("agro_buyer_phone", phoneNum);
-      await loadOrders(phoneNum);
+      // Não salva no estado/localStorage até confirmar que existe
+      await loadOrders(phoneNum, true);
     } catch (err) {
       console.error("Erro no login:", err);
-      setAlertModal({
-        open: true,
-        title: "Erro ao acessar pedidos",
-        message: err?.message || "Tente novamente mais tarde",
-      });
+      setErrorMessage(err?.message || "Tente novamente mais tarde");
+      setTimeout(() => setErrorMessage(null), 3000);
     } finally {
       setLoading(false);
     }
@@ -787,7 +793,7 @@ export function BuyerOrderStatusPage() {
   };
 
   if (!phone) {
-    return <LoginForm onLogin={handleLogin} loading={loading} />;
+    return <LoginForm onLogin={handleLogin} loading={loading} errorMessage={errorMessage} />;
   }
 
   return (
@@ -955,18 +961,6 @@ export function BuyerOrderStatusPage() {
         onCancel={() =>
           setCancelConfirm({ open: false, orderId: null, product: "" })
         }
-      />
-
-      {/* Modal de alerta */}
-      <ConfirmationModal
-        open={alertModal.open}
-        title={alertModal.title}
-        message={alertModal.message}
-        confirmText="OK"
-        cancelText=""
-        loading={false}
-        onConfirm={handleCloseAlertModal}
-        onCancel={handleCloseAlertModal}
       />
     </div>
   );
