@@ -40,13 +40,15 @@ export function ConfirmationModal({
       </div>
 
       <div className={styles.actions}>
-        <button
-          className={styles.cancelBtn}
-          onClick={onCancel}
-          disabled={loading}
-        >
-          {cancelText}
-        </button>
+        {cancelText && (
+          <button
+            className={styles.cancelBtn}
+            onClick={onCancel}
+            disabled={loading}
+          >
+            {cancelText}
+          </button>
+        )}
         <button
           className={`${styles.confirmBtn} ${
             isDestructive ? styles.destructive : ""
