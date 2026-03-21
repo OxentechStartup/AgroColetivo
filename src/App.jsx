@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { AppProvider } from "./context/AppProvider";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { DeleteAccountModal } from "./components/DeleteAccountModal";
@@ -83,7 +84,7 @@ function SidebarMobile({ page, setPage, user, role, signOut, navigate }) {
 }
 
 // ── App principal ─────────────────────────────────────────────────────────────
-export default function App() {
+function AppContent() {
   const [isPortal, setIsPortal] = useState(isPortalRoute);
   const [isConfirmEmail, setIsConfirmEmail] = useState(isConfirmEmailRoute);
   const [isForgotPassword, setIsForgotPassword] = useState(
@@ -385,5 +386,19 @@ export default function App() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * App — Componente raiz com AppProvider
+ * 
+ * Envolve toda a aplicação com Context centralizado para
+ * gerenciar dados em tempo real para todos os usuários
+ */
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
   );
 }

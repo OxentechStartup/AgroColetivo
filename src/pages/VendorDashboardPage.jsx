@@ -24,6 +24,7 @@ import { useToast } from "../hooks/useToast";
 import { STATUS_LABEL } from "../utils/data";
 import { formatCurrency, maskCurrency, unmaskCurrency } from "../utils/masks";
 import { createOffer, fetchVendorOffers } from "../lib/offers";
+import { notifyManagerProposalReceived } from "../lib/notifications";
 import { supabase } from "../lib/supabase";
 import styles from "./VendorDashboardPage.module.css";
 
@@ -105,6 +106,39 @@ function OfferModal({ campaign, vendorId, existingOffer, onClose, onSent }) {
         availableQty: +qty,
         notes: notes.trim() || null,
       });
+
+      // Notificar o gestor/pivo sobre a nova proposta
+      if (campaign.pivoId) {
+        try {
+          const { data: pivoUser } = await supabase
+            .from("users")
+            .select("email")
+            .eq("id", campaign.pivoId)
+            .single();
+
+          if (pivoUser?.email) {
+            await notifyManagerProposalReceived(
+              pivoUser.email,
+              "Gestor",
+              {
+                vendorName: vendor?.name || "Fornecedor",
+                productName: campaign.product,
+                quantity: qty,
+                unit: campaign.unit || "unidades",
+                pricePerUnit: priceNum,
+                totalPrice: priceNum * qty,
+                campaignName: campaign.product,
+                campaignLink: `${window.location.origin}/#campaigns`,
+              }
+            ).catch(err => 
+              console.warn("⚠️ Não foi possível notificar gestor:", err)
+            );
+          }
+        } catch (error) {
+          console.warn("⚠️ Erro ao buscar email do gestor:", error);
+        }
+      }
+
       onSent();
       onClose();
     } catch (e) {
@@ -677,7 +711,8 @@ export function VendorDashboardPage({
   const available = campaigns
     .filter((c) => c.status !== "finished")
     .filter((c) => {
-      if (c.status !== "negotiating") return false;
+      // Verifica se a campanha foi publicada para vendors
+      if (!c.publishedToVendors && c.status !== "negotiating") return false;
       if (myOfferCampaignIds.has(c.id)) return false;
       // Calcula quanto já foi suprido pelos lotes aceitos
       const supplied = c.totalSupplied ?? 0;

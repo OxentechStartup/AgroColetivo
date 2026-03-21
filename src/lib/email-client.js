@@ -8,7 +8,11 @@
  *   → Vercel Serverless Functions que enviam via Gmail SMTP
  */
 
-export async function sendVerificationEmail(userEmail, userName, verificationCode) {
+export async function sendVerificationEmail(
+  userEmail,
+  userName,
+  verificationCode,
+) {
   // Usa endpoint relativo em dev e produção
   // Dev: /api/send-verification-email (Vite proxy)
   // Produção: /api/send-verification-email (Vercel Serverless)
@@ -38,7 +42,10 @@ export async function sendVerificationEmail(userEmail, userName, verificationCod
       throw new Error(errData.error || `Servidor retornou ${response.status}`);
     }
   } catch (error) {
-    console.warn("⚠️ Não foi possível enviar email de verificação:", error?.message);
+    console.warn(
+      "⚠️ Não foi possível enviar email de verificação:",
+      error?.message,
+    );
 
     // Fallback silencioso — não bloqueia o registro
     // O usuário pode reenviar o código pela tela de verificação
