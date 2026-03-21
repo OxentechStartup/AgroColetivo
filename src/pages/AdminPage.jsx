@@ -26,6 +26,7 @@ import { Card, CardHeader, CardTitle, CardBody } from "../components/Card";
 import { Badge } from "../components/Badge";
 import { Toast } from "../components/Toast";
 import { useToast } from "../hooks/useToast";
+import { useMultipleRealtimeSubscriptions } from "../hooks/useRealtimeSubscription";
 import {
   totalOrdered,
   campaignRealValue,
@@ -224,6 +225,9 @@ export function AdminPage({ campaigns, actions, reload }) {
   useEffect(() => {
     loadGestors();
   }, [loadGestors]);
+
+  // Atualizar gestores automaticamente quando há mudanças
+  useMultipleRealtimeSubscriptions([{ table: "users" }], loadGestors);
 
   const handleToggle = async (userId, newActive) => {
     setToggling(userId);

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../components/Badge";
 import { Button } from "../components/Button";
+import { PivoBadge } from "../components/PivoBadge";
 import {
   Modal,
   ModalHeader,
@@ -82,7 +83,14 @@ function OfferStatusChip({ status }) {
 }
 
 // ── Modal para enviar / reeditar proposta ─────────────────────────────────────
-function OfferModal({ campaign, vendorId, existingOffer, onClose, onSent }) {
+function OfferModal({
+  campaign,
+  vendorId,
+  existingOffer,
+  onClose,
+  onSent,
+  vendor,
+}) {
   const [qty, setQty] = useState(existingOffer?.availableQty?.toString() ?? "");
   const [price, setPrice] = useState(
     existingOffer
@@ -101,23 +109,35 @@ function OfferModal({ campaign, vendorId, existingOffer, onClose, onSent }) {
     setSaving(true);
     setErr("");
     try {
+      // 1. Criar a proposta no banco
       await createOffer(campaign.id, vendorId, {
         pricePerUnit: priceNum,
         availableQty: +qty,
         notes: notes.trim() || null,
       });
 
-      // Notificar o gestor/pivo sobre a nova proposta
-      if (campaign.pivoId) {
+      // 2. Notificar o gestor/pivo sobre a nova proposta
+      if (!campaign.pivoId) {
+        console.warn("⚠️ Campanha sem pivoId definido");
+      } else {
         try {
-          const { data: pivoUser } = await supabase
+          // Buscar email do gestor
+          const { data: pivoUser, error: pivoError } = await supabase
             .from("users")
             .select("email")
             .eq("id", campaign.pivoId)
             .single();
 
-          if (pivoUser?.email) {
-            await notifyManagerProposalReceived(
+          if (pivoError) {
+            console.error("❌ Erro ao buscar email do gestor:", pivoError);
+          } else if (!pivoUser?.email) {
+            console.warn(
+              "⚠️ Gestor não tem email configurado:",
+              campaign.pivoId,
+            );
+          } else {
+            // Enviar email de proposta recebida
+            const emailResult = await notifyManagerProposalReceived(
               pivoUser.email,
               "Gestor",
               {
@@ -129,13 +149,23 @@ function OfferModal({ campaign, vendorId, existingOffer, onClose, onSent }) {
                 totalPrice: priceNum * qty,
                 campaignName: campaign.product,
                 campaignLink: `${window.location.origin}/#campaigns`,
-              }
-            ).catch(err => 
-              console.warn("⚠️ Não foi possível notificar gestor:", err)
+              },
             );
+
+            if (!emailResult.success) {
+              console.error(
+                "⚠️ Erro ao enviar notificação ao gestor:",
+                emailResult.error,
+              );
+            } else {
+              console.log("✅ Email de proposta enviado ao gestor");
+            }
           }
-        } catch (error) {
-          console.warn("⚠️ Erro ao buscar email do gestor:", error);
+        } catch (emailError) {
+          console.error(
+            "❌ Erro ao processar notificação:",
+            emailError?.message,
+          );
         }
       }
 
@@ -307,18 +337,22 @@ function MyOfferCard({ offer, campaign, vendorId, onEdited }) {
     >
       <div className={styles.quoteTop}>
         <div className={styles.quoteMain}>
+          {/* Linha 1: Nome campanha + Badge gestor */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: 8,
-              flexWrap: "wrap",
+              marginBottom: 10,
+              justifyContent: "space-between",
             }}
           >
             <div className={styles.quoteTitle}>{offer.campaignName}</div>
-            <OfferStatusChip status={offer.status} />
           </div>
+
+          {/* Linha 2: Status + Info */}
           <div className={styles.quoteMeta}>
+            <OfferStatusChip status={offer.status} />
             <Badge status={offer.campaignStatus}>
               {STATUS_LABEL[offer.campaignStatus] ?? offer.campaignStatus}
             </Badge>
@@ -481,6 +515,7 @@ function MyOfferCard({ offer, campaign, vendorId, onEdited }) {
           existingOffer={offer}
           onClose={() => setShowEdit(false)}
           onSent={onEdited}
+          vendor={vendor}
         />
       )}
     </div>
@@ -491,7 +526,7 @@ function MyOfferCard({ offer, campaign, vendorId, onEdited }) {
 function AvailableCampaignCard({ campaign, vendorId, onSent }) {
   const [showOffer, setShowOffer] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const ordered = campaign.totalOrdered ?? 0;
+  const ordered = campaign.goalQty ?? 0;
   const supplied = campaign.totalSupplied ?? 0;
   const remaining = Math.max(0, ordered - supplied);
   const unit = campaign.unit ?? "un";
@@ -502,135 +537,163 @@ function AvailableCampaignCard({ campaign, vendorId, onSent }) {
       style={{ borderLeft: "3px solid var(--primary)" }}
     >
       <div className={styles.quoteTop}>
-        <div className={styles.quoteMain}>
-          <div className={styles.quoteTitle}>{campaign.product}</div>
-          <div className={styles.quoteMeta}>
-            <span
+        <div className={styles.quoteMain} style={{ minWidth: 0 }}>
+          {/* Linha 1: Nome produto + Badge pequeno */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              minWidth: 0,
+              marginBottom: 12,
+              justifyContent: "space-between",
+            }}
+          >
+            <div className={styles.quoteTitle} style={{ flex: 1, minWidth: 0 }}>
+              {campaign.product}
+            </div>
+            <div
               style={{
-                background: "var(--primary-dim)",
-                color: "var(--primary)",
-                border: "1px solid var(--primary-border)",
-                borderRadius: 100,
-                padding: "1px 8px",
-                fontSize: ".72rem",
-                fontWeight: 700,
+                transform: "scale(0.85)",
+                transformOrigin: "right",
+                flexShrink: 0,
               }}
             >
-              ● Aberta para proposta
-            </span>
-            <span>
-              {supplied > 0 ? (
-                <>
-                  <strong style={{ color: "var(--primary)" }}>
-                    {remaining} {unit}
-                  </strong>{" "}
-                  restantes de {ordered} demandados
-                </>
-              ) : (
-                <>
-                  {ordered} {unit} demandados
-                </>
-              )}
-            </span>
-            {campaign.deadline && (
+              <PivoBadge pivoId={campaign.pivoId} />
+            </div>
+          </div>
+
+          {/* Linha 2: Status + Botão + Seta */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              justifyContent: "space-between",
+            }}
+          >
+            <div className={styles.quoteMeta} style={{ flex: 1 }}>
               <span
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  color: "var(--text3)",
-                  fontSize: ".75rem",
+                  background: "var(--primary-dim)",
+                  color: "var(--primary)",
+                  border: "1px solid var(--primary-border)",
+                  borderRadius: 100,
+                  padding: "1px 8px",
+                  fontSize: ".72rem",
+                  fontWeight: 700,
                 }}
               >
-                <CalendarDays size={11} /> prazo {fmtDate(campaign.deadline)}
+                ● Aberta para proposta
               </span>
-            )}
+              <span>
+                {supplied > 0 ? (
+                  <>
+                    <strong style={{ color: "var(--primary)" }}>
+                      {remaining} {unit}
+                    </strong>{" "}
+                    restantes de {ordered} demandados
+                  </>
+                ) : (
+                  <>
+                    {ordered} {unit} demandados
+                  </>
+                )}
+              </span>
+              {campaign.deadline && (
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                    color: "var(--text3)",
+                    fontSize: ".75rem",
+                  }}
+                >
+                  <CalendarDays size={11} /> prazo {fmtDate(campaign.deadline)}
+                </span>
+              )}
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowOffer(true)}
+              style={{ flexShrink: 0 }}
+            >
+              <Send size={12} /> Enviar proposta
+            </Button>
+            <button
+              className={styles.expandBtn}
+              onClick={() => setExpanded((e) => !e)}
+              style={{ flexShrink: 0 }}
+            >
+              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
           </div>
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            flexShrink: 0,
-          }}
-        >
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowOffer(true)}
-          >
-            <Send size={12} /> Enviar proposta
-          </Button>
-          <button
-            className={styles.expandBtn}
-            onClick={() => setExpanded((e) => !e)}
-          >
-            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className={styles.quoteDetail}>
-          <div className={styles.detailGrid}>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>Demanda total</span>
-              <span className={styles.detailVal}>
-                {ordered} {unit}
-              </span>
-            </div>
-            {supplied > 0 && (
+        {expanded && (
+          <div className={styles.quoteDetail}>
+            <div className={styles.detailGrid}>
               <div className={styles.detailItem}>
-                <span className={styles.detailLabel}>Já suprido</span>
-                <span
-                  className={styles.detailVal}
-                  style={{ color: "var(--primary)" }}
-                >
-                  {supplied} {unit}
+                <span className={styles.detailLabel}>Demanda total</span>
+                <span className={styles.detailVal}>
+                  {ordered} {unit}
                 </span>
               </div>
-            )}
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>
-                {supplied > 0 ? "Ainda falta" : "Meta"}
-              </span>
-              <span
-                className={styles.detailVal}
-                style={
-                  supplied > 0
-                    ? { color: "var(--amber)", fontWeight: 700 }
-                    : undefined
-                }
-              >
-                {supplied > 0 ? remaining : campaign.goalQty} {unit}
-              </span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>Peso/un</span>
-              <span className={styles.detailVal}>
-                {campaign.unitWeight ?? 25} kg
-              </span>
-            </div>
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>Toneladas restantes</span>
-              <span className={styles.detailVal}>
-                {((remaining * (campaign.unitWeight ?? 25)) / 1000).toFixed(1)}{" "}
-                t
-              </span>
+              {supplied > 0 && (
+                <div className={styles.detailItem}>
+                  <span className={styles.detailLabel}>Já suprido</span>
+                  <span
+                    className={styles.detailVal}
+                    style={{ color: "var(--primary)" }}
+                  >
+                    {supplied} {unit}
+                  </span>
+                </div>
+              )}
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>
+                  {supplied > 0 ? "Ainda falta" : "Meta"}
+                </span>
+                <span
+                  className={styles.detailVal}
+                  style={
+                    supplied > 0
+                      ? { color: "var(--amber)", fontWeight: 700 }
+                      : undefined
+                  }
+                >
+                  {supplied > 0 ? remaining : campaign.goalQty} {unit}
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Peso/un</span>
+                <span className={styles.detailVal}>
+                  {campaign.unitWeight ?? 25} kg
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Toneladas restantes</span>
+                <span className={styles.detailVal}>
+                  {((remaining * (campaign.unitWeight ?? 25)) / 1000).toFixed(
+                    1,
+                  )}{" "}
+                  t
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {showOffer && (
-        <OfferModal
-          campaign={campaign}
-          vendorId={vendorId}
-          onClose={() => setShowOffer(false)}
-          onSent={onSent}
-        />
-      )}
+        )}
+        {showOffer && (
+          <OfferModal
+            campaign={campaign}
+            vendorId={vendorId}
+            onClose={() => setShowOffer(false)}
+            onSent={onSent}
+            vendor={vendor}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -666,24 +729,42 @@ export function VendorDashboardPage({
 
     // Realtime subscription para atualizar propostas automaticamente
     if (!vendor?.id) return;
-    const subscription = supabase
-      .channel(`vendor_offers_${vendor.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "vendor_campaign_offers",
-          filter: `vendor_id=eq.${vendor.id}`,
-        },
-        () => {
-          loadOffers();
-        },
-      )
-      .subscribe();
+
+    const channel = supabase.channel(`vendor_dashboard_${vendor.id}`);
+
+    // Subscribe to vendor's own offers
+    channel.on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "vendor_campaign_offers",
+        filter: `vendor_id=eq.${vendor.id}`,
+      },
+      () => {
+        loadOffers();
+      },
+    );
+
+    // Subscribe to campaigns changes (when campaigns are published to vendors)
+    channel.on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "campaigns",
+      },
+      () => {
+        // Reload campaigns when any campaign is updated (including publishedToVendors)
+        // The campaigns prop will be updated by the parent component
+        loadOffers();
+      },
+    );
+
+    channel.subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      channel.unsubscribe();
     };
   }, [vendor?.id]); // eslint-disable-line
 
@@ -708,18 +789,11 @@ export function VendorDashboardPage({
   // Cotações em negociação onde o vendor ainda NÃO enviou proposta
   // e que ainda têm demanda a suprir (goal_qty > total já suprido pelos lotes)
   const myOfferCampaignIds = new Set(myOffers.map((o) => o.campaignId));
+
   const available = campaigns
     .filter((c) => c.status !== "finished")
-    .filter((c) => {
-      // Verifica se a campanha foi publicada para vendors
-      if (!c.publishedToVendors && c.status !== "negotiating") return false;
-      if (myOfferCampaignIds.has(c.id)) return false;
-      // Calcula quanto já foi suprido pelos lotes aceitos
-      const supplied = c.totalSupplied ?? 0;
-      const demand = c.totalOrdered ?? 0;
-      // Só mostra se ainda há demanda restante
-      return supplied < demand;
-    });
+    .filter((c) => c.publishedToVendors)
+    .filter((c) => !myOfferCampaignIds.has(c.id));
 
   // Minhas propostas separadas por status
   const pending = myOffers.filter((o) => o.status === "pending");

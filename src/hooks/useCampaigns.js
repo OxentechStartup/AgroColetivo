@@ -76,6 +76,10 @@ export function useCampaigns(user) {
             status: row.status ?? c.status,
             feePaidAt: row.fee_paid_at ?? c.feePaidAt ?? null,
             feePaidBy: row.fee_paid_by ?? c.feePaidBy ?? null,
+            publishedToVendors:
+              row.published_to_vendors ?? c.publishedToVendors ?? false,
+            publishedToBuyers:
+              row.published_to_buyers ?? c.publishedToBuyers ?? false,
             orders: isVendor ? [] : approved,
             pendingOrders: isVendor ? [] : pending,
             lots: visibleLots,
@@ -236,6 +240,30 @@ export function useCampaigns(user) {
     loadAll();
   }, [loadAll]);
 
+  // Real-time subscription para atualizar campanhas quando publicadas
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel(`campaigns_updates_${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "campaigns",
+        },
+        () => {
+          loadAll();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user?.id, loadAll]);
+
   const addCampaign = async (c) => {
     const created = await createCampaign(c, user?.id);
     logEvent(
@@ -282,7 +310,7 @@ export function useCampaigns(user) {
   };
   const publishToVendors = async (id) => {
     // Publicar para ambos: compradores E fornecedores
-    await setPublishStatus(id, "negotiating", true, true);
+    const result = await setPublishStatus(id, "negotiating", true, true);
     setCampaigns((prev) =>
       prev.map((c) =>
         c.id === id
@@ -295,6 +323,38 @@ export function useCampaigns(user) {
           : c,
       ),
     );
+
+    // Enviar emails para todos os fornecedores
+    try {
+      const campaign = campaigns.find((c) => c.id === id);
+      if (!campaign) {
+        return;
+      }
+
+      const campaignLink = `${typeof window !== "undefined" ? window.location.origin : "https://agrocoletivo.onrender.com"}/#campaigns`;
+
+      // Enviar email para cada fornecedor que tem email configurado
+      const vendorsComEmail = vendors.filter(
+        (v) => v.email && v.email.trim().length > 0,
+      );
+
+      for (const vendor of vendorsComEmail) {
+        try {
+          await notifyVendorNewProposal(vendor.email, vendor.name, {
+            productName: campaign.product,
+            quantity: campaign.goalQty || campaign.minQty || "?",
+            unit: campaign.unit || "unidades",
+            deadline: campaign.deadline || "A combinar",
+            campaignName: campaign.product,
+            campaignLink,
+          });
+        } catch (err) {
+          // Silently ignore email errors
+        }
+      }
+    } catch (error) {
+      // Não bloqueia a publicação se os emails falharem
+    }
   };
   const publishToBuyers = async (id) => {
     // Abre apenas para compradores
@@ -343,6 +403,38 @@ export function useCampaigns(user) {
           : c,
       ),
     );
+
+    // Enviar emails para todos os fornecedores
+    try {
+      const campaign = campaigns.find((c) => c.id === id);
+      if (!campaign) {
+        return;
+      }
+
+      const campaignLink = `${typeof window !== "undefined" ? window.location.origin : "https://agrocoletivo.onrender.com"}/#campaigns`;
+
+      // Enviar email para cada fornecedor que tem email configurado
+      const vendorsComEmail = vendors.filter(
+        (v) => v.email && v.email.trim().length > 0,
+      );
+
+      for (const vendor of vendorsComEmail) {
+        try {
+          await notifyVendorNewProposal(vendor.email, vendor.name, {
+            productName: campaign.product,
+            quantity: campaign.goalQty || campaign.minQty || "?",
+            unit: campaign.unit || "unidades",
+            deadline: campaign.deadline || "A combinar",
+            campaignName: campaign.product,
+            campaignLink,
+          });
+        } catch (err) {
+          // Silently ignore email errors
+        }
+      }
+    } catch (error) {
+      // Não bloqueia a publicação se os emails falharem
+    }
   };
   const deleteCampaign = async (id) => {
     await apiDeleteCampaign(id);
@@ -356,25 +448,25 @@ export function useCampaigns(user) {
       { vendorName: lot.vendorName, qty: lot.qty },
       user?.id,
     );
-    
+
     // Buscar dados da campanha para enviar no email
-    const campaign = campaigns.find(c => c.id === campaignId);
-    
+    const campaign = campaigns.find((c) => c.id === campaignId);
+
     // Enviar email de notificação para o gestor informando que recebeu uma proposta
     if (user?.email && campaign) {
       const campaignLink = `${window.location.origin}/#campaigns`;
-      
-      await notifyManagerProposalReceived(user.email, user.name || 'Gestor', {
+
+      await notifyManagerProposalReceived(user.email, user.name || "Gestor", {
         vendorName: lot.vendorName,
         productName: campaign.product,
         quantity: lot.qty,
-        unit: campaign.unit || 'unidades',
+        unit: campaign.unit || "unidades",
         pricePerUnit: lot.price,
-        deliveryDate: lot.deliveryDate || 'A confirmar',
+        deliveryDate: lot.deliveryDate || "A confirmar",
         campaignLink,
-      }).catch(err => console.warn('⚠️ Não foi possível enviar email de proposta recebida:', err));
+      }).catch(() => {});
     }
-    
+
     await reloadCampaign(campaignId);
   };
   const removeLot = async (campaignId, lotId) => {
@@ -384,8 +476,8 @@ export function useCampaigns(user) {
   };
   const addOrder = async (campaignId, order) => {
     // Buscar dados da campanha para enviar no email
-    const campaign = campaigns.find(c => c.id === campaignId);
-    
+    const campaign = campaigns.find((c) => c.id === campaignId);
+
     const buyer = await findOrCreateProducer(order.producerName, order.phone);
     await createOrder(campaignId, buyer.id, order.qty, "approved");
     logEvent(
@@ -394,23 +486,25 @@ export function useCampaigns(user) {
       { producerName: order.producerName, qty: order.qty },
       buyer.id,
     );
-    
+
     // Enviar email de notificação para o gestor
     if (user?.email && campaign) {
       const campaignLink = `${window.location.origin}/#campaigns`;
-      const fmtDate = new Date().toLocaleDateString('pt-BR');
-      
-      await notifyManagerNewOrder(user.email, user.name || 'Gestor', {
+      const fmtDate = new Date().toLocaleDateString("pt-BR");
+
+      await notifyManagerNewOrder(user.email, user.name || "Gestor", {
         productName: campaign.product,
         quantity: order.qty,
-        unit: campaign.unit || 'unidades',
+        unit: campaign.unit || "unidades",
         producerName: order.producerName,
         producerPhone: order.phone,
         date: fmtDate,
         campaignLink,
-      }).catch(err => console.warn('⚠️ Não foi possível enviar email de novo pedido:', err));
+      }).catch((err) =>
+        console.warn("⚠️ Não foi possível enviar email de novo pedido:", err),
+      );
     }
-    
+
     await reloadCampaign(campaignId);
   };
   const removeOrder = async (campaignId, orderId) => {

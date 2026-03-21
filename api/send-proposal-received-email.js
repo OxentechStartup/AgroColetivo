@@ -29,11 +29,28 @@ export default async function handler(req, res) {
 
     const { managerEmail, managerName, proposalData } = req.body || {};
 
-    if (!managerEmail || !managerName || !proposalData) {
+    // Validação rigorosa
+    if (!managerEmail) {
+      console.error("❌ managerEmail vazio");
       return res.status(400).json({
-        error: "Campos obrigatórios: managerEmail, managerName, proposalData",
+        error: "Campos obrigatórios: managerEmail é obrigatório",
       });
     }
+    if (!managerName) {
+      console.error("❌ managerName vazio");
+      return res.status(400).json({
+        error: "Campos obrigatórios: managerName é obrigatório",
+      });
+    }
+    if (!proposalData) {
+      console.error("❌ proposalData vazio");
+      return res.status(400).json({
+        error: "Campos obrigatórios: proposalData é obrigatório",
+      });
+    }
+
+    console.log(`📧 Enviando email para: ${managerEmail}`);
+    console.log(`📋 Dados da proposta:`, proposalData);
 
     const result = await sendProposalReceivedEmailToManager(
       managerEmail,
@@ -42,12 +59,14 @@ export default async function handler(req, res) {
     );
 
     if (result.success) {
+      console.log(`✅ Email enviado com sucesso: ${result.messageId}`);
       return res.status(200).json({
         success: true,
         messageId: result.messageId,
         message: "Email de proposta recebida enviado com sucesso",
       });
     } else {
+      console.error(`❌ Falha ao enviar email: ${result.error}`);
       return res.status(500).json({
         success: false,
         error: result.error || "Erro ao enviar email",

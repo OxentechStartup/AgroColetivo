@@ -7,7 +7,7 @@ import { ROLES } from "../constants/roles";
 
 /**
  * AppProvider — Provedor centralizado de dados
- * 
+ *
  * Gerencia em tempo real:
  * - Autenticação e perfil do usuário
  * - Campanhas e seus dados (offers, lots, orders)
@@ -19,7 +19,7 @@ export function AppProvider({ children }) {
   // ─────────────────────────────────────────────────────────────────────────
   // AUTENTICAÇÃO
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   const {
     user,
     isAuthenticated,
@@ -34,7 +34,7 @@ export function AppProvider({ children }) {
   // ─────────────────────────────────────────────────────────────────────────
   // DADOS DE CAMPANHAS
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   const {
     campaigns,
     vendors,
@@ -58,17 +58,17 @@ export function AppProvider({ children }) {
   // ─────────────────────────────────────────────────────────────────────────
   // ESTADO LOCAL
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   const [notifications, setNotifications] = useState([]);
   const [realTimeActive, setRealTimeActive] = useState(false);
-  
+
   // Referências para subscrições em tempo real
   const subscriptionsRef = useRef({});
 
   // ─────────────────────────────────────────────────────────────────────────
   // SUBSCRIÇÕES EM TEMPO REAL
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   const setupRealtimeSubscriptions = useCallback(async () => {
     if (!isAuthenticated || !user?.id) return;
 
@@ -82,7 +82,7 @@ export function AppProvider({ children }) {
           (payload) => {
             console.log("📡 Campaigns realtime update:", payload);
             reloadCampaign(payload.new?.id || payload.old?.id);
-          }
+          },
         )
         .subscribe();
 
@@ -97,7 +97,7 @@ export function AppProvider({ children }) {
             if (payload.new?.campaign_id) {
               reloadCampaign(payload.new.campaign_id);
             }
-          }
+          },
         )
         .subscribe();
 
@@ -112,7 +112,7 @@ export function AppProvider({ children }) {
             if (payload.new?.campaign_id) {
               reloadCampaign(payload.new.campaign_id);
             }
-          }
+          },
         )
         .subscribe();
 
@@ -127,7 +127,7 @@ export function AppProvider({ children }) {
             if (payload.new?.campaign_id) {
               reloadCampaign(payload.new.campaign_id);
             }
-          }
+          },
         )
         .subscribe();
 
@@ -171,11 +171,11 @@ export function AppProvider({ children }) {
   // ─────────────────────────────────────────────────────────────────────────
   // ADICIONAR NOTIFICAÇÃO
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   const addNotification = useCallback((notification) => {
     const id = Date.now();
     const newNotif = { ...notification, id };
-    
+
     setNotifications((prev) => [...prev, newNotif]);
 
     // Auto-remover após 5 segundos
@@ -189,7 +189,7 @@ export function AppProvider({ children }) {
   // ─────────────────────────────────────────────────────────────────────────
   // VALOR DO CONTEXTO
   // ─────────────────────────────────────────────────────────────────────────
-  
+
   const contextValue = {
     // Autenticação
     user,
@@ -231,8 +231,6 @@ export function AppProvider({ children }) {
   };
 
   return (
-    <AppContext.Provider value={contextValue}>
-      {children}
-    </AppContext.Provider>
+    <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>
   );
 }

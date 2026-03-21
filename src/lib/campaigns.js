@@ -21,25 +21,45 @@ export async function fetchCampaigns(user) {
       involvedIds = (lots ?? []).map((l) => l.campaign_id);
     }
 
-    // Busca campanhas abertas/negociando OU onde tem lote
-    let query = supabase
+    // Busca campanhas abertas/negociando PUBLICADAS PARA VENDORS
+    const { data: publishedCampaigns, error: err1 } = await supabase
       .from("v_campaign_summary")
       .select("*")
+      .in("status", ["open", "negotiating"])
+      .eq("published_to_vendors", true)
       .order("created_at", { ascending: false });
 
-    if (involvedIds.length > 0) {
-      query = query
-        .or(`status.in.(open,negotiating),id.in.(${involvedIds.join(",")})`)
-        .neq("status", "finished");
-    } else {
-      query = query.in("status", ["open", "negotiating"]);
+    if (err1) {
+      throw new Error(
+        "Erro ao buscar cotações publicadas: " +
+          (err1?.message || "unknown error"),
+      );
     }
 
-    const { data, error } = await query;
-    if (error)
-      throw new Error(
-        "Erro ao buscar cotações: " + (error?.message || "unknown error"),
-      );
+    const data = publishedCampaigns ?? [];
+
+    // Se vendor tem lotes, adiciona campanhas onde já está envolvido
+    if (involvedIds.length > 0) {
+      const { data: campaignsWithLots, error: err2 } = await supabase
+        .from("v_campaign_summary")
+        .select("*")
+        .in("id", involvedIds)
+        .neq("status", "finished")
+        .order("created_at", { ascending: false });
+
+      if (err2) {
+        throw new Error(
+          "Erro ao buscar campanhas com lotes: " +
+            (err2?.message || "unknown error"),
+        );
+      }
+
+      // Merge resultados removendo duplicatas
+      const merged = [...data, ...(campaignsWithLots ?? [])];
+      const unique = Array.from(new Map(merged.map((c) => [c.id, c])).values());
+      return unique.map(normalizeCampaign);
+    }
+
     return data.map(normalizeCampaign);
   }
 
@@ -116,7 +136,6 @@ export async function createCampaign(c, gestorId) {
     .single();
 
   if (error) {
-    console.error("[createCampaign] erro completo:", error);
     throw new Error(
       "Erro ao criar cotação: " +
         (error?.message || "unknown error") +
@@ -186,7 +205,11 @@ export async function setPublishStatus(
     .eq("id", campaignId)
     .select()
     .single();
-  if (error) throw new Error(error?.message || "Erro ao atualizar publicação");
+
+  if (error) {
+    throw new Error(error?.message || "Erro ao atualizar publicação");
+  }
+
   return data;
 }
 
@@ -266,6 +289,8 @@ function normalizeCampaign(row) {
     deadline: row.deadline,
     createdAt: row.created_at?.slice(0, 10),
     pivoId: row.pivo_id ?? null,
+    publishedToVendors: row.published_to_vendors ?? false,
+    publishedToBuyers: row.published_to_buyers ?? false,
     approvedCount: Number(row.approved_count ?? 0),
     totalOrdered: Number(row.total_ordered ?? 0),
     pendingCount: Number(row.pending_count ?? 0),

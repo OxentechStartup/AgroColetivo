@@ -391,7 +391,7 @@ function AppContent() {
 
 /**
  * App — Componente raiz com AppProvider
- * 
+ *
  * Envolve toda a aplicação com Context centralizado para
  * gerenciar dados em tempo real para todos os usuários
  */

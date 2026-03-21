@@ -30,6 +30,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { Badge } from "../components/Badge";
+import { PivoBadge } from "../components/PivoBadge";
 import { Button } from "../components/Button";
 import { ProgressBar } from "../components/ProgressBar";
 import { Toast } from "../components/Toast";
@@ -274,19 +275,41 @@ function SummaryBar({ campaign, stats }) {
     },
   ];
   return (
-    <div className={styles.summaryBar}>
-      {items.map(({ label, value, icon: Icon, primary }) => (
-        <div
-          key={label}
-          className={`${styles.summaryItem} ${primary ? styles.summaryPrimary : ""}`}
-        >
-          <Icon size={14} />
-          <div className={styles.summaryItemText}>
-            <span className={styles.summaryLabel}>{label}</span>
-            <span className={styles.summaryValue}>{value}</span>
+    <div
+      className={styles.summaryBar}
+      style={{ justifyContent: "space-between", alignItems: "center" }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          flex: 1,
+          minWidth: 0,
+          overflow: "auto",
+        }}
+      >
+        {items.map(({ label, value, icon: Icon, primary }) => (
+          <div
+            key={label}
+            className={`${styles.summaryItem} ${primary ? styles.summaryPrimary : ""}`}
+          >
+            <Icon size={14} />
+            <div className={styles.summaryItemText}>
+              <span className={styles.summaryLabel}>{label}</span>
+              <span className={styles.summaryValue}>{value}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      <div
+        style={{
+          flexShrink: 0,
+          paddingLeft: 16,
+          borderLeft: "1px solid var(--border)",
+        }}
+      >
+        <PivoBadge pivoId={campaign.pivoId} />
+      </div>
     </div>
   );
 }
@@ -2183,6 +2206,13 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                       <Button
                         variant="primary"
                         size="sm"
+                        onClick={() => setShowPublish(true)}
+                      >
+                        <Send size={13} /> Publicar para Fornecedores
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() =>
                           setConfirmAction({
                             type: "closeToBuyers",
@@ -2201,12 +2231,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() =>
-                          setConfirmAction({
-                            type: "publishToVendorsOnly",
-                            id: active.id,
-                          })
-                        }
+                        onClick={() => setShowPublish(true)}
                       >
                         <Send size={13} /> Publicar para Fornecedores
                       </Button>
@@ -2598,7 +2623,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
           vendors={vendors}
           onClose={() => setShowPublish(false)}
           onPublish={() => {
-            run(publishToVendors(active.id), "Publicada!");
+            run(() => publishToVendors(active.id), "Publicada!");
             setShowPublish(false);
           }}
         />

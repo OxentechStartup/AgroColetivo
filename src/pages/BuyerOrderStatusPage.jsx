@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
+import { useMultipleRealtimeSubscriptions } from "../hooks/useRealtimeSubscription";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 
 async function fetchBuyerOrdersWithOffers(phone) {
@@ -681,6 +682,31 @@ export function BuyerOrderStatusPage({ userPhone }) {
         .catch((err) => console.error("Erro ao carregar pedidos:", err));
     }
   }, [userPhone]);
+
+  // Subscrever em mudanças de pedidos e ofertas para auto-refresh
+  useMultipleRealtimeSubscriptions(
+    buyerData?.buyer?.id
+      ? [
+          {
+            table: "orders",
+            filterColumn: "buyer_id",
+            filterValue: buyerData.buyer.id,
+          },
+          { table: "vendor_campaign_offers" },
+          { table: "campaigns" },
+        ]
+      : [],
+    () => {
+      // Recarregar dados quando qualquer tabela muda
+      if (phone) {
+        fetchBuyerOrdersWithOffers(phone)
+          .then((data) => {
+            if (data) setBuyerData(data);
+          })
+          .catch((err) => console.error("Erro ao atualizar pedidos:", err));
+      }
+    },
+  );
 
   const handleCloseAlertModal = () => {
     setErrorMessage(null);
