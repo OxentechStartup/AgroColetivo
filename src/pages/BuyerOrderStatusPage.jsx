@@ -32,7 +32,6 @@ async function fetchBuyerOrdersWithOffers(phone) {
   }
 
   if (!buyer) {
-    console.warn(`Nenhum comprador encontrado para o telefone: ${cleanPhone}`);
     return null;
   }
 
@@ -653,17 +652,20 @@ export function BuyerOrderStatusPage() {
     try {
       const data = await fetchBuyerOrdersWithOffers(phoneNum);
       if (!data) {
-        setError("Telefone não cadastrado no sistema");
+        const errorMsg = "Nenhum comprador encontrado para este telefone";
+        setError(errorMsg);
+        showToast(errorMsg, "warning");
         setPhone(null);
         return;
       }
       setBuyerData(data);
     } catch (err) {
       console.error("Erro ao carregar pedidos:", err);
-      setError(
+      const errorMsg =
         "Erro ao carregar pedidos: " +
-          (err?.message || "Tente novamente mais tarde"),
-      );
+        (err?.message || "Tente novamente mais tarde");
+      setError(errorMsg);
+      showToast(errorMsg, "error");
       setPhone(null);
     } finally {
       setLoading(false);
@@ -678,10 +680,11 @@ export function BuyerOrderStatusPage() {
       await loadOrders(phoneNum);
     } catch (err) {
       console.error("Erro no login:", err);
-      setError(
+      const errorMsg =
         "Erro ao acessar pedidos: " +
-          (err?.message || "Tente novamente mais tarde"),
-      );
+        (err?.message || "Tente novamente mais tarde");
+      setError(errorMsg);
+      showToast(errorMsg, "error");
       setPhone(null);
     } finally {
       setLoading(false);

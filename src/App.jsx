@@ -42,12 +42,7 @@ function defaultPage(role) {
 
 // ── Páginas permitidas por role ───────────────────────────────────────────────
 const ALLOWED = {
-  [ROLES.GESTOR]: [
-    "dashboard",
-    "campaigns",
-    "producers",
-    "pivo-profile",
-  ],
+  [ROLES.GESTOR]: ["dashboard", "campaigns", "producers", "pivo-profile"],
   [ROLES.VENDOR]: ["vendor-dashboard", "vendor-profile", "vendor-pivos"],
   [ROLES.ADMIN]: ["dashboard", "campaigns", "producers", "admin"],
 };
