@@ -13,8 +13,6 @@ import {
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
 import { ConfirmationModal } from "../components/ConfirmationModal";
-import { Toast } from "../components/Toast";
-import { useToast } from "../hooks/useToast";
 
 async function fetchBuyerOrdersWithOffers(phone) {
   const cleanPhone = unmaskPhone(phone);
@@ -626,12 +624,15 @@ function LoginForm({ onLogin, loading }) {
 }
 
 export function BuyerOrderStatusPage() {
-  const { toast, showToast, clearToast } = useToast();
   const [phone, setPhone] = useState(null);
   const [buyerData, setBuyerData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [canceling, setCanceling] = useState(null);
+  const [alertModal, setAlertModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
   const [cancelConfirm, setCancelConfirm] = useState({
     open: false,
     orderId: null,
@@ -648,24 +649,25 @@ export function BuyerOrderStatusPage() {
 
   const loadOrders = async (phoneNum) => {
     setLoading(true);
-    setError(null);
     try {
       const data = await fetchBuyerOrdersWithOffers(phoneNum);
       if (!data) {
-        const errorMsg = "Nenhum comprador encontrado para este telefone";
-        setError(errorMsg);
-        showToast(errorMsg, "warning");
+        setAlertModal({
+          open: true,
+          title: "Telefone não encontrado",
+          message: "Nenhum comprador encontrado para este telefone",
+        });
         setPhone(null);
         return;
       }
       setBuyerData(data);
     } catch (err) {
       console.error("Erro ao carregar pedidos:", err);
-      const errorMsg =
-        "Erro ao carregar pedidos: " +
-        (err?.message || "Tente novamente mais tarde");
-      setError(errorMsg);
-      showToast(errorMsg, "error");
+      setAlertModal({
+        open: true,
+        title: "Erro ao carregar pedidos",
+        message: err?.message || "Tente novamente mais tarde",
+      });
       setPhone(null);
     } finally {
       setLoading(false);
@@ -680,11 +682,11 @@ export function BuyerOrderStatusPage() {
       await loadOrders(phoneNum);
     } catch (err) {
       console.error("Erro no login:", err);
-      const errorMsg =
-        "Erro ao acessar pedidos: " +
-        (err?.message || "Tente novamente mais tarde");
-      setError(errorMsg);
-      showToast(errorMsg, "error");
+      setAlertModal({
+        open: true,
+        title: "Erro ao acessar pedidos",
+        message: err?.message || "Tente novamente mais tarde",
+      });
       setPhone(null);
     } finally {
       setLoading(false);
@@ -726,14 +728,19 @@ export function BuyerOrderStatusPage() {
 
       // Recarregar pedidos
       await loadOrders(phone);
-      showToast("Pedido cancelado com sucesso");
+      setAlertModal({
+        open: true,
+        title: "Sucesso",
+        message: "Pedido cancelado com sucesso",
+      });
       setCancelConfirm({ open: false, orderId: null, product: "" });
     } catch (err) {
       console.error("Erro ao cancelar pedido:", err);
-      showToast(
-        "Erro ao cancelar pedido: " + (err?.message || "Tente novamente"),
-        "error",
-      );
+      setAlertModal({
+        open: true,
+        title: "Erro ao cancelar pedido",
+        message: err?.message || "Tente novamente",
+      });
     } finally {
       setCanceling(null);
     }
@@ -747,70 +754,6 @@ export function BuyerOrderStatusPage() {
 
   if (!phone) {
     return <LoginForm onLogin={handleLogin} loading={loading} />;
-  }
-
-  if (error) {
-    return (
-      <div
-        style={{
-          minHeight: "100dvh",
-          background: "linear-gradient(135deg, #16A34A 0%, #15803d 100%)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "20px",
-        }}
-      >
-        <div
-          style={{
-            background: "white",
-            borderRadius: "12px",
-            padding: "40px 28px",
-            maxWidth: 400,
-            width: "100%",
-          }}
-        >
-          <AlertCircle
-            size={48}
-            style={{ margin: "0 auto 16px", color: "#DC2626" }}
-          />
-          <h2
-            style={{
-              fontSize: "1.2rem",
-              fontWeight: 700,
-              margin: "0 0 8px 0",
-              textAlign: "center",
-            }}
-          >
-            Erro
-          </h2>
-          <p
-            style={{
-              textAlign: "center",
-              color: "#6B7280",
-              marginBottom: "20px",
-            }}
-          >
-            {error}
-          </p>
-          <button
-            onClick={() => setPhone(null)}
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "#16A34A",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Voltar
-          </button>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -980,10 +923,17 @@ export function BuyerOrderStatusPage() {
         }
       />
 
-      {/* Toast */}
-      {toast && (
-        <Toast message={toast.msg} type={toast.type} onDone={clearToast} />
-      )}
+      {/* Modal de alerta */}
+      <ConfirmationModal
+        open={alertModal.open}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="OK"
+        cancelText=""
+        loading={false}
+        onConfirm={() => setAlertModal({ open: false, title: "", message: "" })}
+        onCancel={() => setAlertModal({ open: false, title: "", message: "" })}
+      />
     </div>
   );
 }
