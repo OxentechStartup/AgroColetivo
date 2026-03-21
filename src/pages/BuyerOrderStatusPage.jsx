@@ -650,11 +650,16 @@ export function BuyerOrderStatusPage() {
   useEffect(() => {
     if (alertModal.open) {
       const timer = setTimeout(() => {
-        setAlertModal({ open: false, title: "", message: "" });
+        handleCloseAlertModal();
       }, 3000);
       return () => clearTimeout(timer);
     }
   }, [alertModal.open]);
+
+  const handleCloseAlertModal = () => {
+    setAlertModal({ open: false, title: "", message: "" });
+    setPhone(null);
+  };
 
   const loadOrders = async (phoneNum) => {
     setLoading(true);
@@ -666,7 +671,6 @@ export function BuyerOrderStatusPage() {
           title: "Telefone não encontrado",
           message: "Nenhum comprador encontrado para este telefone",
         });
-        setPhone(null);
         return;
       }
       setBuyerData(data);
@@ -677,7 +681,6 @@ export function BuyerOrderStatusPage() {
         title: "Erro ao carregar pedidos",
         message: err?.message || "Tente novamente mais tarde",
       });
-      setPhone(null);
     } finally {
       setLoading(false);
     }
@@ -696,7 +699,6 @@ export function BuyerOrderStatusPage() {
         title: "Erro ao acessar pedidos",
         message: err?.message || "Tente novamente mais tarde",
       });
-      setPhone(null);
     } finally {
       setLoading(false);
     }
@@ -940,8 +942,8 @@ export function BuyerOrderStatusPage() {
         confirmText="OK"
         cancelText=""
         loading={false}
-        onConfirm={() => setAlertModal({ open: false, title: "", message: "" })}
-        onCancel={() => setAlertModal({ open: false, title: "", message: "" })}
+        onConfirm={handleCloseAlertModal}
+        onCancel={handleCloseAlertModal}
       />
     </div>
   );
