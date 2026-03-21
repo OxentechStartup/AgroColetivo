@@ -1,22 +1,18 @@
 /**
  * Email Client — Frontend Safe
  *
- * Em produção (Vercel): chama /api/send-verification-email
- *   → Vercel Serverless Function que envia via Gmail SMTP
+ * Em desenvolvimento: chama /api/send-verification-email
+ *   → Vite proxy para handlers locais em /api/
  *
- * Em desenvolvimento local: chama http://localhost:3001
- *   → Rode: node email-server.cjs
+ * Em produção: chama /api/send-verification-email
+ *   → Vercel Serverless Functions que enviam via Gmail SMTP
  */
 
 export async function sendVerificationEmail(userEmail, userName, verificationCode) {
-  // Em produção usa endpoint relativo (Vercel Serverless Function)
-  // Em dev usa localhost:3001 (email-server.cjs rodando localmente)
-  const isDev = import.meta.env.DEV;
-  const emailServerUrl = isDev
-    ? (import.meta.env.VITE_EMAIL_SERVER_URL || "http://localhost:3001")
-    : "";
-
-  const endpoint = `${emailServerUrl}/api/send-verification-email`;
+  // Usa endpoint relativo em dev e produção
+  // Dev: /api/send-verification-email (Vite proxy)
+  // Produção: /api/send-verification-email (Vercel Serverless)
+  const endpoint = "/api/send-verification-email";
 
   try {
     const response = await fetch(endpoint, {
@@ -33,7 +29,7 @@ export async function sendVerificationEmail(userEmail, userName, verificationCod
       const data = await response.json();
       return {
         success: true,
-        service: isDev ? "localhost" : "vercel-serverless",
+        service: "api-endpoint",
         messageId: data.messageId,
         message: "Email enviado com sucesso",
       };

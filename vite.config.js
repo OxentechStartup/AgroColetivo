@@ -4,6 +4,20 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: {
+    // API Proxy for development - routes to email-server.cjs
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        rewrite: (path) => path,
+        bypass: (req, res, options) => {
+          // Allow ESM loaders to pass through
+          if (req.headers.accept?.includes("application/json")) {
+            return null; // use proxy
+          }
+        },
+      },
+    },
     // CORS Configuration
     cors: {
       origin: [
