@@ -643,7 +643,14 @@ export function BuyerOrderStatusPage() {
     const saved = localStorage.getItem("agro_buyer_phone");
     if (saved) {
       setPhone(saved);
-      loadOrders(saved);
+      // Carregar dados imediatamente sem esperar setState
+      fetchBuyerOrdersWithOffers(saved)
+        .then((data) => {
+          if (data) {
+            setBuyerData(data);
+          }
+        })
+        .catch((err) => console.error("Erro ao carregar pedidos:", err));
     }
   }, []);
 
@@ -738,7 +745,10 @@ export function BuyerOrderStatusPage() {
       }
 
       // Recarregar pedidos
-      await loadOrders(phone);
+      const updatedData = await fetchBuyerOrdersWithOffers(phone);
+      if (updatedData) {
+        setBuyerData(updatedData);
+      }
       setAlertModal({
         open: true,
         title: "Sucesso",
