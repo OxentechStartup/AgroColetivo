@@ -8,8 +8,8 @@ import {
   ChevronDown,
   AlertCircle,
 } from "lucide-react";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "./Modal";
-import { Button } from "./Button";
+import { Modal, ModalHeader, ModalBody, ModalFooter } from "./ui/Modal";
+import { Button } from "./ui/Button";
 import { createImageUrl } from "../lib/imageUpload";
 
 const DEFAULT = {

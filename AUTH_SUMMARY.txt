@@ -1,0 +1,238 @@
+================================================================================
+AGROCOLETIVO AUTHENTICATION SYSTEM - EXECUTIVE SUMMARY
+================================================================================
+
+PROJECT: AgroColetivo v0.21.0
+FRAMEWORK: React 18 + Vite
+DATABASE: Supabase (PostgreSQL)
+AUTH METHOD: Supabase Auth Native (JWT + bcrypt)
+DATE: March 27, 2026
+
+================================================================================
+1. PROJECT STRUCTURE OVERVIEW
+================================================================================
+
+Key Directories:
+  /src/pages/       - Page components (Login, Register, Profile, etc.)
+  /src/hooks/       - React hooks (useAuth, useCampaigns, etc.)
+  /src/context/     - Context providers (AppProvider)
+  /src/lib/         - Core logic (auth.js, supabase.js, authorization.js)
+  /src/utils/       - Utilities (security.js with validation, rate limiting)
+  /src/components/  - UI components
+  /api/             - Serverless functions (email sending)
+  /schema.sql       - Database schema
+
+Total Lines of Auth Code: ~2,500 lines
+
+================================================================================
+2. AUTH-RELATED FILES FOUND
+================================================================================
+
+CORE AUTH FILES:
+  ✓ src/lib/auth.js (811 lines)
+    - login(), register(), verifyEmail(), resetPassword(), updatePassword()
+    - deleteAccount(), updateUser(), resendVerificationEmail()
+    - Session management: getSession(), saveSession(), clearSession()
+
+  ✓ src/hooks/useAuth.js (306 lines)
+    - React hook for auth state management
+    - Manages user, loading, error, pendingVerificationUser
+    - Provides signIn(), signUp(), signOut(), deleteUserAccount()
+
+  ✓ src/context/AppProvider.jsx
+    - Wraps entire app with centralized context
+    - Combines useAuth + useCampaigns
+
+  ✓ src/lib/supabase.js (39 lines)
+    - Supabase client initialization
+    - Auth config: persistSession, autoRefreshToken, detectSessionInUrl
+
+PAGE COMPONENTS:
+  ✓ src/pages/LoginPage.jsx (309 lines)
+    - Email + Password login form
+    - Toggle between Login and Register screens
+    - Shows error messages
+
+  ✓ src/pages/ConfirmEmailPage.jsx (230 lines)
+    - Email verification with 6-digit code
+    - Password confirmation
+    - Resend code functionality
+
+  ✓ src/pages/ForgotPasswordPage.jsx (261 lines)
+    - Password recovery by email or phone
+    - Sends recovery link via email
+    - Legacy user migration detection
+
+  ✓ src/pages/ResetPasswordPage.jsx (194 lines)
+    - Password reset after email link
+    - Validates Supabase session from URL
+    - Updates password in Supabase Auth
+
+PROFILE PAGES:
+  ✓ src/pages/VendorProfilePage.jsx
+    - Vendor profile edit + delete account
+  ✓ src/pages/PivoProfilePage.jsx
+    - Gestor profile edit + delete account
+
+SECURITY & AUTHORIZATION:
+  ✓ src/lib/authorization.js (179 lines)
+    - RBAC functions: hasRole(), hasPermission(), isResourceOwner()
+    - Permission matrix by role (admin, pivo, vendor, buyer)
+    - Sensitive field filtering
+
+  ✓ src/utils/security.js (511 lines)
+    - Validation: validateEmail(), validatePassword(), validatePhone()
+    - Rate limiting: loginLimiter (5/15min), registerLimiter (3/hour)
+    - Attack detection: detectSQLInjection(), detectXSS()
+    - Sanitization: sanitizeHTML(), sanitizeString()
+
+ROUTER & LAYOUT:
+  ✓ src/App.jsx (355 lines)
+    - Main router with special route detection
+    - Access control per role
+    - Sidebar navigation with logout
+    - Page permission enforcement
+
+CONSTANTS:
+  ✓ src/constants/roles.js (28 lines)
+    - ROLES: admin, pivo (gestor), vendor, buyer
+    - ROLE_LABELS and ROLE_DESCRIPTIONS
+
+API/EMAIL:
+  ✓ api/send-verification-email.js
+    - Email verification code delivery
+  ✓ api/send-order-email.js
+    - Order notification emails
+  ✓ api/send-proposal-email.js
+    - Proposal notification emails
+
+DATABASE:
+  ✓ schema.sql (630 lines)
+    - Complete schema with all tables
+    - users, vendors, pending_registrations
+    - Enums: user_role, campaign_status, offer_status, etc.
+
+================================================================================
+3. AUTHENTICATION FLOW
+================================================================================
+
+REGISTRATION:
+  1. User fills form in LoginPage (email, password, role, company)
+  2. → register() in auth.js
+  3. → Validate inputs, rate limit, security checks
+  4. → Store in pending_registrations table
+  5. → Send email with 6-digit verification code
+  6. → Show ConfirmEmailPage
+  7. → User enters code + password
+  8. → verifyEmail() validates code
+  9. → supabase.auth.signUp() creates in auth.users
+  10. → Insert into public.users table
+  11. → If vendor: create vendors entry
+  12. → Logged in! Show Dashboard
+
+LOGIN:
+  1. User enters email + password in LoginPage
+  2. → login() in auth.js
+  3. → Rate limit check (5 attempts per 15 minutes)
+  4. → supabase.auth.signInWithPassword()
+  5. → Fetch user profile from public.users
+  6. → Check if active
+  7. → Detect legacy user if needed
+  8. → Save to localStorage ("agro_auth")
+  9. → Logged in! Show Dashboard
+
+PASSWORD RECOVERY:
+  1. User clicks "Forgot Password" in LoginPage
+  2. → ForgotPasswordPage (email or phone tab)
+  3. → resetPasswordByEmail() or resetPassword()
+  4. → supabase.auth.resetPasswordForEmail()
+  5. → User receives email link
+  6. → Clicks link → ResetPasswordPage loads
+  7. → updatePassword() validates session
+  8. → supabase.auth.updateUser({ password })
+  9. → Redirects to LoginPage
+
+LOGOUT:
+  1. User clicks logout button
+  2. → signOut() hook function
+  3. → supabase.auth.signOut()
+  4. → clearSession() removes localStorage
+  5. → setUser(null)
+  6. → Show LoginPage
+
+DELETE ACCOUNT:
+  1. User clicks delete in profile page
+  2. → DeleteAccountModal asks for password
+  3. → deleteAccount() in auth.js
+  4. → Delete from public.users (cascades)
+  5. → Delete vendors if exists
+  6. → supabase.auth.signOut()
+  7. → Logged out, show LoginPage
+
+================================================================================
+4. DATABASE TABLES (AUTH-RELATED)
+================================================================================
+
+users (Main User Profile)
+  id              UUID (Supabase Auth ID)
+  email           TEXT UNIQUE
+  email_verified  BOOLEAN
+  name            TEXT
+  phone           TEXT
+  password_hash   TEXT (empty - uses Supabase Auth)
+  profile_photo_url TEXT
+  role            ENUM: admin | pivo | vendor | buyer
+  city            TEXT
+  notes           TEXT
+  active          BOOLEAN
+  created_at      TIMESTAMPTZ
+
+vendors (Vendor Profile - linked to users)
+  id              UUID
+  user_id         UUID → users.id (UNIQUE)
+  name            TEXT
+  phone           TEXT
+  photo_url       TEXT
+  city            TEXT
+  notes           TEXT
+  created_at      TIMESTAMPTZ
+
+pending_registrations (Temporary - stores during registration)
+  id              UUID
+  email           TEXT UNIQUE
+  name            TEXT
+  phone           TEXT
+  role            ENUM
+  city            TEXT
+  notes           TEXT
+  verification_code VARCHAR(6)
+  expires_at      TIMESTAMPTZ (24 hours)
+  created_at      TIMESTAMPTZ
+
+================================================================================
+5. USER ROLES & PERMISSIONS
+================================================================================
+
+ROLES:
+  admin   - System administrator (manages users, blocks accounts)
+  pivo    - Gestor/Purchase coordinator (creates campaigns, approves vendors)
+  vendor  - Supplier (submits proposals, manages products)
+  buyer   - Producer/Farmer (views campaigns, places orders - no password)
+
+PERMISSION MATRIX:
+  Admin:
+    ✓ campaigns: create, read, update, delete, publish
+    ✓ vendors: create, read, update, delete
+    ✓ producers: read
+    ✓ financial: read, update
+
+  Gestor (Pivo):
+    ✓ campaigns: create, read, update, delete, publish
+    ✓ vendors: create, read, update
+    ✓ producers: read
+    ✓ financial: read, update
+
+  Vendor:
+    ✓ campaigns: read (own only)
+    ✓ products: create, read, update, delete
+    ✓ p

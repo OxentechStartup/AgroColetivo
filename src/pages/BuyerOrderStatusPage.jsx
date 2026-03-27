@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
-import { useMultipleRealtimeSubscriptions } from "../hooks/useRealtimeSubscription";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 
 async function fetchBuyerOrdersWithOffers(phone) {
@@ -656,6 +655,11 @@ export function BuyerOrderStatusPage({ userPhone }) {
     orderId: null,
     product: "",
   });
+  const [alertModal, setAlertModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem("agro_buyer_phone");
@@ -682,31 +686,6 @@ export function BuyerOrderStatusPage({ userPhone }) {
         .catch((err) => console.error("Erro ao carregar pedidos:", err));
     }
   }, [userPhone]);
-
-  // Subscrever em mudanças de pedidos e ofertas para auto-refresh
-  useMultipleRealtimeSubscriptions(
-    buyerData?.buyer?.id
-      ? [
-          {
-            table: "orders",
-            filterColumn: "buyer_id",
-            filterValue: buyerData.buyer.id,
-          },
-          { table: "vendor_campaign_offers" },
-          { table: "campaigns" },
-        ]
-      : [],
-    () => {
-      // Recarregar dados quando qualquer tabela muda
-      if (phone) {
-        fetchBuyerOrdersWithOffers(phone)
-          .then((data) => {
-            if (data) setBuyerData(data);
-          })
-          .catch((err) => console.error("Erro ao atualizar pedidos:", err));
-      }
-    },
-  );
 
   const handleCloseAlertModal = () => {
     setErrorMessage(null);
@@ -763,7 +742,7 @@ export function BuyerOrderStatusPage({ userPhone }) {
       const { data: orderData } = await supabase
         .from("orders")
         .select(
-          "id, campaign_id, qty, campaign:campaigns(id, product, pivo_id)",
+          "id, campaign_id, qty, campaign:campaigns(id, product, unit, pivo_id)",
         )
         .eq("id", orderId)
         .single();
@@ -778,15 +757,41 @@ export function BuyerOrderStatusPage({ userPhone }) {
 
       // Criar notificação para o gestor
       if (orderData?.campaign?.pivo_id) {
-        const notificationMsg = `Comprador cancelou pedido de ${orderData.campaign.product} (${orderData.qty} ${cancelConfirm.product ? "un" : "lotes"})`;
-        await supabase.from("notifications").insert({
-          pivo_id: orderData.campaign.pivo_id,
-          type: "order_canceled",
-          title: "Pedido Cancelado",
-          message: notificationMsg,
-          related_order_id: orderId,
-          related_campaign_id: orderData.campaign_id,
-        });
+        const pivoId = orderData.campaign.pivo_id;
+        const isUuid =
+          typeof pivoId === "string" &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            pivoId,
+          );
+
+        if (isUuid) {
+          const unit = orderData.campaign.unit || "un";
+          const notificationMsg = `Comprador cancelou pedido de ${orderData.campaign.product} (${orderData.qty} ${unit})`;
+          const { error: notificationError } = await supabase
+            .from("notifications")
+            .insert({
+              pivo_id: pivoId,
+              type: "order_canceled",
+              title: "Pedido Cancelado",
+              message: notificationMsg,
+              related_order_id: orderId,
+              related_campaign_id: orderData.campaign_id,
+            });
+
+          if (notificationError) {
+            console.error("Erro ao criar notificação de cancelamento:", {
+              notificationError,
+              payload: {
+                pivo_id: pivoId,
+                type: "order_canceled",
+                related_order_id: orderId,
+                related_campaign_id: orderData.campaign_id,
+              },
+            });
+          }
+        } else {
+          console.warn("Notificação ignorada: pivo_id inválido", pivoId);
+        }
       }
 
       // Recarregar pedidos
@@ -993,6 +998,16 @@ export function BuyerOrderStatusPage({ userPhone }) {
         onCancel={() =>
           setCancelConfirm({ open: false, orderId: null, product: "" })
         }
+      />
+
+      {/* Modal de alerta (sucesso/erro) */}
+      <ConfirmationModal
+        open={alertModal.open}
+        title={alertModal.title}
+        message={alertModal.message}
+        confirmText="OK"
+        onConfirm={() => setAlertModal({ open: false, title: "", message: "" })}
+        onCancel={() => setAlertModal({ open: false, title: "", message: "" })}
       />
     </div>
   );

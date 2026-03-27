@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext } from "react";
 import { AppProvider } from "./context/AppProvider";
+import AppContext from "./context/AppContext";
 import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { DeleteAccountModal } from "./components/DeleteAccountModal";
@@ -17,9 +18,7 @@ import { VendorProfilePage } from "./pages/VendorProfilePage";
 import { PivoProfilePage } from "./pages/PivoProfilePage";
 import { VendorPivosPage } from "./pages/VendorPivosPage";
 import { ProducerPortalPage } from "./pages/ProducerPortalPage";
-import { useCampaigns } from "./hooks/useCampaigns";
 import { useGestores } from "./hooks/useGestores";
-import { useAuth } from "./hooks/useAuth";
 import { ROLES } from "./constants/roles";
 import styles from "./App.module.css";
 
@@ -93,10 +92,16 @@ function AppContent() {
   const [isResetPassword, setIsResetPassword] = useState(isResetPasswordRoute);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  const context = useContext(AppContext);
+
+  if (!context) {
+    return <LoadingScreen message="Inicializando aplicação..." />;
+  }
+
   const {
     user,
-    loading: authLoading,
-    error: authError,
+    authLoading,
+    authError,
     signIn,
     signUp,
     signOut,
@@ -104,46 +109,29 @@ function AppContent() {
     pendingVerificationUser,
     onEmailVerified,
     refreshUser,
-  } = useAuth();
-
-  const [page, setPageState] = useState(() => defaultPage(user?.role));
-
-  // Campanhas e vendors
-  const {
     campaigns,
     vendors,
-    loading,
-    error,
+    campaignsLoading: loading,
+    campaignsError: error,
     reload,
-    addCampaign,
-    addOrder,
-    removeOrder,
-    saveFinancials,
-    closeCampaign,
-    finishCampaign,
-    reopenCampaign,
-    publishToVendors,
-    publishToBuyers,
-    closeToBuyers,
-    publishToVendorsOnly,
-    deleteCampaign,
     addPendingOrder,
-    approvePending,
-    rejectPending,
-    addLot,
-    removeLot,
     addVendor,
     removeVendor,
-    reloadCampaign,
     ownVendor,
-  } = useCampaigns(user);
+  } = context;
+
+  const [page, setPageState] = useState(() => defaultPage(user?.role));
 
   // Vendor atual
   const vendor =
     user?.role === ROLES.VENDOR
       ? (ownVendor ?? null)
       : (vendors?.find((v) => v.user_id === user?.id) ?? null);
-  const vendorId = vendor?.id ?? null;
+
+  const campaignActions = {
+    addVendor,
+    removeVendor,
+  };
 
   // Gestores (para tela vendor-pivos)
   const { gestores, loading: gestoresLoading } = useGestores(user);
@@ -228,29 +216,6 @@ function AppContent() {
 
   const role = user.role ?? ROLES.GESTOR;
 
-  const campaignActions = {
-    addCampaign,
-    addOrder,
-    removeOrder,
-    saveFinancials,
-    closeCampaign,
-    finishCampaign,
-    reopenCampaign,
-    publishToVendors,
-    publishToBuyers,
-    closeToBuyers,
-    publishToVendorsOnly,
-    deleteCampaign,
-    approvePending,
-    rejectPending,
-    addLot,
-    removeLot,
-    addVendor,
-    removeVendor,
-    reload,
-    reloadCampaign,
-  };
-
   // ── Renderiza a página ativa ───────────────────────────────────────────────
   const renderPage = () => {
     if (loading) return <LoadingScreen message="Carregando…" />;
@@ -266,15 +231,7 @@ function AppContent() {
         );
 
       case "campaigns":
-        return (
-          <CampaignsPage
-            campaigns={campaigns}
-            vendors={vendors}
-            actions={campaignActions}
-            user={user}
-            setPage={navigate}
-          />
-        );
+        return <CampaignsPage user={user} setPage={navigate} />;
 
       case "producers":
         return (
@@ -296,14 +253,7 @@ function AppContent() {
         );
 
       case "vendor-dashboard":
-        return (
-          <VendorDashboardPage
-            campaigns={campaigns}
-            vendors={vendors}
-            vendor={vendor}
-            user={user}
-          />
-        );
+        return <VendorDashboardPage user={user} navigate={navigate} />;
 
       case "vendor-profile":
         return (
@@ -314,6 +264,7 @@ function AppContent() {
               reload();
             }}
             onDeleteAccount={() => setShowDeleteModal(true)}
+            navigate={navigate}
           />
         );
 

@@ -3,8 +3,6 @@ import { ROLES } from "../constants/roles";
 import { NotificationBell } from "./NotificationBell";
 import styles from "./Topbar.module.css";
 
-const LOGO_URL = "https://i.imgur.com/clDJyAh.png";
-
 const ROLE_DISPLAY = {
   [ROLES.GESTOR]: "Gestor",
   [ROLES.VENDOR]: "Fornecedor",
@@ -33,18 +31,6 @@ export function Topbar({
       >
         <Menu size={18} />
       </button>
-
-      {/* Logo desktop (PC only) */}
-      <div className={styles.desktopLogo}>
-        <img
-          src={LOGO_URL}
-          alt="AgroColetivo"
-          width="28"
-          height="28"
-          style={{ borderRadius: 7, objectFit: "cover", flexShrink: 0 }}
-        />
-        <span className={styles.desktopLogoText}>AgroColetivo</span>
-      </div>
 
       <span className={styles.title}>{title}</span>
 

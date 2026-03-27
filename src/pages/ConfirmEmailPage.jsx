@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { verifyEmail, resendVerificationEmail } from "../lib/auth.js";
-import { Card } from "../components/Card.jsx";
-import { Button } from "../components/Button.jsx";
-import { Toast } from "../components/Toast.jsx";
+import { Card } from "../components/ui/Card.jsx";
+import { Button } from "../components/ui/Button.jsx";
+import { Toast } from "../components/ui/Toast.jsx";
 import styles from "./ConfirmEmailPage.module.css";
 
 export function ConfirmEmailPage({ onVerified, emailSent }) {
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -61,6 +62,11 @@ export function ConfirmEmailPage({ onVerified, emailSent }) {
       return;
     }
 
+    if (!password) {
+      setError("Por favor, confirme sua senha.");
+      return;
+    }
+
     if (!pendingId) {
       setError("ID do cadastro não encontrado. Tente registrar novamente.");
       return;
@@ -70,7 +76,7 @@ export function ConfirmEmailPage({ onVerified, emailSent }) {
     setError("");
 
     try {
-      const verifyResult = await verifyEmail(pendingId, code);
+      const verifyResult = await verifyEmail(pendingId, code, password);
       setSuccess("Email verificado com sucesso! Entrando no sistema...");
 
       // Se veio da tela de registro/login bloqueado, chama callback para fazer login real
@@ -145,12 +151,26 @@ export function ConfirmEmailPage({ onVerified, emailSent }) {
               </p>
             </div>
 
+            <div className={styles.inputGroup}>
+              <label htmlFor="password">Confirme sua senha</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Senha escolhida no cadastro"
+                className={styles.passwordInput}
+                disabled={loading}
+                autoComplete="new-password"
+              />
+            </div>
+
             {error && <div className={styles.error}>{error}</div>}
 
             <Button
               type="submit"
               variant="primary"
-              disabled={loading || code.length !== 6}
+              disabled={loading || code.length !== 6 || !password}
               block
             >
               {loading ? "Verificando..." : "Confirmar Email"}

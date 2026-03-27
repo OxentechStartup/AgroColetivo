@@ -1,5 +1,5 @@
 import { AlertTriangle } from "lucide-react";
-import { Modal } from "./Modal";
+import { Modal } from "./ui/Modal";
 import styles from "./ConfirmationModal.module.css";
 
 /**

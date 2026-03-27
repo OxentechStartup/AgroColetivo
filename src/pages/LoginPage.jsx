@@ -87,393 +87,222 @@ export function LoginPage({ onLogin, onRegister, loading, error }) {
   const displayError = localErr || error;
   const isValidEmailCheck = email && isValidEmail(email);
 
-  if (screen === "login") {
-    return (
-      <div className={styles.page}>
-        <div className={styles.card}>
-          <div className={styles.logoWrap}>
-            <LogoMark />
-            <h1 className={styles.brand}>AgroColetivo</h1>
-            <p className={styles.sub}>Compras coletivas para o campo</p>
-          </div>
-
-          <form onSubmit={handleLogin} aria-label="Formulário de login">
-            <div className="form-group">
-              <label className="form-label" htmlFor="login-email">
-                <Mail
-                  size={12}
-                  style={{ marginRight: 4, verticalAlign: "middle" }}
-                />{" "}
-                Email
-              </label>
-              <input
-                id="login-email"
-                className="form-input"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
-                autoFocus
-                inputMode="email"
-                autoComplete="email"
-                aria-required="true"
-                aria-invalid={displayError ? "true" : "false"}
-                aria-describedby={displayError ? "login-error" : undefined}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="login-password">
-                <Lock
-                  size={12}
-                  style={{ marginRight: 4, verticalAlign: "middle" }}
-                />{" "}
-                Senha
-              </label>
-              <div className={styles.passWrap}>
-                <input
-                  id="login-password"
-                  className={`form-input ${styles.passInput}`}
-                  type={showPwd ? "text" : "password"}
-                  placeholder="........"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  aria-required="true"
-                  aria-invalid={displayError ? "true" : "false"}
-                  aria-describedby={displayError ? "login-error" : undefined}
-                />
-                <button
-                  type="button"
-                  className={styles.eyeBtn}
-                  onClick={() => setShowPwd((s) => !s)}
-                  aria-label={showPwd ? "Ocultar senha" : "Mostrar senha"}
-                  aria-pressed={showPwd}
-                >
-                  {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
-            {displayError && (
-              <div id="login-error" className={styles.error} role="alert">
-                {displayError}
-              </div>
-            )}
-            <button
-              type="submit"
-              className={styles.submitBtn}
-              disabled={loading || !isValidEmailCheck || !password}
-              aria-busy={loading}
-            >
-              {loading ? (
-                <Loader size={15} className={styles.spin} />
-              ) : (
-                "Entrar"
-              )}
-            </button>
-          </form>
-
-          <p className={styles.hint}>
-            <button
-              type="button"
-              className={styles.hintLink}
-              onClick={() => (window.location.href = "/auth/recuperar-senha")}
-            >
-              Esqueceu a senha?
-            </button>
-          </p>
-
-          <p className={styles.hint}>
-            Novo aqui?{" "}
-            <button
-              type="button"
-              className={styles.hintLink}
-              onClick={() => reset("register")}
-            >
-              Crie sua conta gratuitamente.
-            </button>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.page}>
-      <div className={styles.card}>
-        <div className={styles.logoWrap}>
-          <LogoMark />
-          <h1 className={styles.brand}>Criar conta</h1>
-          <p className={styles.sub}>
-            AgroColetivo — Compras coletivas para o campo
-          </p>
+      <div className={styles.splitLayout}>
+        {/* Lado Esquerdo: Visual/Branding */}
+        <div className={styles.visualSide}>
+          <div className={styles.overlay} />
+          <img 
+            src={`/agro_login_bg_1774615846296.png`} 
+            alt="Agro Technology" 
+            className={styles.bgImage} 
+          />
+          <div className={styles.visualContent}>
+            <div className={styles.visualLogo}>
+              <LogoMark />
+              <span className={styles.visualBrand}>AgroColetivo</span>
+            </div>
+            <h2 className={styles.visualTitle}>
+              A tecnologia que aproxima o campo do mercado.
+            </h2>
+            <p className={styles.visualSub}>
+              Economia colaborativa e inteligência comercial para produtores e fornecedores.
+            </p>
+          </div>
         </div>
 
-        <form
-          onSubmit={handleRegister}
-          aria-label="Formulário de criação de conta"
-        >
-          <div className={styles.roleGroup}>
-            <span className={styles.roleLabel} id="role-group-label">
-              Tipo de conta
-            </span>
-            <div
-              className={styles.roleCards}
-              role="group"
-              aria-labelledby="role-group-label"
-            >
-              {[
-                {
-                  value: ROLES.VENDOR,
-                  icon: <Wheat size={18} />,
-                  title: "Fornecedor",
-                  sub: "Empresa que fornece produtos",
-                },
-                {
-                  value: ROLES.GESTOR,
-                  icon: <Building2 size={18} />,
-                  title: "Gestor",
-                  sub: "Coordena compras coletivas",
-                },
-              ].map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  className={`${styles.roleCard} ${role === r.value ? styles.roleCardActive : ""}`}
-                  onClick={() => setRole(r.value)}
-                  aria-pressed={role === r.value}
-                  aria-label={`Selecionar tipo: ${r.title}. ${r.sub}`}
-                >
-                  {r.icon}
-                  <span className={styles.roleCardTitle}>{r.title}</span>
-                  <span className={styles.roleCardSub}>{r.sub}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="register-email">
-              <Mail
-                size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
-              />{" "}
-              Email *
-            </label>
-            <input
-              id="register-email"
-              className="form-input"
-              type="email"
-              placeholder="seu@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
-              autoFocus
-              inputMode="email"
-              aria-required="true"
-              aria-invalid={displayError ? "true" : "false"}
-              aria-describedby={
-                displayError ? "register-error" : "register-email-hint"
-              }
-            />
-            <span className="form-hint" id="register-email-hint">
-              Será seu login. Deve ser único.
-            </span>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="register-phone">
-              <Phone
-                size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
-              />{" "}
-              WhatsApp / Telefone
-            </label>
-            <input
-              id="register-phone"
-              className="form-input"
-              type="tel"
-              placeholder="(88) 99999-9999"
-              value={phone}
-              onChange={(e) => setPhone(maskPhone(e.target.value))}
-              inputMode="tel"
-            />
-          </div>
-
-          {role === ROLES.VENDOR && (
-            <>
-              <div className="form-group">
-                <label className="form-label" htmlFor="register-company">
-                  <Building2
-                    size={12}
-                    style={{ marginRight: 4, verticalAlign: "middle" }}
-                  />{" "}
-                  Nome da empresa *
-                </label>
-                <input
-                  id="register-company"
-                  className="form-input"
-                  placeholder="Ex: Agropecuária Central"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  aria-required="true"
-                  aria-invalid={
-                    displayError && company === "" ? "true" : "false"
-                  }
-                />
-              </div>
-              <div className="grid-2">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="register-vendor-city">
-                    <MapPin
-                      size={12}
-                      style={{ marginRight: 4, verticalAlign: "middle" }}
-                    />{" "}
-                    Cidade
-                  </label>
-                  <input
-                    id="register-vendor-city"
-                    className="form-input"
-                    placeholder="Ex: Tabuleiro"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
+        {/* Lado Direito: Formulário */}
+        <div className={styles.formSide}>
+          <div className={styles.formContainer}>
+            {screen === "login" ? (
+              <div className={styles.contentAnim}>
+                <div className={styles.formHeader}>
+                  <h1 className={styles.title}>Bem-vindo de volta</h1>
+                  <p className={styles.sub}>Entre com suas credenciais para acessar o painel</p>
                 </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="register-products">
-                    <FileText
-                      size={12}
-                      style={{ marginRight: 4, verticalAlign: "middle" }}
-                    />{" "}
-                    Produtos que fornece
-                  </label>
-                  <input
-                    id="register-products"
-                    className="form-input"
-                    placeholder="Ração, adubo..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
+
+                <form onSubmit={handleLogin} className={styles.form}>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="login-email">Email</label>
+                    <div className={styles.inputIconWrapper}>
+                      <Mail size={18} className={styles.inputIcon} />
+                      <input
+                        id="login-email"
+                        className="form-input"
+                        type="email"
+                        placeholder="exemplo@agro.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
+                        autoFocus
+                        autoComplete="email"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <div className={styles.labelRow}>
+                      <label className="form-label" htmlFor="login-password">Senha</label>
+                      <button
+                        type="button"
+                        className={styles.forgotBtn}
+                        onClick={() => (window.location.href = "/auth/recuperar-senha")}
+                      >
+                        Esqueceu?
+                      </button>
+                    </div>
+                    <div className={styles.inputIconWrapper}>
+                      <Lock size={18} className={styles.inputIcon} />
+                      <input
+                        id="login-password"
+                        className="form-input"
+                        type={showPwd ? "text" : "password"}
+                        placeholder="Sua senha"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="button"
+                        className={styles.eyeBtn}
+                        onClick={() => setShowPwd((s) => !s)}
+                      >
+                        {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {displayError && (
+                    <div className={styles.errorAlert} role="alert">
+                      {displayError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className={styles.mainActionBtn}
+                    disabled={loading || !isValidEmailCheck || !password}
+                  >
+                    {loading ? <Loader size={18} className="spin" /> : "Acessar Plataforma"}
+                  </button>
+                </form>
+
+                <div className={styles.footer}>
+                  <p>Ainda não faz parte?</p>
+                  <button
+                    type="button"
+                    className={styles.secondaryActionBtn}
+                    onClick={() => reset("register")}
+                  >
+                    Criar conta gratuita
+                  </button>
                 </div>
               </div>
-            </>
-          )}
-
-          {role === ROLES.GESTOR && (
-            <div className="grid-2">
-              <div className="form-group">
-                <label className="form-label" htmlFor="register-gestor-name">
-                  <Building2
-                    size={12}
-                    style={{ marginRight: 4, verticalAlign: "middle" }}
-                  />{" "}
-                  Nome / Associação
-                </label>
-                <input
-                  id="register-gestor-name"
-                  className="form-input"
-                  placeholder="Ex: Assentamento São José"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="register-gestor-city">
-                  <MapPin
-                    size={12}
-                    style={{ marginRight: 4, verticalAlign: "middle" }}
-                  />{" "}
-                  Cidade
-                </label>
-                <input
-                  id="register-gestor-city"
-                  className="form-input"
-                  placeholder="Ex: Tabuleiro"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="grid-2">
-            <div className="form-group">
-              <label className="form-label" htmlFor="register-password">
-                <Lock
-                  size={12}
-                  style={{ marginRight: 4, verticalAlign: "middle" }}
-                />{" "}
-                Senha *
-              </label>
-              <div className={styles.passWrap}>
-                <input
-                  id="register-password"
-                  className={`form-input ${styles.passInput}`}
-                  type={showPwd ? "text" : "password"}
-                  placeholder="min. 6 caracteres"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  aria-required="true"
-                  aria-invalid={displayError ? "true" : "false"}
-                  aria-describedby={displayError ? "register-error" : undefined}
-                />
-                <button
-                  type="button"
-                  className={styles.eyeBtn}
-                  onClick={() => setShowPwd((s) => !s)}
-                  aria-label={showPwd ? "Ocultar senha" : "Mostrar senha"}
-                  aria-pressed={showPwd}
-                >
-                  {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label" htmlFor="register-confirm">
-                Confirmar senha *
-              </label>
-              <input
-                id="register-confirm"
-                className="form-input"
-                type="password"
-                placeholder="repita a senha"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                aria-required="true"
-                aria-invalid={displayError ? "true" : "false"}
-                aria-describedby={displayError ? "register-error" : undefined}
-              />
-            </div>
-          </div>
-
-          {displayError && (
-            <div id="register-error" className={styles.error} role="alert">
-              {displayError}
-            </div>
-          )}
-          <button
-            type="submit"
-            className={styles.submitBtn}
-            disabled={loading || !isValidEmailCheck || !password || !confirm}
-            aria-busy={loading}
-          >
-            {loading ? (
-              <Loader size={15} className={styles.spin} />
             ) : (
-              "Criar conta"
-            )}
-          </button>
-        </form>
+              <div className={styles.contentAnim}>
+                <div className={styles.formHeader}>
+                  <h1 className={styles.title}>Comece agora</h1>
+                  <p className={styles.sub}>Escolha seu perfil e junte-se ao coletivo</p>
+                </div>
 
-        <p className={styles.hint}>
-          Já tem conta?{" "}
-          <button
-            type="button"
-            className={styles.hintLink}
-            onClick={() => reset("login")}
-            aria-label="Ir para página de login"
-          >
-            Fazer login aqui.
-          </button>
-        </p>
+                <form onSubmit={handleRegister} className={styles.form}>
+                  <div className={styles.roleSelection}>
+                    <button
+                      type="button"
+                      className={`${styles.roleOption} ${role === ROLES.VENDOR ? styles.roleActive : ""}`}
+                      onClick={() => setRole(ROLES.VENDOR)}
+                    >
+                      <Wheat size={20} />
+                      <div className={styles.roleTexts}>
+                        <span className={styles.roleName}>Fornecedor</span>
+                        <span className={styles.roleDesc}>Vender produtos</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.roleOption} ${role === ROLES.GESTOR ? styles.roleActive : ""}`}
+                      onClick={() => setRole(ROLES.GESTOR)}
+                    >
+                      <Building2 size={20} />
+                      <div className={styles.roleTexts}>
+                        <span className={styles.roleName}>Gestor</span>
+                        <span className={styles.roleDesc}>Coordenar compras</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Email de trabalho</label>
+                    <input
+                      className="form-input"
+                      type="email"
+                      placeholder="seu@trabalho.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
+                    />
+                  </div>
+
+                  <div className="grid-2">
+                    <div className="form-group">
+                      <label className="form-label">WhatsApp</label>
+                      <input
+                        className="form-input"
+                        placeholder="(00) 00000-0000"
+                        value={phone}
+                        onChange={(e) => setPhone(maskPhone(e.target.value))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{role === ROLES.VENDOR ? "Empresa" : "Associação"}</label>
+                      <input
+                        className="form-input"
+                        placeholder="Nome fantasia"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Senha de acesso</label>
+                    <input
+                      className="form-input"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+
+                  {displayError && (
+                    <div className={styles.errorAlert} role="alert">
+                      {displayError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className={styles.mainActionBtn}
+                    disabled={loading || !isValidEmailCheck || password.length < 6}
+                  >
+                    {loading ? <Loader size={18} className="spin" /> : "Finalizar Cadastro"}
+                  </button>
+                </form>
+
+                <div className={styles.footer}>
+                  <p>Já possui cadastro?</p>
+                  <button
+                    type="button"
+                    className={styles.secondaryActionBtn}
+                    onClick={() => reset("login")}
+                  >
+                    Fazer login
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

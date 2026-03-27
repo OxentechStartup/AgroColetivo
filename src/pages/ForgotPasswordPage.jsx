@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Loader, CheckCircle, AlertCircle } from "lucide-react";
 import { resetPassword, resetPasswordByEmail } from "../lib/auth";
 import { maskPhone, unmaskPhone } from "../utils/masks";
@@ -6,11 +6,24 @@ import styles from "./ForgotPasswordPage.module.css";
 
 export function ForgotPasswordPage() {
   const [screen, setScreen] = useState("request"); // request | sent | error
-  const [tab, setTab] = useState("phone"); // phone | email
+  const [tab, setTab] = useState("email"); // phone | email (default to email for legacy users)
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sentVia, setSentVia] = useState("email"); // para mensagem condicional de sucesso
+  const [isLegacyMigration, setIsLegacyMigration] = useState(false);
+
+  // Check for legacy user email on mount
+  useEffect(() => {
+    const legacyEmail = localStorage.getItem("agro_legacy_email");
+    if (legacyEmail) {
+      setEmail(legacyEmail);
+      setTab("email");
+      setIsLegacyMigration(true);
+      localStorage.removeItem("agro_legacy_email");
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,11 +47,15 @@ export function ForgotPasswordPage() {
         }
         await resetPasswordByEmail(email);
       }
+      setSentVia(tab);
       setScreen("sent");
       setPhone("");
       setEmail("");
     } catch (err) {
-      setError(err?.message || "Erro ao processar requisição.");
+      setError(
+        err?.message ||
+        "Não foi possível processar sua solicitação. Verifique os dados e tente novamente."
+      );
       setScreen("error");
     } finally {
       setLoading(false);
@@ -63,9 +80,12 @@ export function ForgotPasswordPage() {
             </div>
 
             <p className={styles.subtitle}>
-              Escolha como deseja recuperar sua senha:
+              {isLegacyMigration 
+                ? "Sua conta precisa ser atualizada. Informe seu email para receber o link de redefinição de senha:"
+                : "Escolha como deseja recuperar sua senha:"}
             </p>
 
+            {!isLegacyMigration && (
             <div
               style={{
                 display: "flex",
@@ -109,6 +129,7 @@ export function ForgotPasswordPage() {
                 Por Email
               </button>
             </div>
+            )}
 
             <form onSubmit={handleSubmit}>
               {tab === "phone" ? (
@@ -192,13 +213,23 @@ export function ForgotPasswordPage() {
         {screen === "sent" && (
           <>
             <CheckCircle size={48} className={styles.success} />
-            <h1 className={styles.title}>Email enviado!</h1>
+            <h1 className={styles.title}>
+              {sentVia === "phone" ? "Solicitação enviada!" : "Email enviado!"}
+            </h1>
             <p className={styles.subtitle}>
-              Verifique sua caixa de entrada e clique no link para recuperar sua
-              senha.
+              {sentVia === "phone"
+                ? "Se o telefone informado estiver cadastrado, você receberá um link de recuperação no email associado."
+                : "Verifique sua caixa de entrada e clique no link para criar uma nova senha."}
             </p>
             <p className={styles.hint}>
-              Se não receber nada em alguns minutos, verifique a pasta de spam.
+              Não recebeu nada em alguns minutos? Verifique a pasta de spam ou{" "}
+              <button
+                type="button"
+                className={styles.hintLink}
+                onClick={() => { setScreen("request"); setError(""); }}
+              >
+                tente novamente.
+              </button>
             </p>
             <button className={styles.backBtn2} onClick={handleBack}>
               ← Voltar para login
@@ -209,10 +240,18 @@ export function ForgotPasswordPage() {
         {screen === "error" && (
           <>
             <AlertCircle size={48} className={styles.errorIcon} />
-            <h1 className={styles.title}>Erro</h1>
-            <p className={styles.subtitle}>{error}</p>
+            <h1 className={styles.title}>Não conseguimos processar</h1>
+            <p className={styles.subtitle}>
+              {error || "Verifique os dados informados e tente novamente."}
+            </p>
+            <button
+              className={styles.submitBtn}
+              onClick={() => { setScreen("request"); setError(""); }}
+            >
+              Tentar novamente
+            </button>
             <button className={styles.backBtn2} onClick={handleBack}>
-              ← Voltar
+              ← Voltar para login
             </button>
           </>
         )}

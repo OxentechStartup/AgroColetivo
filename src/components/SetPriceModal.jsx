@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { DollarSign, Truck, TrendingUp, Info } from 'lucide-react'
-import { Modal, ModalHeader, ModalBody, ModalFooter } from './Modal'
-import { Button } from './Button'
+import { Modal, ModalHeader, ModalBody, ModalFooter } from './ui/Modal'
+import { Button } from './ui/Button'
 import { formatCurrency, maskCurrency, unmaskCurrency } from '../utils/masks'
 
 export function SetPriceModal({ campaign, onClose, onSave }) {

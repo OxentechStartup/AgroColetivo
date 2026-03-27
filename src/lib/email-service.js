@@ -180,20 +180,9 @@ export function getVerificationEmailTemplate(userName, verificationCode) {
 // EMAIL: NOVO PEDIDO RECEBIDO (para o gestor)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function sendNewOrderEmailToManager(
-  managerEmail,
-  managerName,
-  orderData,
-) {
+export async function sendNewOrderEmailToManager(managerEmail, managerName, orderData) {
   try {
-    // Validar variáveis de ambiente
-    if (!process.env.GMAIL_USER) {
-      throw new Error("❌ GMAIL_USER não configurada");
-    }
-    if (!process.env.GMAIL_APP_PASSWORD) {
-      throw new Error("❌ GMAIL_APP_PASSWORD não configurada");
-    }
-
+    const useGmail = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD;
     const nodemailer = await import("nodemailer");
 
     const transporter = nodemailer.default.createTransport({
@@ -218,7 +207,7 @@ export async function sendNewOrderEmailToManager(
     console.log(`✅ Email de novo pedido enviado para ${managerEmail}`);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error("❌ Erro ao enviar email de novo pedido:", error.message);
+    console.error("Erro ao enviar email de novo pedido:", error.message);
     return { success: false, error: error.message };
   }
 }
@@ -227,20 +216,8 @@ export async function sendNewOrderEmailToManager(
 // EMAIL: NOVA PROPOSTA DISPONÍVEL (para o fornecedor)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function sendNewProposalEmailToVendor(
-  vendorEmail,
-  vendorName,
-  proposalData,
-) {
+export async function sendNewProposalEmailToVendor(vendorEmail, vendorName, proposalData) {
   try {
-    // Validar variáveis de ambiente
-    if (!process.env.GMAIL_USER) {
-      throw new Error("❌ GMAIL_USER não configurada");
-    }
-    if (!process.env.GMAIL_APP_PASSWORD) {
-      throw new Error("❌ GMAIL_APP_PASSWORD não configurada");
-    }
-
     const nodemailer = await import("nodemailer");
 
     const transporter = nodemailer.default.createTransport({
@@ -265,7 +242,7 @@ export async function sendNewProposalEmailToVendor(
     console.log(`✅ Email de nova proposta enviado para ${vendorEmail}`);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error("❌ Erro ao enviar email de nova proposta:", error.message);
+    console.error("Erro ao enviar email de nova proposta:", error.message);
     return { success: false, error: error.message };
   }
 }
@@ -274,20 +251,8 @@ export async function sendNewProposalEmailToVendor(
 // EMAIL: PROPOSTA RECEBIDA (para o gestor)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function sendProposalReceivedEmailToManager(
-  managerEmail,
-  managerName,
-  proposalData,
-) {
+export async function sendProposalReceivedEmailToManager(managerEmail, managerName, proposalData) {
   try {
-    // Validar variáveis de ambiente
-    if (!process.env.GMAIL_USER) {
-      throw new Error("❌ GMAIL_USER não configurada");
-    }
-    if (!process.env.GMAIL_APP_PASSWORD) {
-      throw new Error("❌ GMAIL_APP_PASSWORD não configurada");
-    }
-
     const nodemailer = await import("nodemailer");
 
     const transporter = nodemailer.default.createTransport({
@@ -300,10 +265,7 @@ export async function sendProposalReceivedEmailToManager(
       },
     });
 
-    const htmlEmail = getProposalReceivedEmailTemplate(
-      managerName,
-      proposalData,
-    );
+    const htmlEmail = getProposalReceivedEmailTemplate(managerName, proposalData);
 
     const result = await transporter.sendMail({
       from: `AgroColetivo <${process.env.GMAIL_USER}>`,
@@ -315,10 +277,7 @@ export async function sendProposalReceivedEmailToManager(
     console.log(`✅ Email de proposta recebida enviado para ${managerEmail}`);
     return { success: true, messageId: result.messageId };
   } catch (error) {
-    console.error(
-      "❌ Erro ao enviar email de proposta recebida:",
-      error.message,
-    );
+    console.error("Erro ao enviar email de proposta recebida:", error.message);
     return { success: false, error: error.message };
   }
 }
@@ -444,7 +403,7 @@ function getNewProposalEmailTemplate(vendorName, proposalData) {
         </div>
         <div class="info-row">
           <span class="label">Prazo:</span>
-          <span class="value">${proposalData.deadline || "A combinar"}</span>
+          <span class="value">${proposalData.deadline || 'A combinar'}</span>
         </div>
         <div class="info-row">
           <span class="label">Edital:</span>
@@ -528,15 +487,15 @@ function getProposalReceivedEmailTemplate(managerName, proposalData) {
         </div>
         <div class="info-row">
           <span class="label">Preço Unitário:</span>
-          <span class="value price">R\$ ${parseFloat(proposalData.pricePerUnit).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+          <span class="value price">R\$ ${parseFloat(proposalData.pricePerUnit).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         <div class="info-row">
           <span class="label">Total:</span>
-          <span class="value price">R\$ ${(parseFloat(proposalData.pricePerUnit) * parseFloat(proposalData.quantity)).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+          <span class="value price">R\$ ${(parseFloat(proposalData.pricePerUnit) * parseFloat(proposalData.quantity)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
         </div>
         <div class="info-row">
           <span class="label">Prazo de Entrega:</span>
-          <span class="value">${proposalData.deliveryDate || "A confirmar"}</span>
+          <span class="value">${proposalData.deliveryDate || 'A confirmar'}</span>
         </div>
       </div>
       
@@ -555,6 +514,7 @@ function getProposalReceivedEmailTemplate(managerName, proposalData) {
 </html>
   `.trim();
 }
+
 
 export default {
   sendVerificationEmail,

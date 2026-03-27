@@ -4,11 +4,11 @@ import {
   Phone, CalendarDays, MessageCircle, ChevronLeft, Send, Users,
   DollarSign, RotateCcw, Package, TrendingUp,
 } from 'lucide-react'
-import { Badge }              from '../components/Badge'
-import { Button }             from '../components/Button'
-import { ProgressBar }        from '../components/ProgressBar'
-import { Toast }              from '../components/Toast'
-import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/Modal'
+import { Badge }              from '../components/ui/Badge'
+import { Button }             from '../components/ui/Button'
+import { ProgressBar }        from '../components/ui/ProgressBar'
+import { Toast }              from '../components/ui/Toast'
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal'
 import { NewCampaignModal }   from '../components/NewCampaignModal'
 import { ProducerOrderModal } from '../components/ProducerOrderModal'
 import { ShareModal }              from '../components/ShareModal'

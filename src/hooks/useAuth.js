@@ -9,24 +9,74 @@ import {
   clearSession,
 } from "../lib/auth";
 import { supabase } from "../lib/supabase.js";
+import { parseSupabaseError } from "../lib/security-console.js";
 
 export function useAuth() {
   const [user, setUser] = useState(() => getSession());
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // userId pendente de verificação de email (após registro)
   const [pendingVerificationUser, setPendingVerificationUser] = useState(null);
   const manualAuthInProgress = useRef(false);
 
+  // Inicializa a sessão do Supabase Auth ao carregar
   useEffect(() => {
-    const { data } = supabase.auth.onAuthStateChange((event) => {
+    const initSession = async () => {
+      try {
+        // Verifica se há sessão Supabase ativa
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Busca dados do usuário na tabela users
+          const { data: userData } = await supabase
+            .from("users")
+            .select("id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url")
+            .eq("id", session.user.id)
+            .single();
+
+          if (userData) {
+            saveSession(userData);
+            setUser(userData);
+          }
+        } else {
+          // Sem sessão Supabase, verifica localStorage manual
+          const localUser = getSession();
+          if (localUser) {
+            setUser(localUser);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao inicializar sessão:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initSession();
+
+    // Escuta mudanças de autenticação do Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (manualAuthInProgress.current) return;
-      if (event === "SIGNED_OUT") {
+
+      if (event === "SIGNED_IN" && session?.user) {
+        // Busca dados do usuário
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url")
+          .eq("id", session.user.id)
+          .single();
+
+        if (userData) {
+          saveSession(userData);
+          setUser(userData);
+        }
+      } else if (event === "SIGNED_OUT") {
         clearSession();
         setUser(null);
       }
     });
-    return () => data.subscription.unsubscribe();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = useCallback(async (email, password) => {
@@ -42,7 +92,16 @@ export function useAuth() {
       setUser(u);
     } catch (err) {
       const msg = err?.message || "Erro desconhecido ao fazer login";
-      if (msg === "EMAIL_NOT_VERIFIED") {
+      
+      // Usuário legado que precisa migrar (resetar senha)
+      if (err?.code === "LEGACY_USER" || msg === "LEGACY_USER_REQUIRES_MIGRATION") {
+        setError(
+          "Sua conta precisa ser atualizada. Clique em 'Esqueceu?' para redefinir sua senha e migrar para o novo sistema."
+        );
+        // Armazena o email para pré-preencher na tela de recuperação
+        localStorage.setItem("agro_legacy_email", email);
+        setPendingVerificationUser(null);
+      } else if (msg === "EMAIL_NOT_VERIFIED") {
         // Usuário existe mas não verificou o email — busca dados para tela de confirmação
         try {
           const { data } = await supabase
@@ -70,9 +129,11 @@ export function useAuth() {
         }
       } else {
         // Qualquer outro erro: garante que não mostra tela de verificação
+        // Usa parseSupabaseError para sanitizar qualquer URL sensível
         setPendingVerificationUser(null);
         localStorage.removeItem("agro_auth");
-        setError(msg);
+        const sanitizedError = parseSupabaseError(err) || msg;
+        setError(sanitizedError);
       }
     } finally {
       setLoading(false);
@@ -106,7 +167,11 @@ export function useAuth() {
       );
       setPendingVerificationUser(pendingUser);
     } catch (err) {
-      setError(err?.message || "Erro desconhecido ao registrar");
+      const sanitizedError =
+        parseSupabaseError(err) ||
+        err?.message ||
+        "Erro desconhecido ao registrar";
+      setError(sanitizedError);
     } finally {
       setLoading(false);
       setTimeout(() => {
@@ -116,18 +181,14 @@ export function useAuth() {
   }, []);
 
   // Chamado pela ConfirmEmailPage quando o email for verificado com sucesso
-  // Recebe os dados retornados por verifyEmail() incluindo email, senha e user
+  // O usuário já foi criado no Supabase Auth durante verifyEmail()
   const onEmailVerified = useCallback(async (verifyResult) => {
     if (!verifyResult || !verifyResult.user) return;
 
     try {
       const { user: userData } = verifyResult;
 
-      // ⚠️ NÃO tentar fazer login Supabase Auth
-      // Usuário foi criado manualmente, não existe em auth.users
-      // Usar apenas sessão manual (localStorage)
-
-      // Salvar dados do usuário na sessão
+      // Salvar dados do usuário na sessão local
       const sessionUser = {
         ...userData,
         blocked: userData.active === false,
@@ -163,6 +224,7 @@ export function useAuth() {
     setError(null);
     setPendingVerificationUser(null);
     try {
+      await supabase.auth.signOut();
       await logout();
     } catch {}
   }, []);

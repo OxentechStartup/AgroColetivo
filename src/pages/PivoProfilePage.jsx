@@ -3,8 +3,8 @@ import { User, Phone, MapPin, Save, Trash2, Camera, X } from "lucide-react";
 import { updateUser } from "../lib/auth";
 import { createImageUrl } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
-import { Button } from "../components/Button";
-import { Toast } from "../components/Toast";
+import { Button } from "../components/ui/Button";
+import { Toast } from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import styles from "./VendorProfilePage.module.css";
 

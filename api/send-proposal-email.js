@@ -29,28 +29,11 @@ export default async function handler(req, res) {
 
     const { vendorEmail, vendorName, proposalData } = req.body || {};
 
-    // Validação rigorosa
-    if (!vendorEmail) {
-      console.error("❌ vendorEmail vazio");
+    if (!vendorEmail || !vendorName || !proposalData) {
       return res.status(400).json({
-        error: "Campos obrigatórios: vendorEmail é obrigatório",
+        error: "Campos obrigatórios: vendorEmail, vendorName, proposalData",
       });
     }
-    if (!vendorName) {
-      console.error("❌ vendorName vazio");
-      return res.status(400).json({
-        error: "Campos obrigatórios: vendorName é obrigatório",
-      });
-    }
-    if (!proposalData) {
-      console.error("❌ proposalData vazio");
-      return res.status(400).json({
-        error: "Campos obrigatórios: proposalData é obrigatório",
-      });
-    }
-
-    console.log(`📧 Enviando email para: ${vendorEmail}`);
-    console.log(`📋 Dados da proposta:`, proposalData);
 
     const result = await sendNewProposalEmailToVendor(
       vendorEmail,
@@ -59,14 +42,12 @@ export default async function handler(req, res) {
     );
 
     if (result.success) {
-      console.log(`✅ Email enviado com sucesso: ${result.messageId}`);
       return res.status(200).json({
         success: true,
         messageId: result.messageId,
         message: "Email de nova proposta enviado com sucesso",
       });
     } else {
-      console.error(`❌ Falha ao enviar email: ${result.error}`);
       return res.status(500).json({
         success: false,
         error: result.error || "Erro ao enviar email",

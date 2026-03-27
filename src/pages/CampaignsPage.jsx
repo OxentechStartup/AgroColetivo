@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext, useRef } from "react";
 import {
   Plus,
   Share2,
@@ -29,17 +29,16 @@ import {
   ArrowRight,
   ClipboardList,
 } from "lucide-react";
-import { Badge } from "../components/Badge";
-import { PivoBadge } from "../components/PivoBadge";
-import { Button } from "../components/Button";
-import { ProgressBar } from "../components/ProgressBar";
-import { Toast } from "../components/Toast";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { ProgressBar } from "../components/ui/ProgressBar";
+import { Toast } from "../components/ui/Toast";
 import {
   Modal,
   ModalHeader,
   ModalBody,
   ModalFooter,
-} from "../components/Modal";
+} from "../components/ui/Modal";
 import { NewCampaignModal } from "../components/NewCampaignModal";
 import { ProducerOrderModal } from "../components/ProducerOrderModal";
 import { ShareModal } from "../components/ShareModal";
@@ -64,7 +63,7 @@ import {
   settleOffersAfterAccept,
 } from "../lib/offers";
 import { createLot } from "../lib/lots";
-import { supabase } from "../lib/supabase";
+import AppContext from "../context/AppContext";
 import { ROLES } from "../constants/roles";
 import styles from "./CampaignsPage.module.css";
 
@@ -79,7 +78,20 @@ const fmtDate = (iso) => {
 // ═══════════════════════════════════════════════════════════════════════════
 function CampaignSelector({ campaigns, selected, onSelect, onNewClick }) {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
   const active = campaigns.find((c) => c.id === selected);
+
+  // Fecha o dropdown ao clicar fora do componente
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
   return (
     <div
@@ -91,7 +103,7 @@ function CampaignSelector({ campaigns, selected, onSelect, onNewClick }) {
       }}
     >
       {/* Dropdown */}
-      <div style={{ position: "relative", minWidth: 0, flex: 1 }}>
+      <div ref={wrapRef} style={{ position: "relative", minWidth: 0, flex: 1 }}>
         <button
           onClick={() => setOpen(!open)}
           style={{
@@ -176,12 +188,12 @@ function CampaignSelector({ campaigns, selected, onSelect, onNewClick }) {
                 }}
                 onMouseEnter={(e) => {
                   if (c.id !== selected) {
-                    e.target.style.background = "var(--surface3)";
+                    e.currentTarget.style.background = "var(--surface3)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (c.id !== selected) {
-                    e.target.style.background = "transparent";
+                    e.currentTarget.style.background = "transparent";
                   }
                 }}
               >
@@ -275,41 +287,19 @@ function SummaryBar({ campaign, stats }) {
     },
   ];
   return (
-    <div
-      className={styles.summaryBar}
-      style={{ justifyContent: "space-between", alignItems: "center" }}
-    >
-      <div
-        style={{
-          display: "flex",
-          gap: 16,
-          flex: 1,
-          minWidth: 0,
-          overflow: "auto",
-        }}
-      >
-        {items.map(({ label, value, icon: Icon, primary }) => (
-          <div
-            key={label}
-            className={`${styles.summaryItem} ${primary ? styles.summaryPrimary : ""}`}
-          >
-            <Icon size={14} />
-            <div className={styles.summaryItemText}>
-              <span className={styles.summaryLabel}>{label}</span>
-              <span className={styles.summaryValue}>{value}</span>
-            </div>
+    <div className={styles.summaryBar}>
+      {items.map(({ label, value, icon: Icon, primary }) => (
+        <div
+          key={label}
+          className={`${styles.summaryItem} ${primary ? styles.summaryPrimary : ""}`}
+        >
+          <Icon size={14} />
+          <div className={styles.summaryItemText}>
+            <span className={styles.summaryLabel}>{label}</span>
+            <span className={styles.summaryValue}>{value}</span>
           </div>
-        ))}
-      </div>
-      <div
-        style={{
-          flexShrink: 0,
-          paddingLeft: 16,
-          borderLeft: "1px solid var(--border)",
-        }}
-      >
-        <PivoBadge pivoId={campaign.pivoId} />
-      </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -319,7 +309,6 @@ function SummaryBar({ campaign, stats }) {
 // ═══════════════════════════════════════════════════════════════════════════
 function TabOrders({
   campaign,
-  actions,
   onApprovePending,
   onRejectPending,
   onNewOrder,
@@ -512,7 +501,7 @@ function TabOrders({
         </div>
       )}
 
-      {campaign.status !== "closed" && campaign.status !== "finished" && (
+      {campaign.status !== "closed" && campaign.status !== "finished" ? (
         <Button
           variant="secondary"
           onClick={onNewOrder}
@@ -520,7 +509,7 @@ function TabOrders({
         >
           <Plus size={14} /> Adicionar pedido
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -543,8 +532,8 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
     setErr("");
     try {
       setOffers(await fetchOffers(campaign.id));
-    } catch (e) {
-      setErr(e?.message || "Erro ao carregar propostas");
+    } catch {
+      setErr("Não foi possível carregar as propostas. Verifique sua conexão e tente novamente.");
       setOffers([]);
     } finally {
       setLoading(false);
@@ -553,27 +542,6 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
 
   useEffect(() => {
     reload();
-
-    // Realtime subscription para atualizar ofertas automaticamente
-    const subscription = supabase
-      .channel(`vendor_offers_${campaign.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "vendor_campaign_offers",
-          filter: `campaign_id=eq.${campaign.id}`,
-        },
-        () => {
-          reload();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [reload, campaign.id]);
 
   const handleAccept = async (offer) => {
@@ -591,8 +559,8 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
       await settleOffersAfterAccept(campaign.id, offer.id, offer.availableQty);
       await reload();
       onAccepted();
-    } catch (e) {
-      setErr("Erro ao aceitar: " + (e?.message || "erro desconhecido"));
+    } catch {
+      setErr("Não foi possível aceitar esta proposta. Tente novamente.");
       setAccepting(null);
     }
   };
@@ -604,23 +572,16 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
       await cancelAcceptedOffer(offer.id, campaign.id, offer.vendorId);
       await reload();
       onCancelled();
-    } catch (e) {
-      setErr("Erro ao cancelar: " + (e?.message || "erro desconhecido"));
+    } catch {
+      setErr("Não foi possível cancelar a proposta. Tente novamente.");
       setCancelling(null);
     }
   };
 
   if (loading) {
     return (
-      <div
-        style={{
-          padding: "32px 0",
-          textAlign: "center",
-          color: "var(--text3)",
-          fontSize: ".88rem",
-        }}
-      >
-        Carregando propostas…
+      <div className={styles.emptyTab}>
+        <p>Carregando propostas…</p>
       </div>
     );
   }
@@ -633,83 +594,26 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      {err && (
-        <div
-          style={{
-            background: "var(--red-dim)",
-            border: "1.5px solid var(--red)",
-            color: "var(--red)",
-            borderRadius: "var(--r-lg)",
-            padding: "12px 16px",
-            fontSize: ".88rem",
-            fontWeight: 500,
-          }}
-        >
-          {err}
-        </div>
-      )}
+      {err && <div className={styles.errorInline}>{err}</div>}
 
       {accepted.length > 0 && (
         <div>
-          <div
-            style={{
-              fontSize: ".75rem",
-              fontWeight: 700,
-              color: "var(--primary)",
-              textTransform: "uppercase",
-              letterSpacing: ".08em",
-              marginBottom: 12,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+          <div className={`${styles.sectionTitle} ${styles.sectionTitlePrimary}`}>
             <CheckCircle2 size={14} /> Aceitas ({accepted.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {accepted.map((o) => (
-              <div
-                key={o.id}
-                style={{
-                  border: "1.5px solid var(--primary)",
-                  borderRadius: "var(--r-lg)",
-                  padding: "16px",
-                  background: "var(--primary-dim)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 16,
-                }}
-              >
+              <div key={o.id} className={`${styles.offerCard} ${styles.offerCardAccepted}`}>
                 <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      color: "var(--text)",
-                      fontSize: ".95rem",
-                    }}
-                  >
+                  <div style={{ fontWeight: 700, color: "var(--text)", fontSize: "var(--text-md)" }}>
                     {o.vendorName}
                   </div>
-                  <div
-                    style={{
-                      color: "var(--primary)",
-                      fontWeight: 700,
-                      fontSize: ".92rem",
-                      marginTop: 8,
-                    }}
-                  >
-                    {formatCurrency(o.pricePerUnit)}/{unitSing} ·{" "}
+                  <div style={{ color: "var(--primary)", fontWeight: 700, fontSize: "var(--text-md)", marginTop: 8 }}>
+                    {formatCurrency(o.pricePerUnit)}/{unitSing}{" "}
                     <span style={{ color: "var(--text2)", fontWeight: 600 }}>
-                      {o.availableQty} {unit}
+                      · {o.availableQty} {unit}
                     </span>
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        fontSize: ".82rem",
-                        color: "var(--text2)",
-                      }}
-                    >
+                    <span style={{ marginLeft: 8, fontSize: "var(--text-sm)", color: "var(--text2)" }}>
                       = {formatCurrency(o.pricePerUnit * o.availableQty)}
                     </span>
                   </div>
@@ -719,19 +623,9 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
                   size="sm"
                   disabled={cancelling !== null}
                   onClick={() => handleCancel(o)}
-                  style={{
-                    color: "var(--red)",
-                    borderColor: "var(--red)",
-                    flexShrink: 0,
-                  }}
+                  style={{ color: "var(--red)", borderColor: "var(--red)", flexShrink: 0 }}
                 >
-                  {cancelling === o.id ? (
-                    "Cancelando…"
-                  ) : (
-                    <>
-                      <RotateCcw size={12} /> Cancelar
-                    </>
-                  )}
+                  {cancelling === o.id ? "Cancelando…" : <><RotateCcw size={12} /> Cancelar</>}
                 </Button>
               </div>
             ))}
@@ -741,62 +635,19 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
 
       {pending.length > 0 && (
         <div>
-          <div
-            style={{
-              fontSize: ".75rem",
-              fontWeight: 700,
-              color: "var(--text2)",
-              textTransform: "uppercase",
-              letterSpacing: ".08em",
-              marginBottom: 12,
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            {pending.length} pendente{pending.length !== 1 ? "s" : ""} ·
-            Ordenado por menor preço
+          <div className={`${styles.sectionTitle} ${styles.sectionTitleMuted}`}>
+            {pending.length} pendente{pending.length !== 1 ? "s" : ""} · Ordenado por menor preço
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {pending.map((offer, idx) => (
               <div
                 key={offer.id}
-                style={{
-                  border: `1.5px solid ${idx === 0 ? "var(--primary)" : "var(--border)"}`,
-                  borderRadius: "var(--r-lg)",
-                  padding: "16px",
-                  background:
-                    idx === 0 ? "var(--primary-dim)" : "var(--surface)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                }}
+                className={`${styles.offerCard} ${styles.offerCardPending}`}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 8,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {idx === 0 && (
-                      <span
-                        style={{
-                          fontSize: ".65rem",
-                          fontWeight: 700,
-                          background: "var(--primary)",
-                          color: "#fff",
-                          padding: "2px 8px",
-                          borderRadius: 99,
-                        }}
-                      >
-                        ★ Melhor preço
-                      </span>
-                    )}
-                    <span style={{ fontWeight: 700, fontSize: ".95rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                    {idx === 0 && <span className={styles.bestPriceBadge}>★ Melhor preço</span>}
+                    <span style={{ fontWeight: 700, fontSize: "var(--text-md)" }}>
                       {offer.vendorName}
                     </span>
                   </div>
@@ -804,22 +655,20 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
                     style={{
                       display: "flex",
                       gap: 16,
-                      fontSize: ".88rem",
+                      fontSize: "var(--text-sm)",
                       flexWrap: "wrap",
                       alignItems: "center",
                     }}
                   >
                     <span>
-                      <strong
-                        style={{ color: "var(--primary)", fontSize: "1.1rem" }}
-                      >
+                      <strong className={styles.priceTag}>
                         {formatCurrency(offer.pricePerUnit)}
                       </strong>
-                      <span style={{ color: "var(--text3)" }}>/{unitSing}</span>
+                      <span className={styles.priceTagUnit}>/{unitSing}</span>
                     </span>
                     <span style={{ color: "var(--text2)" }}>
                       Qtd:{" "}
-                      <strong>
+                      <strong style={{ fontWeight: 700 }}>
                         {offer.availableQty} {unit}
                       </strong>
                     </span>
@@ -829,16 +678,7 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
                     </span>
                   </div>
                   {offer.notes && (
-                    <div
-                      style={{
-                        fontSize: ".78rem",
-                        color: "var(--text3)",
-                        marginTop: 8,
-                        fontStyle: "italic",
-                        paddingTop: 8,
-                        borderTop: "1px solid var(--border)",
-                      }}
-                    >
+                    <div className={styles.offerNote}>
                       "{offer.notes}"
                     </div>
                   )}
@@ -866,32 +706,15 @@ function TabOffers({ campaign, onAccepted, onCancelled }) {
 
       {rejected.length > 0 && (
         <div>
-          <div
-            style={{
-              fontSize: ".75rem",
-              fontWeight: 700,
-              color: "var(--text3)",
-              textTransform: "uppercase",
-              letterSpacing: ".08em",
-              marginBottom: 10,
-            }}
-          >
+          <div className={`${styles.sectionTitle} ${styles.sectionTitleMuted}`}>
             Recusadas ({rejected.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {rejected.map((o) => (
               <div
                 key={o.id}
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--r-lg)",
-                  padding: "10px 14px",
-                  opacity: 0.5,
-                  fontSize: ".82rem",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  background: "var(--surface)",
-                }}
+                className={styles.offerCard}
+                style={{ opacity: 0.5, fontSize: "var(--text-sm)", padding: "10px 14px" }}
               >
                 <span>{o.vendorName}</span>
                 <span>
@@ -932,7 +755,6 @@ function TabFinancial({
   const [tab, setTab] = useState("lots");
   const [showAddLot, setShowAddLot] = useState(false);
   const [showFreight, setShowFreight] = useState(false);
-  const [saving, setSaving] = useState(false);
   const unit = campaign.unit ?? "un";
   const lots = campaign.lots ?? [];
   const orders = campaign.orders ?? [];
@@ -941,14 +763,7 @@ function TabFinancial({
   return (
     <div>
       {/* Subtabs: Lotes | Frete | Custo */}
-      <div
-        style={{
-          display: "flex",
-          gap: 0,
-          borderBottom: "1px solid var(--border)",
-          marginBottom: 16,
-        }}
-      >
+      <div className={styles.tabs} style={{ marginBottom: 20 }}>
         {[
           { id: "lots", label: "1. Lotes Aceitos", icon: Package },
           { id: "freight", label: "2. Frete & Taxas", icon: Truck },
@@ -957,24 +772,8 @@ function TabFinancial({
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            style={{
-              padding: "12px 16px",
-              fontSize: ".85rem",
-              fontWeight: tab === t.id ? 700 : 500,
-              borderTop: "none",
-              borderLeft: "none",
-              borderRight: "none",
-              borderBottom:
-                tab === t.id
-                  ? "2px solid var(--primary)"
-                  : "2px solid transparent",
-              color: tab === t.id ? "var(--primary)" : "var(--text2)",
-              background: "transparent",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
+            className={`${styles.tab} ${tab === t.id ? styles.tabOn : ""}`}
+            style={{ fontSize: "var(--text-sm)" }}
           >
             <t.icon size={14} />
             {t.label}
@@ -984,13 +783,13 @@ function TabFinancial({
 
       {/* Subtab: Lotes */}
       {tab === "lots" && (
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {lots.length === 0 ? (
             <div className={styles.emptyTab}>
               <Package size={32} style={{ opacity: 0.2 }} />
               <p>Nenhum lote cadastrado</p>
-              <p style={{ fontSize: ".82rem", color: "var(--text3)" }}>
-                Aceite uma proposta na aba Propostas
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text3)" }}>
+                Aceite uma proposta na aba Propostas ou adicione manualmente.
               </p>
               <Button
                 variant="primary"
@@ -1004,60 +803,35 @@ function TabFinancial({
             <>
               {(lots.length > 0 || totalOrdered > 0) && (
                 <div
-                  style={{
-                    background: stats.isFulfilled
-                      ? "var(--primary-dim)"
-                      : "var(--amber-dim)",
-                    border: `1.5px solid ${stats.isFulfilled ? "var(--primary)" : "var(--amber)"}`,
-                    borderRadius: "var(--r)",
-                    padding: "12px 16px",
-                    marginBottom: 16,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 12,
-                    flexWrap: "wrap",
-                  }}
+                  className={`${styles.statusBanner} ${
+                    stats.isFulfilled ? styles.statusBannerSuccess : styles.statusBannerWarning
+                  }`}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     {stats.isFulfilled ? (
-                      <CheckCircle2
-                        size={16}
-                        style={{ color: "var(--primary)" }}
-                      />
+                      <CheckCircle2 size={18} color="var(--primary)" />
                     ) : (
-                      <AlertCircle
-                        size={16}
-                        style={{ color: "var(--amber)" }}
-                      />
+                      <AlertCircle size={18} color="var(--amber)" />
                     )}
                     <span style={{ fontWeight: 600 }}>
                       {stats.isFulfilled
-                        ? `✓ Demanda coberta — ${stats.totalAvailable} ${unit}`
-                        : `Faltam ${Math.max(0, totalOrdered - stats.totalAvailable)} ${unit}`}
+                        ? `Demanda coberta — ${stats.totalAvailable} ${unit}`
+                        : `Faltam ${Math.max(0, totalOrdered - stats.totalAvailable)} ${unit} para fechar a demanda`}
                     </span>
                   </div>
                   {stats.avgPrice > 0 && (
                     <span style={{ fontWeight: 700 }}>
-                      Preço:{" "}
-                      <strong style={{ color: "var(--primary)" }}>
-                        {formatCurrency(stats.avgPrice)}/
-                        {unit.replace(/s$/, "")}
+                      Preço Médio:{" "}
+                      <strong className={styles.priceTag}>
+                        {formatCurrency(stats.avgPrice)}
                       </strong>
+                      <span className={styles.priceTagUnit}>/{unit.replace(/s$/, "")}</span>
                     </span>
                   )}
                 </div>
               )}
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                  gap: 12,
-                }}
-              >
+              <div className={styles.lotGrid}>
                 {stats.lotBreakdown.map((lot, idx) => {
                   const usedPct =
                     lot.qtyAvailable > 0
@@ -1066,66 +840,30 @@ function TabFinancial({
                   return (
                     <div
                       key={lot.id}
-                      style={{
-                        border:
-                          idx === 0
-                            ? "1.5px solid var(--primary)"
-                            : "1px solid var(--border)",
-                        borderRadius: "var(--r)",
-                        padding: "14px",
-                        background:
-                          idx === 0 ? "var(--primary-dim)" : "var(--surface)",
-                      }}
+                      className={`${styles.lotCard} ${idx === 0 ? styles.lotCardPrimary : ""}`}
                     >
                       <div
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          marginBottom: 10,
+                          marginBottom: 12,
                         }}
                       >
-                        <div>
-                          {idx === 0 && (
-                            <div
-                              style={{
-                                fontSize: ".65rem",
-                                fontWeight: 700,
-                                background: "var(--primary)",
-                                color: "#fff",
-                                padding: "2px 8px",
-                                borderRadius: 99,
-                                marginBottom: 6,
-                                display: "inline-block",
-                              }}
-                            >
-                              ★ Principal
-                            </div>
-                          )}
-                          <div style={{ fontWeight: 700 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {idx === 0 && <div className={styles.bestPriceBadge} style={{ marginBottom: 6 }}>★ Principal</div>}
+                          <div style={{ fontWeight: 700, fontSize: "var(--text-md)" }}>
                             {lot.vendorName}
                           </div>
                           {lot.notes && (
-                            <div
-                              style={{
-                                fontSize: ".72rem",
-                                color: "var(--text3)",
-                                marginTop: 4,
-                              }}
-                            >
+                            <div className={styles.offerNote} style={{ border: "none", padding: 0, marginTop: 4 }}>
                               {lot.notes}
                             </div>
                           )}
                         </div>
                         <button
                           onClick={() => onRemoveLot(campaign.id, lot.id)}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "var(--text3)",
-                            padding: 0,
-                          }}
+                          className={styles.delBtn}
+                          title="Remover lote"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1134,77 +872,51 @@ function TabFinancial({
                         style={{
                           display: "grid",
                           gridTemplateColumns: "1fr 1fr",
-                          gap: 10,
-                          fontSize: ".82rem",
+                          gap: 12,
+                          fontSize: "var(--text-sm)",
                         }}
                       >
                         <div>
-                          <span style={{ color: "var(--text3)" }}>Qtd</span>
+                          <span style={{ color: "var(--text3)" }}>Qtd Disponível</span>
                           <div style={{ fontWeight: 700 }}>
                             {lot.qtyAvailable} {unit}
                           </div>
                         </div>
                         <div>
-                          <span style={{ color: "var(--text3)" }}>
-                            Preço/{unit.replace(/s$/, "")}
-                          </span>
-                          <div
-                            style={{ fontWeight: 700, color: "var(--primary)" }}
-                          >
+                          <span style={{ color: "var(--text3)" }}>Preço/{unit.replace(/s$/, "")}</span>
+                          <div className={styles.priceTag}>
                             {formatCurrency(lot.pricePerUnit)}
                           </div>
                         </div>
                         <div>
-                          <span style={{ color: "var(--text3)" }}>
-                            Subtotal
-                          </span>
+                          <span style={{ color: "var(--text3)" }}>Subtotal Bruto</span>
                           <div style={{ fontWeight: 700 }}>
-                            {formatCurrency(
-                              lot.qtyAvailable * lot.pricePerUnit,
-                            )}
+                            {formatCurrency(lot.qtyAvailable * lot.pricePerUnit)}
                           </div>
                         </div>
                         {totalOrdered > 0 && (
                           <div>
-                            <span style={{ color: "var(--text3)" }}>Uso</span>
+                            <span style={{ color: "var(--text3)" }}>Uso na Demanda</span>
                             <div style={{ fontWeight: 700 }}>
-                              {lot.used}/{totalOrdered} {unit}
+                              {lot.used} {unit}
                             </div>
                           </div>
                         )}
                       </div>
                       {totalOrdered > 0 && (
-                        <div style={{ marginTop: 10 }}>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: 4,
-                              background: "var(--border)",
-                              borderRadius: 99,
-                              overflow: "hidden",
-                            }}
-                          >
+                        <div style={{ marginTop: 12 }}>
+                          <div className={styles.progressWrap}>
                             <div
+                              className={styles.progressBar}
                               style={{
-                                width: `${usedPct}%`,
-                                height: "100%",
-                                background:
-                                  usedPct >= 100
-                                    ? "var(--amber)"
-                                    : "var(--primary)",
-                                transition: "width 0.15s",
+                                width: `${Math.min(100, usedPct)}%`,
+                                background: usedPct >= 100 ? "var(--amber)" : "var(--primary)",
                               }}
                             />
                           </div>
-                          <div
-                            style={{
-                              fontSize: ".65rem",
-                              color: "var(--text3)",
-                              marginTop: 4,
-                              textAlign: "right",
-                            }}
-                          >
-                            {usedPct}%
+                          <div className={styles.progressLabel}>
+                            <span>{usedPct}% do lote utilizado</span>
+                            <span>{lot.used}/{lot.qtyAvailable} {unit}</span>
                           </div>
                         </div>
                       )}
@@ -1217,7 +929,7 @@ function TabFinancial({
                 style={{
                   display: "flex",
                   gap: 12,
-                  marginTop: 16,
+                  marginTop: 8,
                   justifyContent: "flex-end",
                 }}
               >
@@ -1236,7 +948,7 @@ function TabFinancial({
 
       {/* Subtab: Frete */}
       {tab === "freight" && (
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {(campaign.freightTotal ?? 0) > 0 ||
           (campaign.markupTotal ?? 0) > 0 ? (
             <>
@@ -1244,180 +956,65 @@ function TabFinancial({
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                  gap: 12,
+                  gap: 16,
                 }}
               >
-                <div
-                  style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    padding: "14px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: ".7rem",
-                      color: "var(--text3)",
-                      marginBottom: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Truck size={12} /> FRETE TOTAL
+                <div className={styles.stat} style={{ padding: 16 }}>
+                  <div className={styles.sectionTitle} style={{ marginBottom: 8, color: "var(--text3)" }}>
+                    <Truck size={14} /> Frete Total
                   </div>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: 700,
-                      color: "var(--text)",
-                    }}
-                  >
+                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>
                     {formatCurrency(campaign.freightTotal ?? 0)}
                   </div>
-                  <div
-                    style={{
-                      fontSize: ".75rem",
-                      color: "var(--text3)",
-                      marginTop: 6,
-                    }}
-                  >
-                    {formatCurrency(
-                      (campaign.freightTotal ?? 0) / Math.max(1, orders.length),
-                    )}
-                    /comprador
+                  <div style={{ fontSize: "var(--text-sm)", color: "var(--text3)", marginTop: 6 }}>
+                    {formatCurrency((campaign.freightTotal ?? 0) / Math.max(1, orders.length))}/comprador
                   </div>
                 </div>
-                <div
-                  style={{
-                    background: "var(--surface)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    padding: "14px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: ".7rem",
-                      color: "var(--text3)",
-                      marginBottom: 8,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <TrendingUp size={12} /> TAXA COORD.
+
+                <div className={styles.stat} style={{ padding: 16 }}>
+                  <div className={styles.sectionTitle} style={{ marginBottom: 8, color: "var(--text3)" }}>
+                    <TrendingUp size={14} /> Taxa Coord.
                   </div>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: 700,
-                      color: "var(--text)",
-                    }}
-                  >
+                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>
                     {formatCurrency(campaign.markupTotal ?? 0)}
                   </div>
-                  <div
-                    style={{
-                      fontSize: ".75rem",
-                      color: "var(--text3)",
-                      marginTop: 6,
-                    }}
-                  >
-                    {formatCurrency(
-                      (campaign.markupTotal ?? 0) / Math.max(1, orders.length),
-                    )}
-                    /comprador
+                  <div style={{ fontSize: "var(--text-sm)", color: "var(--text3)", marginTop: 6 }}>
+                    {formatCurrency((campaign.markupTotal ?? 0) / Math.max(1, orders.length))}/comprador
                   </div>
                 </div>
+
                 {stats.feeTotal > 0 && (
-                  <div
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--r)",
-                      padding: "14px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: ".7rem",
-                        color: "var(--text3)",
-                        marginBottom: 8,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Activity size={12} /> TAXA PLATAFORMA
+                  <div className={styles.stat} style={{ padding: 16 }}>
+                    <div className={styles.sectionTitle} style={{ marginBottom: 8, color: "var(--text3)" }}>
+                      <Activity size={14} /> Taxa Plataforma
                     </div>
-                    <div
-                      style={{
-                        fontSize: "1.2rem",
-                        fontWeight: 700,
-                        color: "var(--amber)",
-                      }}
-                    >
+                    <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--amber)" }}>
                       {formatCurrency(stats.feeTotal)}
                     </div>
-                    <div
-                      style={{
-                        fontSize: ".75rem",
-                        color: "var(--text3)",
-                        marginTop: 6,
-                      }}
-                    >
+                    <div style={{ fontSize: "var(--text-sm)", color: "var(--text3)", marginTop: 6 }}>
                       {formatCurrency(stats.feeEach)}/comprador
                     </div>
                   </div>
                 )}
-                <div
-                  style={{
-                    background: "var(--primary-dim)",
-                    border: "1.5px solid var(--primary)",
-                    borderRadius: "var(--r)",
-                    padding: "14px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: ".7rem",
-                      color: "var(--text3)",
-                      marginBottom: 8,
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Total encargos
+
+                <div className={`${styles.stat} ${styles.lotCardPrimary}`} style={{ padding: 16 }}>
+                  <div className={styles.sectionTitle} style={{ marginBottom: 8, color: "var(--primary)" }}>
+                    Total Encargos
                   </div>
-                  <div
-                    style={{
-                      fontSize: "1.2rem",
-                      fontWeight: 700,
-                      color: "var(--primary)",
-                    }}
-                  >
+                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--primary)" }}>
                     {formatCurrency(
                       (campaign.freightTotal ?? 0) +
                         (campaign.markupTotal ?? 0) +
                         stats.feeTotal,
                     )}
                   </div>
-                  <div
-                    style={{
-                      fontSize: ".75rem",
-                      color: "var(--text3)",
-                      marginTop: 6,
-                    }}
-                  >
+                  <div style={{ fontSize: "var(--text-sm)", color: "var(--text3)", marginTop: 6 }}>
                     {formatCurrency(
                       ((campaign.freightTotal ?? 0) +
                         (campaign.markupTotal ?? 0) +
                         stats.feeTotal) /
                         Math.max(1, orders.length),
-                    )}
-                    /comprador
+                    )}/comprador
                   </div>
                 </div>
               </div>
@@ -1425,7 +1022,7 @@ function TabFinancial({
                 style={{
                   display: "flex",
                   gap: 12,
-                  marginTop: 16,
+                  marginTop: 8,
                   justifyContent: "flex-end",
                 }}
               >
@@ -1439,22 +1036,20 @@ function TabFinancial({
               </div>
             </>
           ) : (
-            <>
-              <div className={styles.emptyTab}>
-                <Truck size={32} style={{ opacity: 0.2 }} />
-                <p>Nenhum frete definido</p>
-                <p style={{ fontSize: ".82rem", color: "var(--text3)" }}>
-                  Clique abaixo para definir (opcional)
-                </p>
-                <Button
-                  variant="primary"
-                  style={{ marginTop: 12 }}
-                  onClick={() => setShowFreight(true)}
-                >
-                  <Truck size={14} /> Definir Frete
-                </Button>
-              </div>
-            </>
+            <div className={styles.emptyTab}>
+              <Truck size={32} style={{ opacity: 0.2 }} />
+              <p>Nenhum encargo definido</p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--text3)" }}>
+                Defina frete e taxas de coordenação para rateio entre os compradores.
+              </p>
+              <Button
+                variant="primary"
+                style={{ marginTop: 12 }}
+                onClick={() => setShowFreight(true)}
+              >
+                <Truck size={14} /> Definir encargos
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -1463,164 +1058,58 @@ function TabFinancial({
       {tab === "costs" && (
         <div>
           {orders.length > 0 && stats.avgPrice > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1.5px solid var(--border)" }}>
-                    <th
-                      style={{
-                        textAlign: "left",
-                        padding: "10px 0",
-                        fontSize: ".78rem",
-                        fontWeight: 700,
-                        color: "var(--text3)",
-                      }}
-                    >
-                      Comprador
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "right",
-                        padding: "10px 0",
-                        fontSize: ".78rem",
-                        fontWeight: 700,
-                        color: "var(--text3)",
-                      }}
-                    >
-                      Qtd
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "right",
-                        padding: "10px 0",
-                        fontSize: ".78rem",
-                        fontWeight: 700,
-                        color: "var(--text3)",
-                      }}
-                    >
-                      Produto
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "right",
-                        padding: "10px 0",
-                        fontSize: ".78rem",
-                        fontWeight: 700,
-                        color: "var(--text3)",
-                      }}
-                    >
-                      Encargos
-                    </th>
-                    <th
-                      style={{
-                        textAlign: "right",
-                        padding: "10px 0",
-                        fontSize: ".78rem",
-                        fontWeight: 700,
-                        color: "var(--primary)",
-                      }}
-                    >
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((o, idx) => {
-                    const encargosEach =
-                      stats.freightEach + stats.markupEach + stats.feeEach;
-                    const produto = stats.avgPrice * o.qty;
-                    const total = produto + encargosEach;
-                    return (
-                      <tr
-                        key={o.orderId}
-                        style={{ borderBottom: "1px solid var(--border)" }}
-                      >
-                        <td
-                          style={{
-                            padding: "12px 0",
-                            fontSize: ".82rem",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {o.producerName}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            padding: "12px 0",
-                            fontSize: ".82rem",
-                          }}
-                        >
-                          {o.qty} {unit}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            padding: "12px 0",
-                            fontSize: ".82rem",
-                          }}
-                        >
-                          {formatCurrency(produto)}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            padding: "12px 0",
-                            fontSize: ".82rem",
-                            color: "var(--amber)",
-                          }}
-                        >
-                          {formatCurrency(encargosEach > 0 ? encargosEach : 0)}
-                        </td>
-                        <td
-                          style={{
-                            textAlign: "right",
-                            padding: "12px 0",
-                            fontSize: ".82rem",
-                            fontWeight: 700,
-                            color: "var(--primary)",
-                          }}
-                        >
-                          {formatCurrency(total)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div className={styles.tableWrap}>
+                <table className={styles.tbl}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left", padding: "12px 16px" }}>Comprador</th>
+                      <th style={{ textAlign: "right", padding: "12px 16px" }}>Qtd</th>
+                      <th style={{ textAlign: "right", padding: "12px 16px" }}>Produto</th>
+                      <th style={{ textAlign: "right", padding: "12px 16px" }}>Encargos</th>
+                      <th style={{ textAlign: "right", padding: "12px 16px", color: "var(--primary)" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => {
+                      const encargosEach = stats.freightEach + stats.markupEach + stats.feeEach;
+                      const produto = stats.avgPrice * o.qty;
+                      const total = produto + encargosEach;
+                      return (
+                        <tr key={o.orderId}>
+                          <td style={{ padding: "12px 16px", fontWeight: 600 }}>{o.producerName}</td>
+                          <td style={{ textAlign: "right", padding: "12px 16px" }}>{o.qty} {unit}</td>
+                          <td style={{ textAlign: "right", padding: "12px 16px" }}>{formatCurrency(produto)}</td>
+                          <td style={{ textAlign: "right", padding: "12px 16px", color: "var(--amber)" }}>
+                            {formatCurrency(encargosEach > 0 ? encargosEach : 0)}
+                          </td>
+                          <td style={{ textAlign: "right", padding: "12px 16px", fontWeight: 700, color: "var(--primary)" }}>
+                            {formatCurrency(total)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
               {stats.totalGross > 0 && (
                 <div
+                  className={`${styles.stat} ${styles.lotCardPrimary}`}
                   style={{
-                    background: "var(--primary-dim)",
-                    border: "1.5px solid var(--primary)",
-                    borderRadius: "var(--r)",
-                    padding: "14px",
+                    padding: "16px 20px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                   }}
                 >
                   <div>
-                    <div
-                      style={{
-                        fontSize: ".7rem",
-                        color: "var(--text3)",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Total geral
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text3)", fontWeight: 700, textTransform: "uppercase" }}>
+                      Total Geral Consolidado
                     </div>
                     {stats.feeTotal > 0 && (
-                      <div
-                        style={{
-                          fontSize: ".75rem",
-                          color: "var(--text3)",
-                          marginTop: 4,
-                        }}
-                      >
-                        Taxa plataforma: {formatCurrency(stats.feeTotal)}
+                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text3)", marginTop: 4 }}>
+                        Inclui {formatCurrency(stats.feeTotal)} de taxas de plataforma
                       </div>
                     )}
                   </div>
@@ -1689,45 +1178,38 @@ function ModalAddLot({ unit, onClose, onSave }) {
     <Modal onClose={onClose} size="sm">
       <ModalHeader title="Registrar Proposta Manual" onClose={onClose} />
       <ModalBody>
-        <p
-          style={{
-            fontSize: ".82rem",
-            color: "var(--text2)",
-            marginBottom: 16,
-            lineHeight: 1.5,
-          }}
-        >
-          Preencha a proposta recebida via WhatsApp ou telefone.
+        <p className={styles.modalText}>
+          Preencha a proposta recebida via WhatsApp ou telefone para compor a demanda coletiva.
         </p>
-        <div className="form-group">
-          <label className="form-label">Nome do fornecedor *</label>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Nome do fornecedor *</label>
           <input
-            className="form-input"
+            className={styles.formInput}
             placeholder="Ex: Agropecuária Central"
             value={vendorName}
             onChange={(e) => setVendorName(e.target.value)}
             autoFocus
           />
         </div>
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">Qtd ({unit}) *</label>
+        <div className={styles.grid2}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Qtd ({unit}) *</label>
             <input
               type="number"
               min="1"
-              className="form-input"
+              className={styles.formInput}
               placeholder="Ex: 500"
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               inputMode="numeric"
             />
           </div>
-          <div className="form-group">
-            <label className="form-label">
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>
               Preço/{unit.replace(/s$/, "")} *
             </label>
             <input
-              className="form-input"
+              className={styles.formInput}
               placeholder="0,00"
               value={price}
               onChange={(e) => setPrice(maskCurrency(e.target.value))}
@@ -1735,11 +1217,11 @@ function ModalAddLot({ unit, onClose, onSave }) {
             />
           </div>
         </div>
-        <div className="form-group">
-          <label className="form-label">Observações</label>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Observações</label>
           <input
-            className="form-input"
-            placeholder="Ex: Frete incluso"
+            className={styles.formInput}
+            placeholder="Ex: Frete incluso na cotação"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
           />
@@ -1768,7 +1250,7 @@ function ModalAddLot({ unit, onClose, onSave }) {
             }
           }}
         >
-          {saving ? "Salvando…" : "Adicionar"}
+          {saving ? "Salvando…" : "Adicionar Lote"}
         </Button>
       </ModalFooter>
     </Modal>
@@ -1788,59 +1270,49 @@ function ModalFreight({ campaign, userName, onClose, onSave }) {
   return (
     <Modal onClose={onClose}>
       <ModalHeader
-        title={`Frete & Taxa de ${userName ?? "Gestor"}`}
+        title={`Frete & Taxa de Coordenação`}
         onClose={onClose}
       />
       <ModalBody>
-        <div
-          style={{
-            background: "var(--surface3)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r)",
-            padding: "10px 14px",
-            fontSize: ".82rem",
-            color: "var(--text2)",
-            marginBottom: 16,
-          }}
-        >
-          Dividido entre{" "}
-          <strong style={{ color: "var(--text)" }}>
+        <div className={styles.modalInfoBox}>
+          Estes custos serão divididos proporcionalmente entre os{" "}
+          <strong>
             {n} comprador{n !== 1 ? "es" : ""}
-          </strong>
-          .
+          </strong>{" "}
+          desta campanha.
         </div>
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">
+        <div className={styles.grid2}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>
               <Truck
-                size={11}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
+                size={12}
+                style={{ marginRight: 6, verticalAlign: "middle", marginTop: -2 }}
               />{" "}
               Frete total (R$)
             </label>
             <input
-              className="form-input"
+              className={styles.formInput}
               placeholder="0,00"
               value={freight}
               onChange={mask(setFreight)}
               inputMode="numeric"
             />
             {fNum > 0 && (
-              <span className="form-hint">
-                → {formatCurrency(fNum / n)}/comprador
+              <span className={styles.formHint}>
+                → {formatCurrency(fNum / n)} por comprador
               </span>
             )}
           </div>
-          <div className="form-group">
-            <label className="form-label">
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>
               <TrendingUp
-                size={11}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
+                size={12}
+                style={{ marginRight: 6, verticalAlign: "middle", marginTop: -2 }}
               />{" "}
-              Taxa de {userName ?? "Gestor"} (R$)
+              Taxa de Coordenação (R$)
             </label>
             <input
-              className="form-input"
+              className={styles.formInput}
               placeholder="0,00"
               value={markup}
               onChange={mask(setMarkup)}
@@ -1898,8 +1370,21 @@ function ModalFreight({ campaign, userName, onClose, onSave }) {
 // PÁGINA PRINCIPAL (CONSOLIDADA)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
-  const isAdmin = user?.role === "admin";
+export function CampaignsPage({ user, setPage }) {
+  // ✅ Usar useContext para obter dados e funções de atualização
+  const context = useContext(AppContext);
+
+  if (!context) {
+    return (
+      <div style={{ padding: "20px", color: "var(--red)" }}>
+        ❌ AppProvider não configurado. CampaignsPage precisa estar dentro de
+        AppProvider.
+      </div>
+    );
+  }
+
+  const { campaigns = [], vendors = [] } = context;
+
   const {
     addCampaign,
     addOrder,
@@ -1919,7 +1404,9 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
     addLot,
     removeLot,
     saveFinancials,
-  } = actions;
+  } = context;
+
+  const isAdmin = user?.role === "admin";
 
   const { toast, showToast, clearToast } = useToast();
 
@@ -1951,7 +1438,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
         if (msg) showToast(msg);
       } catch (e) {
         showToast(e?.message || "Erro desconhecido", "error");
-        throw e; // propaga para o modal não fechar em caso de erro
+        throw e;
       }
     };
 
@@ -2085,20 +1572,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                   })}
                   {finished.length > 0 && (
                     <>
-                      <div
-                        style={{
-                          fontSize: ".68rem",
-                          fontWeight: 700,
-                          color: "var(--text3)",
-                          textTransform: "uppercase",
-                          letterSpacing: ".06em",
-                          padding: "10px 12px 4px",
-                          marginTop: 4,
-                          borderTop: "1px solid var(--border)",
-                        }}
-                      >
-                        Histórico
-                      </div>
+                      <div className={styles.historyDivider}>Histórico</div>
                       {finished.map((c) => (
                         <button
                           key={c.id}
@@ -2171,19 +1645,12 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                       {STATUS_LABEL[active.status]}
                     </Badge>
                     {active.goalQty > 0 && (
-                      <span
-                        style={{ fontSize: ".8rem", color: "var(--text3)" }}
-                      >
-                        Meta:{" "}
-                        <strong>
-                          {active.goalQty} {active.unit}
-                        </strong>
+                      <span className={styles.detailMetaItem}>
+                        Meta: <strong>{active.goalQty} {active.unit}</strong>
                       </span>
                     )}
                     {active.deadline && (
-                      <span
-                        style={{ fontSize: ".8rem", color: "var(--text3)" }}
-                      >
+                      <span className={styles.detailMetaItem}>
                         Prazo: <strong>{fmtDate(active.deadline)}</strong>
                       </span>
                     )}
@@ -2191,27 +1658,12 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                 </div>
 
                 {/* AÇÕES */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    flexShrink: 0,
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                  }}
-                >
+                <div className={styles.actionGroup}>
                   {/* Status: open = publicado para compradores */}
                   {active.status === "open" && (
                     <>
                       <Button
                         variant="primary"
-                        size="sm"
-                        onClick={() => setShowPublish(true)}
-                      >
-                        <Send size={13} /> Publicar para Fornecedores
-                      </Button>
-                      <Button
-                        variant="outline"
                         size="sm"
                         onClick={() =>
                           setConfirmAction({
@@ -2231,7 +1683,12 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => setShowPublish(true)}
+                        onClick={() =>
+                          setConfirmAction({
+                            type: "publishToVendorsOnly",
+                            id: active.id,
+                          })
+                        }
                       >
                         <Send size={13} /> Publicar para Fornecedores
                       </Button>
@@ -2291,7 +1748,6 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
 
                   {/* Encerrada: permanente — sem ações */}
 
-                  {/* Apagar: visível em open, negotiating e closed apenas */}
                   {active.status !== "finished" && (
                     <Button
                       variant="outline"
@@ -2299,11 +1755,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                       onClick={() =>
                         setConfirmAction({ type: "delete", id: active.id })
                       }
-                      style={{
-                        color: "var(--red)",
-                        borderColor: "var(--red-border)",
-                        background: "var(--red-dim)",
-                      }}
+                      className={styles.delBtn}
                     >
                       <Trash2 size={13} /> Apagar
                     </Button>
@@ -2313,52 +1765,23 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
 
               {/* ── BANNER PAUSADA ── */}
               {active.status === "closed" && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    background: "var(--amber-dim,#fffbeb)",
-                    border: "1px solid var(--amber-border,#fbbf24)",
-                    borderRadius: "var(--r-lg)",
-                    fontSize: ".82rem",
-                    color: "var(--amber,#b45309)",
-                  }}
-                >
-                  <Lock size={14} style={{ flexShrink: 0 }} />
+                <div className={`${styles.banner} ${styles.bannerAmber}`}>
+                  <Lock size={16} className={styles.bannerIcon} />
                   <span>
                     Cotação <strong>pausada</strong> — não aceita novos pedidos.
                     Reabra para continuar ou clique em{" "}
-                    <strong>Encerrar cotação</strong> para finalizar
-                    definitivamente.
+                    <strong>Encerrar cotação</strong> para finalizar definitivamente.
                   </span>
                 </div>
               )}
 
               {/* ── BANNER ENCERRADA (histórico) ── */}
               {active.status === "finished" && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    background: "var(--surface3)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r-lg)",
-                    fontSize: ".82rem",
-                    color: "var(--text2)",
-                  }}
-                >
-                  <CheckCircle
-                    size={14}
-                    style={{ color: "var(--primary)", flexShrink: 0 }}
-                  />
+                <div className={`${styles.banner} ${styles.bannerMuted}`}>
+                  <CheckCircle size={16} color="var(--primary)" className={styles.bannerIcon} />
                   <span>
                     Cotação <strong>encerrada definitivamente</strong> —
-                    disponível apenas no relatório. Esta ação não pode ser
-                    desfeita.
+                    disponível apenas no relatório de histórico. Esta ação não pode ser desfeita.
                   </span>
                 </div>
               )}
@@ -2410,7 +1833,6 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
                 {mainTab === "orders" && (
                   <TabOrders
                     campaign={active}
-                    actions={actions}
                     onApprovePending={handleApprove}
                     onRejectPending={(id) =>
                       rejectPending(active.id, id).then(() =>
@@ -2623,7 +2045,7 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
           vendors={vendors}
           onClose={() => setShowPublish(false)}
           onPublish={() => {
-            run(() => publishToVendors(active.id), "Publicada!");
+            run(publishToVendors(active.id), "Publicada!");
             setShowPublish(false);
           }}
         />
@@ -2632,11 +2054,10 @@ export function CampaignsPage({ campaigns, vendors, actions, user, setPage }) {
         <ProducerOrderModal
           campaign={active}
           onClose={() => setShowOrder(false)}
-          onSave={run(
-            (qty, name, phone) =>
-              addOrder(active.id, { qty, producerName: name, phone }),
-            "Pedido adicionado!",
-          )}
+          onSave={run(async (orderData) => {
+            await addOrder(active.id, orderData);
+            await reload();
+          }, "Pedido adicionado!")}
         />
       )}
       {toast && (

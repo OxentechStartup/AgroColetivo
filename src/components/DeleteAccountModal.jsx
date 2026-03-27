@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash2, AlertTriangle, Eye, EyeOff, Loader } from "lucide-react";
-import styles from "./Modal.module.css";
+import styles from "./ui/Modal.module.css";
 
 export function DeleteAccountModal({ user, onDelete, onCancel, loading }) {
   const [password, setPassword] = useState("");

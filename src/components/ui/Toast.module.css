@@ -1,0 +1,41 @@
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9000;
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: var(--r-lg);
+  background: var(--text); color: #fff;
+  font-size: var(--text-base); font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  animation: toastIn .22s ease;
+  max-width: 380px;
+  line-height: 1.45;
+}
+
+/* Variantes por tipo */
+.success { background: var(--primary); }
+.error   { background: var(--red); }
+.warning {
+  background: #92400e; /* Amber 800 — legível em branco */
+}
+.info {
+  background: var(--blue);
+}
+
+.icon { flex-shrink: 0; display: flex; align-items: center; margin-top: 1px; }
+.msg  { flex: 1; }
+.close {
+  background: none; border: none; color: rgba(255,255,255,.7);
+  cursor: pointer; padding: 2px; display: flex; align-items: center;
+  border-radius: 4px; flex-shrink: 0;
+  transition: color .15s;
+  margin-top: 1px;
+}
+.close:hover { color: #fff; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 480px) {
+  .toast { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+}

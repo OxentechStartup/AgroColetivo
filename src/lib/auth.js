@@ -17,6 +17,7 @@ import {
 } from "../utils/security.js";
 import { logSecurityEvent } from "./authorization.js";
 import { sendVerificationEmail } from "./email-client.js";
+import { parseSupabaseError } from "./security-console.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITÁRIOS DE VERIFICAÇÃO DE EMAIL
@@ -31,122 +32,88 @@ function generateVerificationCode() {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function login(email, password) {
   if (!email || !email.includes("@")) throw new Error("Email inválido");
-  if (detectSQLInjection(email) || detectSQLInjection(password))
-    throw new Error("Segurança: Padrão malicioso detectado");
-
+  
   const limiter = loginLimiter.check(email);
   if (!limiter.allowed)
-    throw new Error(
-      `Muitas tentativas. Tente novamente em ${limiter.retryAfter}s`,
-    );
+    throw new Error(`Muitas tentativas. Tente novamente em ${limiter.retryAfter}s`);
 
-  // Tenta Supabase Auth primeiro (conta admin/oxentech criada pelo painel)
-  const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({ email, password });
+  // 1. Autenticação Nativa via Supabase (Seguro, JWT, Bcrypt)
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  // Busca perfil na tabela `users` pelo email (independente do método de auth)
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select(
-      "id, name, email, phone, role, city, notes, active, email_verified, password_hash, profile_photo_url",
-    )
-    .eq("email", email)
-    .maybeSingle();
-
-  if (userError) throw userError;
-
-  if (!userData) {
-    await logSecurityEvent(
-      "login_failed",
-      null,
-      "auth",
-      null,
-      `email=${email} reason=user_not_found`,
-    );
+  if (authError) {
+    // Verificar se é um usuário antigo (existe em public.users mas não em auth.users)
+    const isLegacyUser = await checkLegacyUser(email);
+    if (isLegacyUser) {
+      await logSecurityEvent("login_legacy_user", null, "auth", null, `email=${email} requires_migration=true`);
+      // Erro especial que o frontend vai capturar para redirecionar
+      const migrationError = new Error("LEGACY_USER_REQUIRES_MIGRATION");
+      migrationError.code = "LEGACY_USER";
+      migrationError.email = email;
+      throw migrationError;
+    }
+    
+    await logSecurityEvent("login_failed", null, "auth", null, `email=${email} reason=${authError.message}`);
     throw new Error("Email ou senha incorretos.");
   }
 
-  // Se Supabase Auth falhou, verifica senha manual (contas criadas pelo registro)
-  if (authError) {
-    if (!userData.password_hash || userData.password_hash !== password) {
-      await logSecurityEvent(
-        "login_failed",
-        null,
-        "auth",
-        null,
-        `email=${email} reason=wrong_password`,
-      );
-      throw new Error("Email ou senha incorretos.");
-    }
+  // 2. Busca perfil na tabela `users` (Dados estendidos)
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url")
+    .eq("id", authData.user.id)
+    .single();
+
+  if (userError || !userData) {
+    // Se o usuário existe no Auth mas não no Public, precisamos criar/sincronizar
+    throw new Error("Perfil de usuário não encontrado. Contate o suporte.");
   }
 
-  // Bloqueia login se email não verificado (só para contas manuais)
-  // Contas do Supabase Auth já são consideradas verificadas
-  if (!userData.email_verified && authError) {
-    throw new Error("EMAIL_NOT_VERIFIED");
+  if (!userData.active) {
+    await supabase.auth.signOut();
+    throw new Error("Sua conta está desativada.");
   }
-
-  // Se autenticou pelo Supabase Auth mas email_verified está false, corrige
-  if (!userData.email_verified && !authError) {
-    await supabase
-      .from("users")
-      .update({ email_verified: true })
-      .eq("id", userData.id);
-  }
-
-  const { active, email_verified: __, password_hash: ___, ...rest } = userData;
 
   // Loga login bem-sucedido
-  await logSecurityEvent(
-    "login_success",
-    rest,
-    "auth",
-    rest.id,
-    `role=${rest.role}`,
-  );
+  await logSecurityEvent("login_success", userData, "auth", userData.id, `role=${userData.role}`);
 
-  if (rest.role === ROLES.VENDOR) {
-    let { data: vRow } = await supabase
+  // Sincronização de Vendor (se aplicável)
+  if (userData.role === ROLES.VENDOR) {
+    const { data: vRow } = await supabase
       .from("vendors")
       .select("id, photo_url")
-      .eq("user_id", rest.id)
+      .eq("user_id", userData.id)
       .maybeSingle();
-    if (!vRow && rest.phone) {
-      const { data: vByPhone } = await supabase
-        .from("vendors")
-        .select("id, photo_url")
-        .eq("phone", rest.phone)
-        .is("user_id", null)
-        .maybeSingle();
-      if (vByPhone) {
-        await supabase
-          .from("vendors")
-          .update({ user_id: rest.id })
-          .eq("id", vByPhone.id);
-        vRow = vByPhone;
-      }
-    }
-
-    // Se vendor tem foto salva, sincroniza com profile_photo_url do user
-    if (vRow?.photo_url) {
-      if (!rest.profile_photo_url) {
-        // Atualiza no banco
-        await supabase
-          .from("users")
-          .update({ profile_photo_url: vRow.photo_url })
-          .eq("id", rest.id);
-      }
-      // Sempre retorna a foto do vendor se existir
-      rest.profile_photo_url = vRow.photo_url;
-    }
-
-    return { ...rest, blocked: active === false, vendorId: vRow?.id ?? null };
+      
+    return { 
+      ...userData, 
+      vendorId: vRow?.id ?? null,
+      profile_photo_url: vRow?.photo_url || userData.profile_photo_url 
+    };
   }
 
-  return { ...rest, blocked: active === false };
+  return userData;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// VERIFICAR SE É USUÁRIO LEGADO (existe em public.users mas não migrado)
+// Usuários legados têm password_hash na tabela users (sistema antigo)
+// ─────────────────────────────────────────────────────────────────────────────
+async function checkLegacyUser(email) {
+  // Verifica se existe usuário em public.users com password_hash (sistema antigo)
+  const { data: legacyUser } = await supabase
+    .from("users")
+    .select("id, password_hash")
+    .eq("email", email)
+    .maybeSingle();
+  
+  // Se existe e tem password_hash, é um usuário legado que precisa migrar
+  return legacyUser && legacyUser.password_hash;
+}
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // REGISTRO — apenas roles permitidos (vendor e gestor)
 // Admin nunca pode ser criado via registro público
@@ -156,6 +123,7 @@ export async function login(email, password) {
 //   2. verifyEmail() → valida código → SÓ AÍ cria o usuário em `users`
 // ─────────────────────────────────────────────────────────────────────────────
 const REGISTERABLE_ROLES = [ROLES.VENDOR, ROLES.GESTOR];
+
 
 export async function register(email, password, role, extra = {}) {
   if (!REGISTERABLE_ROLES.includes(role))
@@ -206,12 +174,12 @@ export async function register(email, password, role, extra = {}) {
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
   // Salvar cadastro PENDENTE — usuário só vai para `users` após confirmar email
+  // NÃO salva senha em plaintext por segurança
   const { error: pendingError } = await supabase
     .from("pending_registrations")
     .upsert(
       {
         email,
-        password_hash: password,
         name,
         phone,
         role,
@@ -283,19 +251,23 @@ export async function register(email, password, role, extra = {}) {
       : "Não foi possível enviar o email. Use 'Reenviar Código' na próxima tela.",
   };
 
-  console.log("📤 register() vai retornar:", response);
-
   return response;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VERIFICAÇÃO DE EMAIL
-// Só cria o usuário no banco APÓS validar o código
+// O frontend passa a senha para criar o usuário no Supabase Auth
+// A senha NUNCA é armazenada em nenhuma tabela - é usada apenas para criar o usuário
 // ─────────────────────────────────────────────────────────────────────────────
-export async function verifyEmail(pendingId, code) {
+export async function verifyEmail(pendingId, code, chosenPassword) {
   if (!pendingId) throw new Error("ID do cadastro é obrigatório");
   if (!code || code.length !== 6)
     throw new Error("Código de verificação inválido");
+  if (!chosenPassword) throw new Error("Senha é obrigatória");
+
+  const passwordValidation = validatePassword(chosenPassword);
+  if (!passwordValidation.valid)
+    throw new Error(`Senha fraca: ${passwordValidation.errors.join(", ")}`);
 
   // Buscar cadastro pendente
   const { data: pending, error: pendingError } = await supabase
@@ -353,17 +325,43 @@ export async function verifyEmail(pendingId, code) {
     throw new Error("Este email já está cadastrado. Faça login.");
   }
 
-  // ✅ EMAIL CONFIRMADO — agora sim cria o usuário
-  const newId = crypto.randomUUID();
+  // ✅ EMAIL CONFIRMADO — cria usuário via Supabase Auth signUp (funciona no frontend)
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: pending.email,
+    password: chosenPassword,
+    options: {
+      data: {
+        name: pending.name,
+        phone: pending.phone || "",
+      },
+      emailRedirectTo: undefined, // Não enviar email de confirmação (já confirmamos)
+    }
+  });
+
+  if (authError) {
+    await logSecurityEvent(
+      "email_verification_failed",
+      { pendingId },
+      "auth",
+      null,
+      `signUp failed: ${authError?.message}`,
+    );
+    throw new Error("Erro ao criar a conta. Tente novamente.");
+  }
+
+  if (!authData?.user) {
+    throw new Error("Erro ao criar a conta. Tente novamente.");
+  }
+
+  // Insere registro na tabela users com referência ao auth.users (SEM password_hash!)
   const { data: newUser, error: insertError } = await supabase
     .from("users")
     .insert({
-      id: newId,
+      id: authData.user.id,
       email: pending.email,
       email_verified: true,
       name: pending.name,
       phone: pending.phone || "",
-      password_hash: pending.password_hash,
       role: pending.role,
       city: pending.city,
       notes: pending.notes,
@@ -393,7 +391,10 @@ export async function verifyEmail(pendingId, code) {
       phone: pending.phone || "",
       city: pending.city,
     });
-    if (vendorError) console.warn("Aviso ao criar vendor:", vendorError);
+    if (vendorError) {
+      // falha ao criar vendor é registrada mas não interrompe o fluxo
+      await logSecurityEvent("vendor_create_failed", { userId: newUser.id }, "auth", newUser.id, vendorError.message);
+    }
   }
 
   // Remover registro pendente
@@ -410,7 +411,6 @@ export async function verifyEmail(pendingId, code) {
   return {
     message: "Email verificado! Conta criada com sucesso.",
     user: newUser,
-    password: pending.password_hash, // Senha em plaintext para fazer login imediato
   };
 }
 
@@ -588,6 +588,7 @@ export async function updateUser(userId, updates) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RECUPERAÇÃO DE SENHA
+// Usa Supabase Auth nativo para enviar email de reset
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -602,26 +603,144 @@ async function getEmailByPhone(phone) {
   return data?.email || null;
 }
 
+/**
+ * Reset de senha por telefone - busca o email associado e envia reset
+ */
 export async function resetPassword(phone) {
-  // ⚠️ Não implementado para autenticação manual (demo)
-  // Em produção: usar SendGrid, Mailgun, ou similar
-  throw new Error(
-    "Reset de senha ainda não está disponível. Contate o suporte.",
-  );
+  if (!phone || phone.length < 10) {
+    throw new Error("Telefone inválido.");
+  }
+  
+  const email = await getEmailByPhone(phone);
+  if (!email) {
+    // Por segurança, não revelamos se o telefone existe ou não
+    await logSecurityEvent("password_reset_requested", null, "auth", null, `phone=${phone} found=false`);
+    return { message: "Se o telefone estiver cadastrado, você receberá um email de recuperação." };
+  }
+  
+  return resetPasswordByEmail(email);
 }
 
+/**
+ * Reset de senha por email - usa Supabase Auth nativo
+ * Também funciona para migrar usuários legados (com password_hash)
+ */
 export async function resetPasswordByEmail(email) {
-  // ⚠️ Não implementado para autenticação manual (demo)
-  // Em produção: usar SendGrid, Mailgun, ou similar
-  throw new Error(
-    "Reset de senha ainda não está disponível. Contate o suporte.",
-  );
+  if (!email || !email.includes("@")) {
+    throw new Error("Email inválido.");
+  }
+
+  // Verificar se é usuário legado (precisa migrar para Supabase Auth)
+  const isLegacy = await checkLegacyUser(email);
+  
+  // Verificar se o email existe em public.users
+  const { data: existingUser } = await supabase
+    .from("users")
+    .select("id, name")
+    .eq("email", email)
+    .maybeSingle();
+  
+  if (!existingUser) {
+    // Por segurança, não revelamos se o email existe ou não
+    await logSecurityEvent("password_reset_requested", null, "auth", null, `email=${email} found=false`);
+    return { message: "Se o email estiver cadastrado, você receberá um link de recuperação." };
+  }
+
+  // Se é usuário legado, marcamos para migração quando resetar a senha
+  if (isLegacy) {
+    await logSecurityEvent("password_reset_legacy_user", null, "auth", null, `email=${email} legacy=true`);
+  }
+
+  // Envia email de reset via Supabase Auth
+  // O redirect URL deve apontar para a página de redefinição de senha
+  const redirectUrl = `${window.location.origin}/auth/resetar-senha`;
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectUrl,
+  });
+
+  if (error) {
+    // Se o usuário não existe no auth.users (legado), precisamos criar primeiro
+    if (isLegacy && error.message?.includes("User not found")) {
+      // Para usuários legados, criamos um registro temporário no auth
+      // e depois enviamos o reset
+      await logSecurityEvent("password_reset_legacy_needs_signup", null, "auth", null, `email=${email}`);
+      
+      // Criar usuário no Supabase Auth com senha temporária aleatória
+      // O usuário vai redefinir a senha pelo email de reset
+      const tempPassword = crypto.randomUUID() + "Aa1!"; // Senha temporária forte
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: tempPassword,
+        options: {
+          data: { name: existingUser.name, migrated_from_legacy: true },
+        }
+      });
+      
+      if (signUpError) {
+        await logSecurityEvent("password_reset_legacy_signup_failed", null, "auth", null, `email=${email} error=${signUpError.message}`);
+        throw new Error("Erro ao processar recuperação. Tente novamente.");
+      }
+
+      // Atualizar public.users com o novo ID do auth.users
+      if (signUpData?.user?.id) {
+        // Primeiro, remover password_hash do usuário legado
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ 
+            id: signUpData.user.id,
+            password_hash: null // Remove senha antiga
+          })
+          .eq("email", email);
+        
+        if (updateError) {
+          await logSecurityEvent("password_reset_legacy_update_failed", null, "auth", null, `email=${email} error=${updateError.message}`);
+        }
+      }
+
+      // Agora enviar o email de reset
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+      
+      if (resetError) {
+        throw new Error("Erro ao enviar email de recuperação. Tente novamente.");
+      }
+      
+      await logSecurityEvent("password_reset_legacy_migrated", null, "auth", null, `email=${email}`);
+      return { 
+        message: "Email de recuperação enviado! Verifique sua caixa de entrada.",
+        migrated: true
+      };
+    }
+    
+    await logSecurityEvent("password_reset_failed", null, "auth", null, `email=${email} error=${error.message}`);
+    throw new Error("Erro ao enviar email de recuperação. Tente novamente.");
+  }
+
+  await logSecurityEvent("password_reset_sent", null, "auth", null, `email=${email}`);
+  return { message: "Email de recuperação enviado! Verifique sua caixa de entrada." };
 }
 
+/**
+ * Atualiza a senha do usuário logado (após clicar no link de reset)
+ */
 export async function updatePassword(newPassword) {
-  // ⚠️ Não implementado para autenticação manual (demo)
-  throw new Error("Atualização de senha ainda não está disponível.");
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.valid) {
+    throw new Error(`Senha fraca: ${passwordValidation.errors.join(", ")}`);
+  }
 
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword
+  });
+
+  if (error) {
+    await logSecurityEvent("password_update_failed", null, "auth", null, `error=${error.message}`);
+    throw new Error("Erro ao atualizar senha. O link pode ter expirado.");
+  }
+
+  await logSecurityEvent("password_updated", { userId: data.user?.id }, "auth", data.user?.id, "Password updated successfully");
   return { message: "Senha atualizada com sucesso!" };
 }
 

@@ -29,28 +29,11 @@ export default async function handler(req, res) {
 
     const { managerEmail, managerName, orderData } = req.body || {};
 
-    // Validação rigorosa
-    if (!managerEmail) {
-      console.error("❌ managerEmail vazio");
+    if (!managerEmail || !managerName || !orderData) {
       return res.status(400).json({
-        error: "Campos obrigatórios: managerEmail é obrigatório",
+        error: "Campos obrigatórios: managerEmail, managerName, orderData",
       });
     }
-    if (!managerName) {
-      console.error("❌ managerName vazio");
-      return res.status(400).json({
-        error: "Campos obrigatórios: managerName é obrigatório",
-      });
-    }
-    if (!orderData) {
-      console.error("❌ orderData vazio");
-      return res.status(400).json({
-        error: "Campos obrigatórios: orderData é obrigatório",
-      });
-    }
-
-    console.log(`📧 Enviando email para: ${managerEmail}`);
-    console.log(`📋 Dados do pedido:`, orderData);
 
     const result = await sendNewOrderEmailToManager(
       managerEmail,
@@ -59,14 +42,12 @@ export default async function handler(req, res) {
     );
 
     if (result.success) {
-      console.log(`✅ Email enviado com sucesso: ${result.messageId}`);
       return res.status(200).json({
         success: true,
         messageId: result.messageId,
         message: "Email de novo pedido enviado com sucesso",
       });
     } else {
-      console.error(`❌ Falha ao enviar email: ${result.error}`);
       return res.status(500).json({
         success: false,
         error: result.error || "Erro ao enviar email",

@@ -13,10 +13,10 @@ import {
   Activity,
   Send,
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardBody } from "../components/Card";
-import { Badge } from "../components/Badge";
-import { Button } from "../components/Button";
-import { ProgressBar } from "../components/ProgressBar";
+import { Card, CardHeader, CardTitle, CardBody } from "../components/ui/Card";
+import { Badge } from "../components/ui/Badge";
+import { Button } from "../components/ui/Button";
+import { ProgressBar } from "../components/ui/ProgressBar";
 import {
   totalOrdered,
   STATUS_LABEL,

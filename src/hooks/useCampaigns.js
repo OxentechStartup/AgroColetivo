@@ -76,10 +76,6 @@ export function useCampaigns(user) {
             status: row.status ?? c.status,
             feePaidAt: row.fee_paid_at ?? c.feePaidAt ?? null,
             feePaidBy: row.fee_paid_by ?? c.feePaidBy ?? null,
-            publishedToVendors:
-              row.published_to_vendors ?? c.publishedToVendors ?? false,
-            publishedToBuyers:
-              row.published_to_buyers ?? c.publishedToBuyers ?? false,
             orders: isVendor ? [] : approved,
             pendingOrders: isVendor ? [] : pending,
             lots: visibleLots,
@@ -153,23 +149,27 @@ export function useCampaigns(user) {
           const isVendor = user.role === ROLES.VENDOR;
           const vendorId = userWithVendorId?.vendorId ?? null;
 
-          // Busca campanhas e vendors em paralelo
-          const [rawCampaigns, rawVendors] = await Promise.all([
+          // Busca campanhas, vendors e vendor próprio em paralelo
+          const [rawCampaigns, rawVendors, ownVendorData] = await Promise.all([
             fetchCampaigns(userWithVendorId),
             fetchVendors(user.id, user.role),
+            // Busca vendor próprio se necessário
+            isVendor && vendorId
+              ? supabase
+                  .from("vendors")
+                  .select("*")
+                  .eq("id", vendorId)
+                  .maybeSingle()
+                  .then(({ data }) => data)
+              : Promise.resolve(null),
           ]);
 
-          // Busca vendor próprio se necessário
-          if (isVendor && vendorId) {
-            supabase
-              .from("vendors")
-              .select("*")
-              .eq("id", vendorId)
-              .maybeSingle()
-              .then(({ data: vFull }) => {
-                if (vFull)
-                  setOwnVendor({ ...vFull, admin_user_id: vFull.user_id });
-              });
+          // Atualiza vendor próprio se encontrou
+          if (ownVendorData) {
+            setOwnVendor({
+              ...ownVendorData,
+              admin_user_id: ownVendorData.user_id,
+            });
           }
 
           if (rawCampaigns.length === 0) {
@@ -240,30 +240,6 @@ export function useCampaigns(user) {
     loadAll();
   }, [loadAll]);
 
-  // Real-time subscription para atualizar campanhas quando publicadas
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel(`campaigns_updates_${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "campaigns",
-        },
-        () => {
-          loadAll();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [user?.id, loadAll]);
-
   const addCampaign = async (c) => {
     const created = await createCampaign(c, user?.id);
     logEvent(
@@ -310,7 +286,7 @@ export function useCampaigns(user) {
   };
   const publishToVendors = async (id) => {
     // Publicar para ambos: compradores E fornecedores
-    const result = await setPublishStatus(id, "negotiating", true, true);
+    await setPublishStatus(id, "negotiating", true, true);
     setCampaigns((prev) =>
       prev.map((c) =>
         c.id === id
@@ -323,38 +299,6 @@ export function useCampaigns(user) {
           : c,
       ),
     );
-
-    // Enviar emails para todos os fornecedores
-    try {
-      const campaign = campaigns.find((c) => c.id === id);
-      if (!campaign) {
-        return;
-      }
-
-      const campaignLink = `${typeof window !== "undefined" ? window.location.origin : "https://agrocoletivo.onrender.com"}/#campaigns`;
-
-      // Enviar email para cada fornecedor que tem email configurado
-      const vendorsComEmail = vendors.filter(
-        (v) => v.email && v.email.trim().length > 0,
-      );
-
-      for (const vendor of vendorsComEmail) {
-        try {
-          await notifyVendorNewProposal(vendor.email, vendor.name, {
-            productName: campaign.product,
-            quantity: campaign.goalQty || campaign.minQty || "?",
-            unit: campaign.unit || "unidades",
-            deadline: campaign.deadline || "A combinar",
-            campaignName: campaign.product,
-            campaignLink,
-          });
-        } catch (err) {
-          // Silently ignore email errors
-        }
-      }
-    } catch (error) {
-      // Não bloqueia a publicação se os emails falharem
-    }
   };
   const publishToBuyers = async (id) => {
     // Abre apenas para compradores
@@ -403,38 +347,6 @@ export function useCampaigns(user) {
           : c,
       ),
     );
-
-    // Enviar emails para todos os fornecedores
-    try {
-      const campaign = campaigns.find((c) => c.id === id);
-      if (!campaign) {
-        return;
-      }
-
-      const campaignLink = `${typeof window !== "undefined" ? window.location.origin : "https://agrocoletivo.onrender.com"}/#campaigns`;
-
-      // Enviar email para cada fornecedor que tem email configurado
-      const vendorsComEmail = vendors.filter(
-        (v) => v.email && v.email.trim().length > 0,
-      );
-
-      for (const vendor of vendorsComEmail) {
-        try {
-          await notifyVendorNewProposal(vendor.email, vendor.name, {
-            productName: campaign.product,
-            quantity: campaign.goalQty || campaign.minQty || "?",
-            unit: campaign.unit || "unidades",
-            deadline: campaign.deadline || "A combinar",
-            campaignName: campaign.product,
-            campaignLink,
-          });
-        } catch (err) {
-          // Silently ignore email errors
-        }
-      }
-    } catch (error) {
-      // Não bloqueia a publicação se os emails falharem
-    }
   };
   const deleteCampaign = async (id) => {
     await apiDeleteCampaign(id);
@@ -464,7 +376,12 @@ export function useCampaigns(user) {
         pricePerUnit: lot.price,
         deliveryDate: lot.deliveryDate || "A confirmar",
         campaignLink,
-      }).catch(() => {});
+      }).catch((err) =>
+        console.warn(
+          "⚠️ Não foi possível enviar email de proposta recebida:",
+          err,
+        ),
+      );
     }
 
     await reloadCampaign(campaignId);
@@ -479,7 +396,9 @@ export function useCampaigns(user) {
     const campaign = campaigns.find((c) => c.id === campaignId);
 
     const buyer = await findOrCreateProducer(order.producerName, order.phone);
+
     await createOrder(campaignId, buyer.id, order.qty, "approved");
+
     logEvent(
       campaignId,
       EVENT.ORDER_SUBMITTED,
@@ -505,7 +424,7 @@ export function useCampaigns(user) {
       );
     }
 
-    await reloadCampaign(campaignId);
+    // ✅ NÃO chama reloadCampaign aqui, deixa CampaignsPage chamar reload() depois
   };
   const removeOrder = async (campaignId, orderId) => {
     await deleteOrder(orderId);

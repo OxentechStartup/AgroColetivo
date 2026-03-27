@@ -15,31 +15,21 @@ const API_BASE_URL = ""; // URL relativa = mesmo origin
 async function sendEmailViaAPI(endpoint, payload) {
   try {
     const url = `${API_BASE_URL}/api/${endpoint}`;
-    console.log(`📡 Fazendo requisição para: ${url}`, payload);
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    console.log(
-      `📡 Resposta do servidor (${endpoint}):`,
-      response.status,
-      response.statusText,
-    );
-
     if (response.ok) {
       const data = await response.json();
-      console.log(`✅ Resposta bem-sucedida:`, data);
       return { success: true, ...data };
     } else {
       const errData = await response.json().catch(() => ({}));
-      const errMsg = errData.error || `Servidor retornou ${response.status}`;
-      console.error(`❌ Erro na resposta:`, errMsg);
-      throw new Error(errMsg);
+      throw new Error(errData.error || `Servidor retornou ${response.status}`);
     }
   } catch (error) {
-    console.error(`❌ Erro ao enviar email para ${endpoint}:`, error?.message);
+    console.warn(`⚠️ Erro ao enviar email para ${endpoint}:`, error?.message);
     return {
       success: false,
       error: error?.message,

@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
-import { useMultipleRealtimeSubscriptions } from "../hooks/useRealtimeSubscription";
 
 async function fetchProducerOrders(phone) {
   const cleanPhone = unmaskPhone(phone);
@@ -388,25 +387,6 @@ export function ProducerOrdersPage() {
       loadOrders(saved);
     }
   }, []);
-
-  // Atualizar pedidos automaticamente quando há mudanças
-  useMultipleRealtimeSubscriptions(
-    orders.length > 0
-      ? [
-          { table: "orders" },
-          { table: "campaigns" },
-          { table: "vendor_campaign_offers" },
-        ]
-      : [],
-    () => {
-      // Recarregar quando dados mudam
-      if (phone) {
-        fetchProducerOrders(phone)
-          .then(setOrders)
-          .catch((err) => console.error("Erro ao atualizar pedidos:", err));
-      }
-    },
-  );
 
   const loadOrders = async (phoneNum) => {
     setLoading(true);

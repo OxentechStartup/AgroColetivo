@@ -459,15 +459,27 @@ export async function checkDistributedRateLimit(
       };
     }
 
+    // Tenta obter o IP usando a API do Cloudflare (se disponível) ou fallback para fetch
+    let ipAddress = null;
+    try {
+      if (typeof window !== "undefined") {
+        // Fallback seguro de IP se possível
+        const ipRes = await fetch("https://api.ipify.org?format=json").catch(() => null);
+        if (ipRes && ipRes.ok) {
+          const ipData = await ipRes.json();
+          ipAddress = ipData.ip;
+        }
+      }
+    } catch(e) {
+      // Falha silenciosa na obtenção de IP
+    }
+
     // Log tentativa bem-sucedida
     await supabase.from("rate_limit_logs").insert({
       identifier,
       action,
       attempted_at: now.toISOString(),
-      ip_address:
-        typeof window !== "undefined"
-          ? window.navigator?.connection?.localAddress
-          : null,
+      ip_address: ipAddress
     });
 
     return {

@@ -10,15 +10,15 @@ import {
   Store,
   Send,
 } from "lucide-react";
-import { Button } from "../components/Button";
+import { Button } from "../components/ui/Button";
 import {
   Modal,
   ModalHeader,
   ModalBody,
   ModalFooter,
-} from "../components/Modal";
+} from "../components/ui/Modal";
 import { ConfirmationModal } from "../components/ConfirmationModal";
-import { Toast } from "../components/Toast";
+import { Toast } from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import { buildWhatsAppMsg } from "../utils/data";
 import { maskPhone, unmaskPhone, displayPhone } from "../utils/masks";

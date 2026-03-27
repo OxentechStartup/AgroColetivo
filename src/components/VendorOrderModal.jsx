@@ -1,5 +1,5 @@
 import { MessageCircle } from 'lucide-react'
-import { Modal, ModalHeader, ModalBody } from './Modal'
+import { Modal, ModalHeader, ModalBody } from './ui/Modal'
 import { calcSupplyStats } from '../utils/data'
 import { totalOrdered } from '../utils/data'
 import { formatCurrency, displayPhone } from '../utils/masks'

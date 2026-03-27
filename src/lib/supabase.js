@@ -17,12 +17,11 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
-    // ⚠️ IMPORTANTE: Desabilitar persistSession e autoRefreshToken
-    // Usuarios manuais não têm tokens Supabase, causando logout ao refresh
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    storageKey: "agro_auth",
+    // ✅ Habilitar persistência de sessão para Supabase Auth nativo
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: "supabase_auth",
   },
   headers: {
     "X-Client-Info": "agro-coletivo@0.22.0",
@@ -30,10 +29,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // Intercepta erros de refresh token inválido
-// ⚠️ NÃO remove localStorage em SIGNED_OUT porque usuários manuais precisam manter a sessão
 supabase.auth.onAuthStateChange((event, session) => {
-  // Para contas Supabase Auth: se session expirou, será feito logout
-  // Para contas manuais: ignorar changeEvents de Supabase, manter localStorage
   if (import.meta.env.DEV && event !== "INITIAL_SESSION") {
     console.log(
       `🔐 Auth event: ${event}`,

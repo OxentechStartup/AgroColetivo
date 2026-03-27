@@ -8,16 +8,27 @@ import {
   Trash2,
   Camera,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { updateVendor, createVendor } from "../lib/vendors";
 import { createImageUrl } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
-import { Button } from "../components/Button";
-import { Toast } from "../components/Toast";
+import {
+  validateVendorProfile,
+  getProfileErrorMessage,
+} from "../utils/vendorValidation";
+import { Button } from "../components/ui/Button";
+import { Toast } from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import styles from "./VendorProfilePage.module.css";
 
-export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
+export function VendorProfilePage({
+  user,
+  vendor,
+  onSaved,
+  onDeleteAccount,
+  navigate,
+}) {
   const [name, setName] = useState(vendor?.name ?? user?.name ?? "");
   const [phone, setPhone] = useState(
     vendor?.phone ? maskPhone(vendor.phone) : "",
@@ -64,8 +75,37 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
     setPhotoUrl("");
   };
 
+  // Valida se o perfil pode ser salvo
+  const getValidationError = () => {
+    const checks = [
+      { field: "name", label: "Nome da empresa" },
+      { field: "phone", label: "WhatsApp" },
+      { field: "city", label: "Cidade" },
+      { field: "notes", label: "Produtos que você fornece" },
+    ];
+
+    const missing = checks
+      .filter((check) => {
+        const value =
+          check.field === "name"
+            ? name
+            : check.field === "phone"
+              ? phone
+              : check.field === "city"
+                ? city
+                : notes;
+        return !value || !value.trim();
+      })
+      .map((check) => check.label);
+
+    return missing.length > 0 ? missing : null;
+  };
+
+  const validationError = getValidationError();
+  const canSave = !validationError && !saving;
+
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!canSave) return;
     setSaving(true);
     try {
       const payload = {
@@ -84,11 +124,14 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
       // Persiste photo_url na sessão local do vendor e do user (exibido na Topbar e Sidebar)
       try {
         const current = JSON.parse(localStorage.getItem("agro_auth") || "{}");
-        localStorage.setItem("agro_auth", JSON.stringify({ 
-          ...current, 
-          vendor_photo_url: photoUrl || null,
-          profile_photo_url: photoUrl || null,
-        }));
+        localStorage.setItem(
+          "agro_auth",
+          JSON.stringify({
+            ...current,
+            vendor_photo_url: photoUrl || null,
+            profile_photo_url: photoUrl || null,
+          }),
+        );
       } catch {}
       showToast("Perfil atualizado!");
       onSaved?.(result);
@@ -226,7 +269,7 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
                   size={12}
                   style={{ marginRight: 4, verticalAlign: "middle" }}
                 />
-                WhatsApp
+                WhatsApp *
               </label>
               <input
                 className="form-input"
@@ -242,7 +285,7 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
                   size={12}
                   style={{ marginRight: 4, verticalAlign: "middle" }}
                 />
-                Cidade
+                Cidade *
               </label>
               <input
                 className="form-input"
@@ -260,7 +303,7 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
                 size={12}
                 style={{ marginRight: 4, verticalAlign: "middle" }}
               />
-              Produtos que você fornece
+              Produtos que você fornece *
             </label>
             <textarea
               className="form-input"
@@ -272,10 +315,41 @@ export function VendorProfilePage({ user, vendor, onSaved, onDeleteAccount }) {
             />
           </div>
 
+          {/* Avisos de validação */}
+          {validationError && (
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "rgba(217, 119, 6, 0.1)",
+                border: "1px solid var(--amber)",
+                borderRadius: 6,
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              <AlertCircle
+                size={16}
+                style={{ color: "var(--amber)", flexShrink: 0, marginTop: 2 }}
+              />
+              <div style={{ fontSize: "0.9rem", color: "var(--text2)" }}>
+                <strong>Campos obrigatórios:</strong>
+                <ul style={{ marginTop: 6, paddingLeft: 20 }}>
+                  {validationError.map((field) => (
+                    <li key={field}>{field}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <Button
             variant="primary"
-            disabled={!name.trim() || saving}
+            disabled={!canSave}
             onClick={handleSave}
+            title={
+              validationError ? `Preencha: ${validationError.join(", ")}` : ""
+            }
           >
             {saving ? (
               "Salvando…"

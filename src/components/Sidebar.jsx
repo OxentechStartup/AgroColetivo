@@ -79,8 +79,8 @@ export function Sidebar({
           if (vendor?.photo_url) {
             setVendorPhoto(vendor.photo_url);
           }
-        } catch (err) {
-          console.error("Erro ao carregar foto do vendor:", err);
+        } catch {
+          // falha silenciosa — foto do vendor é complementar
         }
       };
       loadVendorPhoto();
@@ -89,18 +89,7 @@ export function Sidebar({
     }
   }, [user?.id, user?.role, user?.profile_photo_url]);
 
-  // Debug: verificar se props estão sendo passados
-  useEffect(() => {
-    if (!onProfile || !onLogout) {
-      console.warn(
-        "⚠️ Sidebar: Props onProfile ou onLogout não foram passados!",
-        {
-          hasOnProfile: !!onProfile,
-          hasOnLogout: !!onLogout,
-        },
-      );
-    }
-  }, [onProfile, onLogout]);
+
 
   // Recalcular posição do dropdown quando abrir
   useEffect(() => {
