@@ -386,9 +386,62 @@ grant all on all sequences in schema public to authenticated, anon;
 grant all on all functions in schema public to authenticated, anon;
 
 -- ══════════════════════════════════════════════════════════════
+-- PARTE 8: CRIAR USUÁRIO ADMIN DE TESTE
+-- ══════════════════════════════════════════════════════════════
+
+-- Criar admin para acessar o sistema
+INSERT INTO public.users (
+  id,
+  email,
+  name,
+  phone,
+  password_hash,
+  role,
+  active,
+  email_verified,
+  created_at
+) VALUES (
+  gen_random_uuid(),
+  'admin@agrocoletivo.com',
+  'Administrator',
+  '11999999999',
+  '',
+  'admin',
+  true,
+  true,
+  now()
+) ON CONFLICT (email) DO NOTHING;
+
+-- Criar exemplo de gestor (pivo)
+INSERT INTO public.users (
+  id,
+  email,
+  name,
+  phone,
+  password_hash,
+  role,
+  active,
+  email_verified,
+  created_at
+) VALUES (
+  gen_random_uuid(),
+  'gestor@agrocoletivo.com',
+  'Gestor de Cotações',
+  '11988888888',
+  '',
+  'pivo',
+  true,
+  true,
+  now()
+) ON CONFLICT (email) DO NOTHING;
+
+-- ══════════════════════════════════════════════════════════════
 -- FIM - SCHEMA v7 PRONTO PARA PRODUÇÃO ✅
 -- ══════════════════════════════════════════════════════════════
 SELECT 
   'Schema v7 aplicado com sucesso! ✅' as status,
-  '12 tabelas, 2 views, 2 funções, 3 triggers criados' as summary,
+  'Usuários de teste criados:' as info,
+  '  • admin@agrocoletivo.com (role: admin)' as user1,
+  '  • gestor@agrocoletivo.com (role: pivo)' as user2,
+  'Defina as senhas no Supabase Auth!' as reminder,
   NOW() as timestamp;
