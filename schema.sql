@@ -212,7 +212,6 @@ create index email_verifications_expires_idx on public.email_verifications(expir
 create table public.pending_registrations (
   id                uuid        primary key default gen_random_uuid(),
   email             text        unique not null,
-  password_hash     text        not null,
   name              text        not null,
   phone             text        not null default '',
   role              user_role   not null,
