@@ -73,9 +73,14 @@ export function LoginPage({ onLogin, onRegister, loading, error }) {
       return setLocalErr("Informe um email válido.");
     if (password.length < 6)
       return setLocalErr("Senha deve ter ao menos 6 caracteres.");
-    if (password !== confirm) return setLocalErr("As senhas não coincidem.");
+    if (password !== confirm) 
+      return setLocalErr("As senhas não coincidem.");
+    if (company.includes('@'))
+      return setLocalErr('Campo "Empresa" não pode conter email.');
     if (role === ROLES.VENDOR && !company.trim())
       return setLocalErr("Informe o nome da empresa.");
+    if (role === ROLES.GESTOR && !company.trim())
+      return setLocalErr("Informe o nome da associação.");
     onRegister(email, password, role, {
       company_name: company,
       city,
@@ -242,37 +247,67 @@ export function LoginPage({ onLogin, onRegister, loading, error }) {
                     />
                   </div>
 
-                  <div className="grid-2">
-                    <div className="form-group">
-                      <label className="form-label">WhatsApp</label>
-                      <input
-                        className="form-input"
-                        placeholder="(00) 00000-0000"
-                        value={phone}
-                        onChange={(e) => setPhone(maskPhone(e.target.value))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{role === ROLES.VENDOR ? "Empresa" : "Associação"}</label>
-                      <input
-                        className="form-input"
-                        placeholder="Nome fantasia"
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                      />
-                    </div>
-                  </div>
+                   <div className="grid-2">
+                     <div className="form-group">
+                       <label className="form-label">WhatsApp</label>
+                       <input
+                         className="form-input"
+                         placeholder="(00) 00000-0000"
+                         value={phone}
+                         onChange={(e) => setPhone(maskPhone(e.target.value))}
+                       />
+                     </div>
+                     <div className="form-group">
+                       <label className="form-label">{role === ROLES.VENDOR ? "Empresa" : "Associação"}</label>
+                       <input
+                         className="form-input"
+                         placeholder="Nome da sua empresa/associação"
+                         value={company}
+                         onChange={(e) => setCompany(e.target.value)}
+                         onBlur={(e) => {
+                           if (e.target.value.includes('@')) {
+                             setLocalErr('Campo "Empresa" não pode conter email. Digite apenas o nome.');
+                           }
+                         }}
+                       />
+                     </div>
+                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Senha de acesso</label>
-                    <input
-                      className="form-input"
-                      type="password"
-                      placeholder="Mínimo 6 caracteres"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
+                    <div className="grid-2">
+                      <div className="form-group">
+                        <label className="form-label">Senha de acesso</label>
+                        <div className={styles.inputIconWrapper}>
+                          <Lock size={18} className={styles.inputIcon} />
+                          <input
+                            className="form-input"
+                            type={showPwd ? "text" : "password"}
+                            placeholder="Mínimo 6 caracteres"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className={styles.eyeBtn}
+                            onClick={() => setShowPwd((s) => !s)}
+                          >
+                            {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Confirmar senha</label>
+                        <div className={styles.inputIconWrapper}>
+                          <Lock size={18} className={styles.inputIcon} />
+                          <input
+                            className="form-input"
+                            type={showPwd ? "text" : "password"}
+                            placeholder="Digite novamente"
+                            value={confirm}
+                            onChange={(e) => setConfirm(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
                   {displayError && (
                     <div className={styles.errorAlert} role="alert">
@@ -283,7 +318,7 @@ export function LoginPage({ onLogin, onRegister, loading, error }) {
                   <button
                     type="submit"
                     className={styles.mainActionBtn}
-                    disabled={loading || !isValidEmailCheck || password.length < 6}
+                    disabled={loading || !isValidEmailCheck || password.length < 6 || password !== confirm || !company.trim()}
                   >
                     {loading ? <Loader size={18} className="spin" /> : "Finalizar Cadastro"}
                   </button>
