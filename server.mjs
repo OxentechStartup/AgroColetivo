@@ -37,6 +37,10 @@ app.get("/api/ping", (req, res) => {
 
 // Debug endpoint para diagnosticar problemas (DEV/PROD)
 app.get("/api/debug", (req, res) => {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const sendgridKey = process.env.SENDGRID_API_KEY;
+
   res.json({
     status: "🟢 Server OK",
     timestamp: new Date().toISOString(),
@@ -45,8 +49,14 @@ app.get("/api/debug", (req, res) => {
       PORT: process.env.PORT || 3000,
       hasSupabaseUrl: !!process.env.VITE_SUPABASE_URL,
       hasSupabaseKey: !!process.env.VITE_SUPABASE_ANON_KEY,
-      hasGmailUser: !!process.env.GMAIL_USER,
-      hasGmailPassword: !!process.env.GMAIL_APP_PASSWORD,
+      email: {
+        hasGmailUser: !!gmailUser,
+        gmailUserValue: gmailUser ? `${gmailUser.substring(0, 5)}***` : "NÃO CONFIGURADO",
+        hasGmailPassword: !!gmailPass,
+        gmailPasswordLength: gmailPass ? gmailPass.replace(/\s/g, "").length : 0,
+        hasSendgridKey: !!sendgridKey,
+        sendgridKeyLength: sendgridKey ? sendgridKey.length : 0,
+      },
     },
     server: {
       uptime: process.uptime(),
