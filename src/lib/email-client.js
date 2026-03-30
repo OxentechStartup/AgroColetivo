@@ -34,7 +34,16 @@ export async function sendVerificationEmail(
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
+
+        if (!data.success) {
+          return {
+            success: false,
+            service: data.service || "fallback",
+            message: data.message || "Email será reenviado manualmente",
+          };
+        }
+
         return {
           success: true,
           service: "api-endpoint",

@@ -288,8 +288,9 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      success: true,
-      message: "Email será processado em breve",
+      success: false,
+      queued: false,
+      message: "Não foi possível enviar o email agora",
     });
   } catch (error) {
     console.error("❌ ERRO FATAL:", error.message);
