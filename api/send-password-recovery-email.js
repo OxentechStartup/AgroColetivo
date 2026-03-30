@@ -70,6 +70,11 @@ const htmlBody = (code, name) => `
 
 async function sendViaSendGrid(email, name, code) {
   const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail =
+    process.env.SENDGRID_FROM_EMAIL ||
+    process.env.GMAIL_USER ||
+    "oxentech.software@gmail.com";
+  const fromName = process.env.SENDGRID_FROM_NAME || "AgroColetivo";
   if (!apiKey) {
     console.log("⚠️ SendGrid: SENDGRID_API_KEY não configurada");
     return null;
@@ -84,7 +89,7 @@ async function sendViaSendGrid(email, name, code) {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email }] }],
-        from: { email: "oxentech.software@gmail.com", name: "AgroColetivo" },
+        from: { email: fromEmail, name: fromName },
         subject: "🔐 Redefinir sua senha - AgroColetivo",
         content: [{ type: "text/html", value: htmlBody(code, name) }],
       }),
@@ -110,7 +115,7 @@ async function sendViaSendGrid(email, name, code) {
 
 async function sendViaGmail(email, name, code) {
   const gmailUser = process.env.GMAIL_USER;
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
 
   if (!gmailUser || !gmailPassword) {
     console.log("⚠️ Gmail: GMAIL_USER ou GMAIL_APP_PASSWORD não configuradas");

@@ -70,6 +70,11 @@ const htmlBody = (code, name) => `
 
 async function sendViaSendGrid(email, name, code) {
   const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail =
+    process.env.SENDGRID_FROM_EMAIL ||
+    process.env.GMAIL_USER ||
+    "oxentech.software@gmail.com";
+  const fromName = process.env.SENDGRID_FROM_NAME || "AgroColetivo";
 
   console.log(`   ➤ SendGrid API Key exists: ${apiKey ? "SIM" : "NÃO"}`);
   console.log(`   ➤ Length: ${apiKey ? apiKey.length : 0}`);
@@ -89,7 +94,7 @@ async function sendViaSendGrid(email, name, code) {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email }] }],
-        from: { email: "oxentech.software@gmail.com", name: "AgroColetivo" },
+        from: { email: fromEmail, name: fromName },
         subject: "✉️ Confirme seu email - AgroColetivo",
         content: [{ type: "text/html", value: htmlBody(code, name) }],
       }),
