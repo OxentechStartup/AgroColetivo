@@ -70,12 +70,17 @@ const htmlBody = (code, name) => `
 
 async function sendViaSendGrid(email, name, code) {
   const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    console.log("⚠️ SendGrid: SENDGRID_API_KEY não configurada");
+
+  console.log(`   ➤ SendGrid API Key exists: ${apiKey ? "SIM" : "NÃO"}`);
+  console.log(`   ➤ Length: ${apiKey ? apiKey.length : 0}`);
+
+  if (!apiKey || !apiKey.trim()) {
+    console.log("   ❌ Pulando SendGrid: chave não configurada");
     return null;
   }
 
   try {
+    console.log(`   📤 Enviando via API SendGrid para ${email}...`);
     const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
       headers: {
@@ -90,16 +95,21 @@ async function sendViaSendGrid(email, name, code) {
       }),
     });
 
+    console.log(`   ⬅️ SendGrid respondeu com status: ${response.status}`);
+
     if (response.status === 202) {
-      console.log(`✅ Email enviado via SendGrid para ${email}`);
+      console.log(`   ✅ Email enfileirado no SendGrid`);
       return true;
     }
 
-    const errText = await response.text();
-    console.warn(`⚠️ SendGrid erro: ${response.status}`, errText);
+    const errText = await response.text().catch(() => "");
+    console.error(`   ❌ SendGrid erro HTTP ${response.status}`);
+    if (errText) {
+      console.error(`   Details: ${errText.substring(0, 200)}`);
+    }
     return null;
   } catch (error) {
-    console.warn("⚠️ SendGrid fetch error:", error.message);
+    console.error(`   ❌ SendGrid fetch exception: ${error.message}`);
     return null;
   }
 }
@@ -112,13 +122,19 @@ async function sendViaGmail(email, name, code) {
   const gmailUser = process.env.GMAIL_USER;
   const gmailPassword = process.env.GMAIL_APP_PASSWORD;
 
+  console.log(`   ➤ Gmail User exists: ${gmailUser ? "SIM" : "NÃO"}`);
+  console.log(
+    `   ➤ Gmail App Password exists: ${gmailPassword ? "SIM" : "NÃO"}`,
+  );
+
   if (!gmailUser || !gmailPassword) {
-    console.log("⚠️ Gmail: GMAIL_USER ou GMAIL_APP_PASSWORD não configuradas");
+    console.log("   ❌ Pulando Gmail: credenciais não configuradas");
     return null;
   }
 
   try {
     // Criar transporter do Nodemailer COM TIMEOUT
+    console.log(`   📤 Conectando ao SMTP do Gmail...`);
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
@@ -144,12 +160,20 @@ async function sendViaGmail(email, name, code) {
       setTimeout(() => reject(new Error("Gmail timeout")), 10000),
     );
 
+    console.log(`   ⏱️ Enviando (timeout: 10s)...`);
     const info = await Promise.race([sendPromise, timeoutPromise]);
 
-    console.log(`✅ Email enviado via Gmail para ${email} (${info.messageId})`);
+    console.log(`   ✅ Email aceito pelo Gmail (MessageID: ${info.messageId})`);
     return true;
   } catch (error) {
-    console.warn("⚠️ Gmail error:", error.message);
+    console.error(`   ❌ Gmail SMTP erro: ${error.message}`);
+    if (error.message.includes("EAUTH")) {
+      console.error("      → Credenciais inválidas ou senha de app incorreta");
+    } else if (error.message.includes("ETIMEDOUT")) {
+      console.error("      → Timeout na conexão com Gmail");
+    } else if (error.message.includes("timeout")) {
+      console.error("      → Timeout de 10s excedido no envio");
+    }
     return null;
   }
 }
@@ -159,6 +183,13 @@ async function sendViaGmail(email, name, code) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default async function handler(req, res) {
+  const startTime = Date.now();
+  console.log(`\n${"=".repeat(80)}`);
+  console.log(`📨 [${new Date().toISOString()}] HANDLER INICIADO`);
+  console.log(`   Método: ${req.method}`);
+  console.log(`   Body: ${JSON.stringify(req.body)}`);
+  console.log(`=`.repeat(80));
+
   try {
     // CORS com origem restrita
     const allowedOrigins = [
@@ -178,23 +209,30 @@ export default async function handler(req, res) {
 
     // Handle CORS preflight
     if (req.method === "OPTIONS") {
+      console.log("✅ CORS preflight respondido");
       return res.status(200).end();
     }
 
     if (req.method !== "POST") {
+      console.log("❌ Método não é POST");
       return res.status(405).json({ error: "Método não permitido" });
     }
 
     const { email, name, code } = req.body || {};
+    console.log(
+      `📧 Email recebido: ${email}, Name: ${name}, Code: ${code ? "presente" : "FALTANDO"}`,
+    );
 
     // ── 1. VALIDAR ENTRADA ────────────────────────────────────────────────
     const validation = validateEmailInput(email, name, code);
     if (!validation.valid) {
+      console.log(`❌ Validação falhou: ${JSON.stringify(validation.errors)}`);
       return res.status(400).json({
         error: "Dados inválidos",
         details: validation.errors,
       });
     }
+    console.log("✅ Validação passou");
 
     const cleanEmail = sanitizeString(email.toLowerCase());
     const cleanName = sanitizeString(name);
@@ -241,29 +279,38 @@ export default async function handler(req, res) {
     let sent = null;
     let service = null;
 
-    // Tentar SendGrid primeiro
+    console.log("🔄 Tentando SendGrid...");
     sent = await sendViaSendGrid(cleanEmail, cleanName, code);
     if (sent) {
       service = "sendgrid";
+      console.log("✅ SendGrid sucesso!");
+    } else {
+      console.log("❌ SendGrid falhou, tentando Gmail...");
     }
 
-    // Se SendGrid falhou, tentar Gmail
     if (!sent) {
-      console.log("📧 SendGrid falhou, tentando Gmail...");
+      console.log("🔄 Tentando Gmail SMTP...");
       sent = await sendViaGmail(cleanEmail, cleanName, code);
       if (sent) {
         service = "gmail";
+        console.log("✅ Gmail sucesso!");
+      } else {
+        console.log("❌ Gmail também falhou!");
       }
     }
 
     // ── 5. ATUALIZAR LOG ──────────────────────────────────────────────────
     if (sent) {
+      console.log(`🟢 Email foi enviado com sucesso via ${service}`);
       try {
         await updateEmailLogStatus(cleanEmail, "sent", service);
+        console.log("✅ Log de email atualizado no banco");
       } catch (err) {
         console.warn("⚠️ Não foi possível atualizar log:", err?.message);
       }
 
+      const duration = Date.now() - startTime;
+      console.log(`✅ RESPOSTA SUCESSO (${duration}ms) - Serviço: ${service}`);
       return res.status(200).json({
         success: true,
         message: "Email de verificação enviado com sucesso",
@@ -271,15 +318,25 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ambos falharam - fallback silencioso
-    console.log(
-      "⚠️ SendGrid e Gmail falharam - retornando sucesso para não bloquear",
+    // Ambos falharam - retornar erro claro
+    console.error("❌ FALHA CRÍTICA: SendGrid e Gmail ambos falharam");
+    console.error("   ℹ️ Próximas ações a verificar:");
+    console.error(
+      `   1. SENDGRID_API_KEY está configurada? ${process.env.SENDGRID_API_KEY ? "SIM" : "NÃO"}`,
     );
+    console.error(
+      `   2. GMAIL_USER está configurada? ${process.env.GMAIL_USER ? "SIM" : "NÃO"}`,
+    );
+    console.error(
+      `   3. GMAIL_APP_PASSWORD está configurada? ${process.env.GMAIL_APP_PASSWORD ? "SIM" : "NÃO"}`,
+    );
+    console.error("   4. Verifique se são as credenciais corretas");
+
     try {
       await updateEmailLogStatus(
         cleanEmail,
-        "pending",
-        "fallback",
+        "failed",
+        "none",
         null,
         "Ambos SendGrid e Gmail falharam",
       );
@@ -287,13 +344,20 @@ export default async function handler(req, res) {
       console.warn("⚠️ Não foi possível atualizar log:", err?.message);
     }
 
-    return res.status(200).json({
+    const duration = Date.now() - startTime;
+    console.log(`❌ RESPOSTA ERRO 503 (${duration}ms)`);
+    return res.status(503).json({
       success: false,
-      queued: false,
-      message: "Não foi possível enviar o email agora",
+      message:
+        "Serviço de email temporariamente indisponível. Tente novamente em alguns minutos.",
+      error: "email_service_unavailable",
+      userAction: "Tente clique em 'Reenviar Código' após alguns minutos",
     });
   } catch (error) {
-    console.error("❌ ERRO FATAL:", error.message);
+    const duration = Date.now() - startTime;
+    console.error(`\n❌ ERRO FATAL (${duration}ms):`);
+    console.error(`   Messagem: ${error.message}`);
+    console.error(`   Stack: ${error.stack}`);
 
     // Não retornar detalhes de erro em produção
     const message =
