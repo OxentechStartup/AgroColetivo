@@ -105,6 +105,7 @@ app.post("/api/send-verification-email", async (req, res) => {
 
     res.json({
       success: true,
+      service: "gmail",
       messageId: result.messageId,
       message: "Email enviado com sucesso",
     });
@@ -188,6 +189,7 @@ app.post("/api/send-login-alert-email", async (req, res) => {
 
     res.json({
       success: true,
+      service: "gmail",
       messageId: result.messageId,
       message: "Email de aviso de login enviado com sucesso",
     });
