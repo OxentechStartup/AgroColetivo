@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import sendVerificationEmailHandler from "./api/send-verification-email.js";
+import sendLoginAlertEmailHandler from "./api/send-login-alert-email.js";
 import {
   handleSendOrderEmail,
   handleSendProposalEmail,
@@ -32,6 +33,10 @@ app.get("/api/ping", (req, res) => {
 // Email verification endpoint
 app.post("/api/send-verification-email", sendVerificationEmailHandler);
 app.options("/api/send-verification-email", sendVerificationEmailHandler);
+
+// Login alert email endpoint
+app.post("/api/send-login-alert-email", sendLoginAlertEmailHandler);
+app.options("/api/send-login-alert-email", sendLoginAlertEmailHandler);
 
 // Notification email endpoints
 app.post("/api/send-order-email", handleSendOrderEmail);

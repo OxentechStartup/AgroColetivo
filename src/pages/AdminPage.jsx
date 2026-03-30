@@ -34,7 +34,7 @@ import {
   STATUS_LABEL,
 } from "../utils/data";
 import { formatCurrency } from "../utils/masks";
-import { fetchGestorsAdmin, setGestorActive } from "../lib/auth";
+import { fetchGestorsAdmin, setGestorActive } from "../lib/auth-new.js";
 import { markFeePaid } from "../lib/campaigns";
 import styles from "./AdminPage.module.css";
 
@@ -848,7 +848,7 @@ export function AdminPage({ campaigns, actions, reload }) {
               byGestor[gestor.id].campaigns.push(c);
             });
             const groups = Object.values(byGestor);
-            const unpaidGroups = groups
+            const _unpaidGroups = groups
               .map((g) => ({
                 ...g,
                 unpaid: g.campaigns.filter((c) => !c.feePaidAt),

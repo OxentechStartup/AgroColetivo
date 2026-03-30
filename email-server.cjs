@@ -3,6 +3,7 @@
  * Execute: node email-server.cjs
  *
  * Fornece endpoint HTTP POST /api/send-verification-email
+ * e POST /api/send-login-alert-email
  * que pode ser chamado do frontend/backend
  */
 
@@ -102,6 +103,84 @@ app.post("/api/send-verification-email", async (req, res) => {
   }
 });
 
+// ── Endpoint: Enviar email de aviso de login ─────────────────────────────────
+app.post("/api/send-login-alert-email", async (req, res) => {
+  try {
+    const { email, name, details } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const safeName = typeof name === "string" && name.trim() ? name : "Usuário";
+    const safeDetails = typeof details === "object" && details ? details : {};
+    const when = safeDetails.timestamp
+      ? new Date(safeDetails.timestamp).toLocaleString("pt-BR")
+      : new Date().toLocaleString("pt-BR");
+
+    const result = await transporter.sendMail({
+      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "🔐 Novo login na sua conta - AgroColetivo",
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { text-align: center; margin-bottom: 24px; }
+              .header h1 { color: #2c5f2d; margin: 0; }
+              .card { background: #f4f8f4; border-left: 4px solid #2c5f2d; border-radius: 6px; padding: 16px; margin: 20px 0; }
+              .warning { background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 6px; padding: 14px; margin-top: 16px; }
+              .footer { text-align: center; color: #999; font-size: 12px; margin-top: 24px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🔐 Aviso de Login</h1>
+              </div>
+              <p>Olá ${safeName},</p>
+              <p>Detectamos um novo acesso à sua conta no AgroColetivo.</p>
+
+              <div class="card">
+                <p><strong>Data e hora:</strong> ${when}</p>
+                <p><strong>Dispositivo:</strong> ${safeDetails.platform || "Desconhecido"}</p>
+                <p><strong>Navegador:</strong> ${safeDetails.userAgent || "Desconhecido"}</p>
+              </div>
+
+              <div class="warning">
+                <strong>Não foi você?</strong> Recomendamos alterar sua senha imediatamente.
+              </div>
+
+              <div class="footer">
+                <p>© 2026 AgroColetivo. Todos os direitos reservados.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `,
+    });
+
+    console.log(`✅ Email de aviso de login enviado para ${email} - ID: ${result.messageId}`);
+
+    res.json({
+      success: true,
+      messageId: result.messageId,
+      message: "Email de aviso de login enviado com sucesso",
+    });
+  } catch (error) {
+    console.error("❌ Erro ao enviar email de aviso de login:", error.message);
+
+    res.status(500).json({
+      success: false,
+      error: error.message || "Erro ao enviar email",
+    });
+  }
+});
+
 // ── Health check ────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "email-server" });
@@ -112,5 +191,8 @@ app.listen(PORT, () => {
   console.log(`🚀 Email Server rodando em http://localhost:${PORT}`);
   console.log(
     `📧 Endpoint: POST http://localhost:${PORT}/api/send-verification-email`,
+  );
+  console.log(
+    `📧 Endpoint: POST http://localhost:${PORT}/api/send-login-alert-email`,
   );
 });

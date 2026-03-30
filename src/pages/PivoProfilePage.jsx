@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { User, Phone, MapPin, Save, Trash2, Camera, X } from "lucide-react";
-import { updateUser } from "../lib/auth";
+import { updateUser } from "../lib/auth-new.js";
 import { createImageUrl } from "../lib/imageUpload";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { Button } from "../components/ui/Button";

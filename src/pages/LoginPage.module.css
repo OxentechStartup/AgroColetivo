@@ -1,20 +1,24 @@
 .page {
   min-height: 100dvh;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 80% -10%, rgba(15, 118, 110, 0.16), transparent 35%),
+    radial-gradient(circle at -10% 100%, rgba(180, 83, 9, 0.1), transparent 35%),
+    var(--bg);
   display: flex;
   overflow: hidden;
+  flex-direction: column;
 }
 
 .splitLayout {
   display: flex;
   width: 100%;
+  flex: 1;
 }
 
-/* ── Lado Visual ────────────────────────────────────────────── */
 .visualSide {
   flex: 1.2;
   position: relative;
-  background: #000;
+  background: #021b1b;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,8 +31,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.7;
-  filter: saturate(0.8) brightness(0.8);
+  opacity: 0.82;
+  filter: saturate(0.92) brightness(0.68) contrast(1.05);
 }
 
 .overlay {
@@ -36,8 +40,9 @@
   inset: 0;
   background: linear-gradient(
     135deg,
-    rgba(5, 150, 105, 0.4) 0%,
-    rgba(15, 23, 42, 0.8) 100%
+    rgba(6, 95, 70, 0.45) 0%,
+    rgba(8, 47, 73, 0.86) 52%,
+    rgba(17, 24, 39, 0.9) 100%
   );
   z-index: 1;
 }
@@ -54,7 +59,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 40px;
+  margin-bottom: 26px;
 }
 
 .visualBrand {
@@ -63,36 +68,94 @@
   letter-spacing: -0.02em;
 }
 
+.visualKicker {
+  display: inline-flex;
+  margin-bottom: 14px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 6px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(2px);
+}
+
 .visualTitle {
-  font-size: 2.75rem;
+  font-size: clamp(2rem, 3.6vw, 3rem);
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 24px;
+  line-height: 1.08;
+  margin-bottom: 18px;
   letter-spacing: -0.03em;
+  max-width: 520px;
 }
 
 .visualSub {
-  font-size: 1.125rem;
+  font-size: 1rem;
   opacity: 0.9;
-  line-height: 1.6;
+  line-height: 1.65;
+  max-width: 480px;
 }
 
-/* ── Lado do Formulário ──────────────────────────────────────── */
-.formSide {
+.visualBullets {
+  margin-top: 26px;
+  display: grid;
+  gap: 10px;
+}
+
+.visualBullet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.91rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.visualStats {
+  margin-top: 28px;
+  display: flex;
+  gap: 12px;
+}
+
+.statCard {
   flex: 1;
-  background: var(--surface);
+  min-width: 140px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  padding: 12px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.statCard strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 2px;
+}
+
+.statCard span {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.authSide {
+  flex: 1;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.95)),
+    var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px;
   position: relative;
   z-index: 10;
-  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.05);
+  box-shadow: -18px 0 48px rgba(15, 23, 42, 0.09);
 }
 
-.formContainer {
+.authContainer {
   width: 100%;
-  max-width: 400px;
+  max-width: 460px;
 }
 
 .contentAnim {
@@ -100,16 +163,54 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--border);
+  padding: 6px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.modeBtn {
+  height: 38px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modeBtn:hover {
+  color: var(--text);
+}
+
+.modeBtnActive {
+  background: #fff;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .formHeader {
-  margin-bottom: 32px;
+  margin-bottom: 20px;
 }
 
 .title {
-  font-size: 1.75rem;
+  font-size: 1.68rem;
   font-weight: 800;
   color: var(--text);
   margin-bottom: 8px;
@@ -124,10 +225,9 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-/* ── Inputs com ícones ────────────────────────────────────────── */
 .inputIconWrapper {
   position: relative;
   display: flex;
@@ -143,7 +243,7 @@
 
 .inputIconWrapper :global(.form-input) {
   padding-left: 44px;
-  height: 48px;
+  height: 46px;
 }
 
 .eyeBtn {
@@ -178,7 +278,6 @@
   cursor: pointer;
 }
 
-/* ── Mensagens de Erro ───────────────────────────────────────── */
 .errorAlert {
   background: var(--red-dim);
   border: 1px solid var(--red-border);
@@ -189,14 +288,13 @@
   line-height: 1.4;
 }
 
-/* ── Botões de Ação ──────────────────────────────────────────── */
 .mainActionBtn {
   background: var(--primary);
   color: #fff;
   border: none;
-  height: 52px;
+  height: 48px;
   border-radius: var(--r);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
@@ -204,14 +302,14 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 10px;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+  margin-top: 4px;
+  box-shadow: 0 6px 14px rgba(5, 150, 105, 0.18);
 }
 
 .mainActionBtn:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3);
+  box-shadow: 0 8px 18px rgba(5, 150, 105, 0.24);
 }
 
 .mainActionBtn:disabled {
@@ -220,9 +318,9 @@
 }
 
 .footer {
-  margin-top: 40px;
+  margin-top: 24px;
   text-align: center;
-  padding-top: 24px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
 }
 
@@ -236,12 +334,15 @@
   background: var(--surface2);
   color: var(--primary);
   border: 1px solid var(--primary-border);
-  padding: 10px 24px;
+  padding: 9px 16px;
   border-radius: var(--r);
   font-weight: 700;
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .secondaryActionBtn:hover {
@@ -249,12 +350,11 @@
   border-color: var(--primary);
 }
 
-/* ── Seleção de Cargo (Role) ─────────────────────────────────── */
 .roleSelection {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .roleOption {
@@ -263,7 +363,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
   cursor: pointer;
@@ -273,6 +373,11 @@
 
 .roleOption svg {
   color: var(--text3);
+}
+
+.roleOption:hover {
+  border-color: var(--primary-border);
+  transform: translateY(-1px);
 }
 
 .roleTexts {
@@ -295,6 +400,7 @@
 .roleActive {
   border-color: var(--primary);
   background: var(--primary-dim);
+  box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.2);
 }
 
 .roleActive svg {
@@ -305,25 +411,337 @@
   color: var(--primary);
 }
 
-/* ── Responsivo ─────────────────────────────────────────────── */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text3);
+}
+
+.stepItem span {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: #fff;
+}
+
+.stepItem p {
+  font-size: 0.76rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.stepLine {
+  height: 1px;
+  flex: 1;
+  background: var(--border);
+}
+
+.stepActive {
+  color: var(--primary);
+}
+
+.stepActive span {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+}
+
+.passwordCard {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: linear-gradient(180deg, #fff, var(--surface));
+}
+
+.passwordHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.passwordHead p {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text2);
+}
+
+.passwordMeterWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.passwordMeterTrack {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--border);
+  flex: 1;
+  overflow: hidden;
+}
+
+.passwordMeterFill {
+  height: 100%;
+  border-radius: inherit;
+  transition: all 0.2s;
+}
+
+.strength_weak {
+  background: #ef4444;
+}
+
+.strength_medium {
+  background: #f59e0b;
+}
+
+.strength_strong {
+  background: #22c55e;
+}
+
+.passwordStrengthLabel {
+  font-size: 0.74rem;
+  color: var(--text2);
+  min-width: 78px;
+  text-align: right;
+}
+
+.passwordRules {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.passwordRules li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text3);
+  font-size: 0.75rem;
+}
+
+.ruleOk {
+  color: var(--primary) !important;
+}
+
+.termsCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+
+.termsCheck input {
+  margin-top: 2px;
+  accent-color: var(--primary);
+}
+
+.termsCheck span {
+  font-size: 0.77rem;
+  color: var(--text2);
+  line-height: 1.4;
+}
+
+.stepActions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.backBtn {
+  height: 46px;
+  border-radius: var(--r);
+  border: 1px solid var(--border2);
+  background: #fff;
+  color: var(--text2);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.backBtn:hover {
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
 @media (max-width: 1024px) {
   .visualSide {
     display: none;
   }
-  .formSide {
+
+  .authSide {
     box-shadow: none;
+    flex: 1;
+  }
+
+  .authContainer {
+    max-width: 540px;
   }
 }
 
-@media (max-width: 640px) {
-  .formSide {
-    padding: 24px;
+@media (max-width: 768px) {
+  .page {
+    background: var(--surface);
   }
+
+  .splitLayout {
+    flex-direction: column;
+  }
+
+  .visualSide {
+    display: none !important;
+  }
+
+  .authSide {
+    padding: 32px 24px;
+    min-height: 100dvh;
+    background: var(--surface);
+  }
+
+  .authContainer {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .form {
+    gap: 14px;
+  }
+
   .title {
-    font-size: 1.5rem;
+    font-size: 1.45rem;
+    margin-bottom: 6px;
   }
-  .grid-2 {
+
+  .sub {
+    font-size: 0.875rem;
+  }
+
+  .mainActionBtn {
+    height: 48px;
+    font-size: 0.95rem;
+  }
+
+  .secondaryActionBtn {
+    padding: 8px 14px;
+    font-size: 0.8125rem;
+  }
+
+  :global(.grid-2) {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .roleSelection {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .roleOption {
+    padding: 14px 12px;
+    gap: 10px;
+  }
+
+  .roleName {
+    font-size: 0.8125rem;
+  }
+
+  .roleDesc {
+    font-size: 0.7rem;
+  }
+
+  .stepActions {
     grid-template-columns: 1fr;
-    gap: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .authSide {
+    padding: 24px 16px;
+  }
+
+  .formHeader {
+    margin-bottom: 16px;
+  }
+
+  .title {
+    font-size: 1.2rem;
+    line-height: 1.3;
+  }
+
+  .form {
+    gap: 12px;
+  }
+
+  .inputIcon {
+    left: 12px;
+  }
+
+  .inputIconWrapper :global(.form-input) {
+    padding-left: 40px;
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .eyeBtn {
+    right: 10px;
+  }
+
+  .labelRow {
+    margin-bottom: 6px;
+  }
+
+  .errorAlert {
+    font-size: 0.8125rem;
+    padding: 10px 12px;
+  }
+
+  .mainActionBtn {
+    height: 44px;
+    margin-top: 6px;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);
+  }
+
+  .backBtn {
+    height: 44px;
+  }
+
+  .footer {
+    margin-top: 22px;
+    padding-top: 16px;
+  }
+
+  .footer p {
+    font-size: 0.8125rem;
+  }
+
+  .roleSelection {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .roleOption {
+    padding: 12px 10px;
+    gap: 8px;
   }
 }
