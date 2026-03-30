@@ -142,21 +142,30 @@ async function sendViaGmail(email, name, code) {
   }
 
   try {
-    // Criar transporter do Nodemailer COM TIMEOUT
+    // Criar transporter do Nodemailer COM TIMEOUT AUMENTADO PARA RENDER
     console.log(`   📤 Conectando ao SMTP do Gmail...`);
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 587,
       secure: false,
-      connectionTimeout: 5000, // 5 segundos
-      socketTimeout: 5000, // 5 segundos
+      connectionTimeout: 15000, // 15 segundos (Render é mais lento)
+      socketTimeout: 15000, // 15 segundos
+      greetingTimeout: 15000,
       auth: {
         user: gmailUser,
         pass: gmailPassword,
       },
+      pool: {
+        maxConnections: 1,
+        maxMessages: 1,
+        rateDelta: 100,
+        rateLimit: true,
+      },
+      logger: true,
+      debug: process.env.NODE_ENV !== "production",
     });
 
-    // Enviar email com promise timeout de 10 segundos
+    // Enviar email com promise timeout de 30 segundos (mais generoso para Render)
     const sendPromise = transporter.sendMail({
       from: `"AgroColetivo" <${gmailUser}>`,
       to: email,
@@ -164,12 +173,12 @@ async function sendViaGmail(email, name, code) {
       html: htmlBody(code, name),
     });
 
-    // Adicionar timeout max 10 segundos
+    // Adicionar timeout max 30 segundos
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Gmail timeout")), 10000),
+      setTimeout(() => reject(new Error("Gmail timeout")), 30000),
     );
 
-    console.log(`   ⏱️ Enviando (timeout: 10s)...`);
+    console.log(`   ⏱️ Enviando (timeout: 30s)...`);
     const info = await Promise.race([sendPromise, timeoutPromise]);
 
     console.log(`   ✅ Email aceito pelo Gmail (MessageID: ${info.messageId})`);
