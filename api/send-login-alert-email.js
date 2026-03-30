@@ -89,7 +89,7 @@ const htmlBody = (name, details) => {
 
 async function sendViaGmail(email, name, details) {
   const gmailUser = process.env.GMAIL_USER;
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
 
   if (!gmailUser || !gmailPassword) {
     return null;
@@ -131,6 +131,7 @@ export default async function handler(req, res) {
     const allowedOrigins = [
       process.env.FRONTEND_URL || "http://localhost:5173",
       "https://agro-coletivo.vercel.app",
+      "https://agrocoletivo.onrender.com",
       process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     ].filter(Boolean);
 
@@ -155,7 +156,9 @@ export default async function handler(req, res) {
 
     const validation = validateLoginAlertInput(email, name, details);
     if (!validation.valid) {
-      return res.status(400).json({ error: "Dados inválidos", details: validation.errors });
+      return res
+        .status(400)
+        .json({ error: "Dados inválidos", details: validation.errors });
     }
 
     const cleanEmail = sanitizeString(email.toLowerCase());

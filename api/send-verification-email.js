@@ -99,7 +99,11 @@ async function sendViaSendGrid(email, name, code) {
 
     if (response.status === 202) {
       console.log(`   ✅ Email enfileirado no SendGrid`);
-      return true;
+      return {
+        success: true,
+        service: "sendgrid",
+        messageId: response.headers.get("x-message-id") || null,
+      };
     }
 
     const errText = await response.text().catch(() => "");
@@ -120,7 +124,7 @@ async function sendViaSendGrid(email, name, code) {
 
 async function sendViaGmail(email, name, code) {
   const gmailUser = process.env.GMAIL_USER;
-  const gmailPassword = process.env.GMAIL_APP_PASSWORD;
+  const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
 
   console.log(`   ➤ Gmail User exists: ${gmailUser ? "SIM" : "NÃO"}`);
   console.log(
@@ -164,7 +168,11 @@ async function sendViaGmail(email, name, code) {
     const info = await Promise.race([sendPromise, timeoutPromise]);
 
     console.log(`   ✅ Email aceito pelo Gmail (MessageID: ${info.messageId})`);
-    return true;
+    return {
+      success: true,
+      service: "gmail",
+      messageId: info.messageId,
+    };
   } catch (error) {
     console.error(`   ❌ Gmail SMTP erro: ${error.message}`);
     if (error.message.includes("EAUTH")) {
@@ -195,6 +203,7 @@ export default async function handler(req, res) {
     const allowedOrigins = [
       process.env.FRONTEND_URL || "http://localhost:5173",
       "https://agro-coletivo.vercel.app",
+      "https://agrocoletivo.onrender.com",
       process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     ].filter(Boolean);
 
@@ -281,8 +290,8 @@ export default async function handler(req, res) {
 
     console.log("🔄 Tentando SendGrid...");
     sent = await sendViaSendGrid(cleanEmail, cleanName, code);
-    if (sent) {
-      service = "sendgrid";
+    if (sent?.success) {
+      service = sent.service;
       console.log("✅ SendGrid sucesso!");
     } else {
       console.log("❌ SendGrid falhou, tentando Gmail...");
@@ -291,8 +300,8 @@ export default async function handler(req, res) {
     if (!sent) {
       console.log("🔄 Tentando Gmail SMTP...");
       sent = await sendViaGmail(cleanEmail, cleanName, code);
-      if (sent) {
-        service = "gmail";
+      if (sent?.success) {
+        service = sent.service;
         console.log("✅ Gmail sucesso!");
       } else {
         console.log("❌ Gmail também falhou!");
@@ -300,10 +309,15 @@ export default async function handler(req, res) {
     }
 
     // ── 5. ATUALIZAR LOG ──────────────────────────────────────────────────
-    if (sent) {
+    if (sent?.success) {
       console.log(`🟢 Email foi enviado com sucesso via ${service}`);
       try {
-        await updateEmailLogStatus(cleanEmail, "sent", service);
+        await updateEmailLogStatus(
+          cleanEmail,
+          "sent",
+          service,
+          sent.messageId || null,
+        );
         console.log("✅ Log de email atualizado no banco");
       } catch (err) {
         console.warn("⚠️ Não foi possível atualizar log:", err?.message);
@@ -315,7 +329,7 @@ export default async function handler(req, res) {
         success: true,
         message: "Email de verificação enviado com sucesso",
         service,
-        messageId: sent?.messageId || "no-id",
+        messageId: sent.messageId || null,
       });
     }
 
