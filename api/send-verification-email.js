@@ -315,6 +315,7 @@ export default async function handler(req, res) {
         success: true,
         message: "Email de verificação enviado com sucesso",
         service,
+        messageId: sent?.messageId || "no-id",
       });
     }
 
