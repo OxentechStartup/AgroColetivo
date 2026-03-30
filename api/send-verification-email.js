@@ -338,7 +338,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ambos falharam - retornar erro claro
+    // Ambos falharam - fallback gracioso para nao bloquear o cadastro
     console.error("❌ FALHA CRÍTICA: SendGrid e Gmail ambos falharam");
     console.error("   ℹ️ Próximas ações a verificar:");
     console.error(
@@ -365,13 +365,15 @@ export default async function handler(req, res) {
     }
 
     const duration = Date.now() - startTime;
-    console.log(`❌ RESPOSTA ERRO 503 (${duration}ms)`);
-    return res.status(503).json({
+    console.log(`⚠️ RESPOSTA FALLBACK 200 (${duration}ms)`);
+    return res.status(200).json({
       success: false,
+      service: "fallback",
+      queued: false,
       message:
-        "Serviço de email temporariamente indisponível. Tente novamente em alguns minutos.",
+        "Não foi possível enviar o email agora. Use 'Reenviar Código' em alguns minutos.",
       error: "email_service_unavailable",
-      userAction: "Tente clique em 'Reenviar Código' após alguns minutos",
+      userAction: "Tente clicar em 'Reenviar Código' após alguns minutos",
     });
   } catch (error) {
     const duration = Date.now() - startTime;
