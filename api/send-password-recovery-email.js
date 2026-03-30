@@ -11,7 +11,7 @@
  * Estratégia de envio:
  * 1. SendGrid (se SENDGRID_API_KEY configurada)
  * 2. Gmail SMTP (fallback automático)
- * 3. Sucesso silencioso se ambas falharem
+ * 3. Retorno explícito de falha se ambas falharem
  */
 
 import nodemailer from "nodemailer";
@@ -280,15 +280,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ambos falharam - fallback silencioso
-    console.log(
-      "⚠️ SendGrid e Gmail falharam - retornando sucesso para não bloquear",
-    );
+    // Ambos falharam - retorno explícito para o frontend mostrar ação ao usuário
+    console.log("⚠️ SendGrid e Gmail falharam - retornando falha controlada");
     try {
       await updateEmailLogStatus(
         cleanEmail,
-        "pending",
-        "fallback",
+        "failed",
+        "none",
         null,
         "Ambos SendGrid e Gmail falharam",
       );
@@ -297,8 +295,13 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      success: true,
-      message: "Email será processado em breve",
+      success: false,
+      service: "fallback",
+      queued: false,
+      message:
+        "Não foi possível enviar o email agora. Use 'Reenviar Código' em alguns minutos.",
+      error: "email_service_unavailable",
+      userAction: "Tente clicar em 'Reenviar Código' após alguns minutos",
     });
   } catch (error) {
     console.error("❌ ERRO FATAL:", error.message);

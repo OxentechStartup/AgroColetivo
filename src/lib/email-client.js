@@ -103,18 +103,27 @@ export async function sendPasswordRecoveryEmail(
       }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        success: true,
-        service: "api-endpoint",
-        messageId: data.messageId,
-        message: "Email de recuperação enviado com sucesso",
-      };
-    } else {
+    if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       throw new Error(errData.error || `Servidor retornou ${response.status}`);
     }
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!data.success) {
+      return {
+        success: false,
+        service: data.service || "fallback",
+        message: data.message || "Email será reenviado manualmente",
+      };
+    }
+
+    return {
+      success: true,
+      service: data.service || "api-endpoint",
+      messageId: data.messageId,
+      message: data.message || "Email de recuperação enviado com sucesso",
+    };
   } catch (error) {
     console.warn(
       "⚠️ Não foi possível enviar email de recuperação:",
