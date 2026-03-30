@@ -8,8 +8,11 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
-// Carregar variáveis de ambiente
-dotenv.config();
+// Carregar variáveis de ambiente apenas em desenvolvimento
+// Em produção (Render), as variáveis vêm do Render Dashboard
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
 
 import sendVerificationEmailHandler from "./api/send-verification-email.js";
 import sendLoginAlertEmailHandler from "./api/send-login-alert-email.js";
