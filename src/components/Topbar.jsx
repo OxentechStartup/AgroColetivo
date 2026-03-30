@@ -1,4 +1,4 @@
-import { Menu, ExternalLink, LogOut } from "lucide-react";
+import { Menu, ExternalLink } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import { NotificationBell } from "./NotificationBell";
 import styles from "./Topbar.module.css";
@@ -16,8 +16,6 @@ export function Topbar({
   onPortalClick,
   onStatusOrdersClick,
   user,
-  onLogout,
-  onProfile,
 }) {
   const role = user?.role ?? ROLES.GESTOR;
 

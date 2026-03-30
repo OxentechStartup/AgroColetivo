@@ -1,15 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Suporta tanto Vite (import.meta.env) quanto Node.js (process.env)
-const SUPABASE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_SUPABASE_URL) ||
-  process.env.VITE_SUPABASE_URL ||
-  "";
-const SUPABASE_KEY =
-  (typeof import.meta !== "undefined" &&
-    import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  "";
+// Vite usa import.meta.env (não process.env)
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
+const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.warn("⚠️ Credenciais Supabase não configuradas.");

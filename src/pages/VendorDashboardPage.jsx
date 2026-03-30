@@ -23,10 +23,6 @@ import { Toast } from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import { STATUS_LABEL } from "../utils/data";
 import { formatCurrency, maskCurrency, unmaskCurrency } from "../utils/masks";
-import {
-  validateVendorProfile,
-  getProfileErrorMessage,
-} from "../utils/vendorValidation";
 import { createOffer, fetchVendorOffers } from "../lib/offers";
 import { notifyManagerProposalReceived } from "../lib/notifications";
 import { LoadingScreen, ErrorScreen } from "../components/LoadingScreen";
@@ -150,7 +146,7 @@ function OfferModal({
 
       onSent();
       onClose();
-    } catch (e) {
+    } catch (_e) {
       setErr("Não foi possível enviar sua proposta. Tente novamente.");
     } finally {
       setSaving(false);
@@ -649,9 +645,19 @@ function AvailableCampaignCard({ campaign, vendorId, onSent, vendor, reload }) {
 }
 
 // ── Página principal do vendor ────────────────────────────────────────────────
-export function VendorDashboardPage({ user, navigate }) {
-  // ✅ Usar useContext para obter dados e funções de atualização
+export function VendorDashboardPage({ user: _user, navigate }) {
   const context = useContext(AppContext);
+
+  const {
+    campaigns = [],
+    ownVendor,
+    reload,
+  } = context ?? {};
+
+  const { toast, showToast, clearToast } = useToast();
+
+  const [myOffers, setMyOffers] = useState([]);
+  const [loadingOffers, setLoadingOffers] = useState(true);
 
   if (!context) {
     return (
@@ -661,18 +667,6 @@ export function VendorDashboardPage({ user, navigate }) {
       />
     );
   }
-
-  const {
-    campaigns = [],
-    vendors = [],
-    ownVendor,
-    reload,
-    campaignsLoading,
-  } = context;
-  const { toast, showToast, clearToast } = useToast();
-
-  const [myOffers, setMyOffers] = useState([]);
-  const [loadingOffers, setLoadingOffers] = useState(true);
 
   // 🔧 Usar ownVendor para vendor próprio (já está atualizado no contexto)
   const vendor = ownVendor ?? null;

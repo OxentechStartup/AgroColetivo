@@ -1,0 +1,29 @@
+ID,Severity,Category,File,Line,Issue,Impact,Fix Priority
+CRIT-001,CRITICAL,Credentials,".env",1-20,Exposed Supabase ANON_KEY and URL in version control,Complete database compromise,IMMEDIATE
+CRIT-002,CRITICAL,Database Security,"schema.sql",356-370,RLS disabled on all 12 tables,Any user can read/write all data,IMMEDIATE
+CRIT-003,CRITICAL,API Security,"server.mjs, api/*",32-56,No authentication on email endpoints,Spam/DOS/enumeration attacks,IMMEDIATE
+HIGH-001,HIGH,Input Validation,"src/lib/campaigns.js",75-127,Missing validation on campaign creation,Invalid data in database,BEFORE LAUNCH
+HIGH-002,HIGH,Authorization,"src/lib/offers.js",38-76,No ownership check on offer creation,Cross-vendor data access,BEFORE LAUNCH
+HIGH-003,HIGH,Authentication,"src/lib/auth.js",609-622,Password reset timing leak,User enumeration attack,BEFORE LAUNCH
+HIGH-004,HIGH,Rate Limiting,"api/*.js",All,No server-side rate limiting,DOS/spam attacks,BEFORE LAUNCH
+HIGH-005,HIGH,CORS,"api/send-verification-email.js",148,CORS allows any origin (*),Cross-origin attacks,BEFORE LAUNCH
+HIGH-006,HIGH,CSRF,"server.mjs",All,No CSRF token protection,Cross-site form hijacking,BEFORE LAUNCH
+HIGH-007,HIGH,Infrastructure,"vite.config.js",23,Supabase URL in bundle,Information disclosure,MEDIUM PRIORITY
+HIGH-008,HIGH,Transactions,"src/lib/offers.js",80-170,No atomic transactions,Database inconsistency,MEDIUM PRIORITY
+HIGH-009,HIGH,Authorization,"src/lib/campaigns.js",All,Missing campaign ownership checks,Unauthorized modification,BEFORE LAUNCH
+HIGH-010,HIGH,Schema,"schema.sql",79,Plaintext password_hash field,Legacy security debt,POST-LAUNCH
+MED-001,MEDIUM,Validation,"api/send-verification-email.js",155-161,No email format validation,Invalid data acceptance,MEDIUM PRIORITY
+MED-002,MEDIUM,Idempotency,"api/*.js",All,No idempotency keys,Duplicate emails,MEDIUM PRIORITY
+MED-003,MEDIUM,Error Handling,"src/lib/campaigns.js",All,Generic error messages,Poor debugging,MEDIUM PRIORITY
+MED-004,MEDIUM,Session Storage,"src/lib/auth.js",761,Plaintext user data in localStorage,XSS vulnerability,MEDIUM PRIORITY
+MED-005,MEDIUM,Entropy,"src/lib/auth.js",25-27,6-digit verification code,Brute force attacks,MEDIUM PRIORITY
+MED-006,MEDIUM,Session Management,"src/lib/auth.js",458-460,logout() function empty,Sessions not terminated,MEDIUM PRIORITY
+MED-007,MEDIUM,Observability,"api/*.js",All,No error tracking,Blind to production issues,POST-LAUNCH
+MED-008,MEDIUM,Performance,"schema.sql",All,Missing FK indexes,Slow queries,POST-LAUNCH
+MED-009,MEDIUM,Audit,"schema.sql",All,No audit_logs table,No compliance trail,POST-LAUNCH
+MED-010,MEDIUM,Environment,"src/lib/supabase.js",14-16,No production env validation,Silent failures,MEDIUM PRIORITY
+MED-011,MEDIUM,Testing,"src/",All,Missing integration tests,Untested flows,POST-LAUNCH
+MED-012,MEDIUM,Security Headers,"server.mjs",All,Missing security headers,Browser security bypass,BEFORE LAUNCH
+LOW-001,LOW,Order Logic,"src/lib/campaigns.js",193-208,Campaign not validated,Invalid orders created,MEDIUM PRIORITY
+LOW-002,LOW,Quantity Logic,"src/lib/campaigns.js",All,No min/max quantity validation,Invalid data,MEDIUM PRIORITY
+LOW-003,LOW,Offer Settlement,"src/lib/offers.js",105-170,Race condition in settlement,Oversupply possible,MEDIUM PRIORITY

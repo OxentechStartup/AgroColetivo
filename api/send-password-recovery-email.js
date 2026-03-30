@@ -1,5 +1,5 @@
 /**
- * Email Verification Endpoint — /api/send-verification-email
+ * Password Recovery Email Endpoint — /api/send-password-recovery-email
  *
  * Defesas de segurança:
  * ✅ Rate limiting (3 tentativas por email em 24h)
@@ -32,31 +32,31 @@ const htmlBody = (code, name) => `
   <style>
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
     .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px; }
-    .header { text-align: center; border-bottom: 2px solid #e8f5e9; padding-bottom: 20px; margin-bottom: 30px; }
-    .header h1 { color: #2c5f2d; font-size: 28px; margin: 0; }
-    .code-box { background: linear-gradient(135deg, #e8f5e9, #f1f8e9); padding: 30px; border-radius: 8px; text-align: center; margin: 30px 0; border-left: 4px solid #2c5f2d; }
-    .code { font-size: 44px; font-weight: bold; letter-spacing: 8px; color: #2c5f2d; font-family: 'Courier New', monospace; }
+    .header { text-align: center; border-bottom: 2px solid #fff3e0; padding-bottom: 20px; margin-bottom: 30px; }
+    .header h1 { color: #d97706; font-size: 28px; margin: 0; }
+    .code-box { background: linear-gradient(135deg, #fef3c7, #fef9e7); padding: 30px; border-radius: 8px; text-align: center; margin: 30px 0; border-left: 4px solid #d97706; }
+    .code { font-size: 44px; font-weight: bold; letter-spacing: 8px; color: #d97706; font-family: 'Courier New', monospace; }
     .code-label { color: #666; font-size: 12px; margin-top: 10px; }
-    .warning { background: #fff3e0; padding: 15px; border-radius: 5px; border-left: 4px solid #ff9800; margin: 20px 0; }
+    .warning { background: #fee2e2; padding: 15px; border-radius: 5px; border-left: 4px solid #dc2626; margin: 20px 0; }
     .footer { text-align: center; color: #999; font-size: 11px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>🌾 AgroColetivo</h1>
-      <p style="color:#666;margin:8px 0 0">Bem-vindo ao nosso sistema!</p>
+      <h1>🔐 AgroColetivo</h1>
+      <p style="color:#666;margin:8px 0 0">Redefinir Senha</p>
     </div>
     <p>Olá <strong>${name}</strong>,</p>
-    <p>Para confirmar seu email e acessar o AgroColetivo, use o código abaixo:</p>
+    <p>Recebemos uma solicitação para redefinir sua senha no AgroColetivo. Use o código abaixo para prosseguir:</p>
     <div class="code-box">
       <div class="code">${code}</div>
-      <p class="code-label">Este código expira em 24 horas</p>
+      <p class="code-label">Este código expira em 15 minutos</p>
     </div>
     <div class="warning">
-      <strong>⚠️ Segurança:</strong> Nunca compartilhe este código com ninguém.
+      <strong>🔒 Segurança:</strong> Nunca compartilhe este código com ninguém. Se você não solicitou redefinição de senha, ignore este email.
     </div>
-    <p>Se você não se cadastrou no AgroColetivo, ignore este email.</p>
+    <p>Por motivos de segurança, esta solicitação foi registrada em nossos servidores.</p>
     <div class="footer">
       <p>© 2026 AgroColetivo · Oxentech Software</p>
     </div>
@@ -85,13 +85,13 @@ async function sendViaSendGrid(email, name, code) {
       body: JSON.stringify({
         personalizations: [{ to: [{ email }] }],
         from: { email: "oxentech.software@gmail.com", name: "AgroColetivo" },
-        subject: "✉️ Confirme seu email - AgroColetivo",
+        subject: "🔐 Redefinir sua senha - AgroColetivo",
         content: [{ type: "text/html", value: htmlBody(code, name) }],
       }),
     });
 
     if (response.status === 202) {
-      console.log(`✅ Email enviado via SendGrid para ${email}`);
+      console.log(`✅ Email de recuperação enviado via SendGrid para ${email}`);
       return true;
     }
 
@@ -135,7 +135,7 @@ async function sendViaGmail(email, name, code) {
     const sendPromise = transporter.sendMail({
       from: `"AgroColetivo" <${gmailUser}>`,
       to: email,
-      subject: "✉️ Confirme seu email - AgroColetivo",
+      subject: "🔐 Redefinir sua senha - AgroColetivo",
       html: htmlBody(code, name),
     });
 
@@ -146,7 +146,9 @@ async function sendViaGmail(email, name, code) {
 
     const info = await Promise.race([sendPromise, timeoutPromise]);
 
-    console.log(`✅ Email enviado via Gmail para ${email} (${info.messageId})`);
+    console.log(
+      `✅ Email de recuperação enviado via Gmail para ${email} (${info.messageId})`,
+    );
     return true;
   } catch (error) {
     console.warn("⚠️ Gmail error:", error.message);
@@ -213,7 +215,7 @@ export default async function handler(req, res) {
       const message =
         rateCheck.reason === "rate_limit_ip"
           ? "Muitas requisições. Tente novamente mais tarde."
-          : "Muitas tentativas de verificação. Tente novamente em 24 horas.";
+          : "Muitas tentativas de recuperação. Tente novamente em 24 horas.";
 
       return res.status(429).json({
         error: message,
@@ -221,16 +223,18 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(`📧 Enviando verificação para ${cleanEmail} (IP: ${clientIp})`);
+    console.log(
+      `📧 Enviando recuperação de senha para ${cleanEmail} (IP: ${clientIp})`,
+    );
 
     // ── 3. REGISTRAR TENTATIVA NO BANCO ───────────────────────────────────
     // (Ignorar erros de logging em dev - tabela pode não estar criada)
     try {
       await logEmailAttempt(
-        "verification",
+        "password_recovery",
         cleanEmail,
         cleanName,
-        "✉️ Confirme seu email - AgroColetivo",
+        "🔐 Redefinir sua senha - AgroColetivo",
         "pending",
       );
     } catch (err) {
@@ -266,7 +270,7 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true,
-        message: "Email de verificação enviado com sucesso",
+        message: "Email de recuperação enviado com sucesso",
         service,
       });
     }

@@ -14,10 +14,10 @@ export async function sendVerificationEmail(
   try {
     // Usar Gmail se tiver as credenciais, senão Ethereal
     const useGmail =
-      process.env.GMAIL_USER &&
-      process.env.GMAIL_APP_PASSWORD &&
-      process.env.GMAIL_USER.trim().length > 0 &&
-      process.env.GMAIL_APP_PASSWORD.trim().length > 0;
+      import.meta.env?.VITE_GMAIL_USER &&
+      import.meta.env?.VITE_GMAIL_APP_PASSWORD &&
+      import.meta.env?.VITE_GMAIL_USER?.trim().length > 0 &&
+      import.meta.env?.VITE_GMAIL_APP_PASSWORD?.trim().length > 0;
 
     if (useGmail) {
       return await sendViaGmail(userEmail, userName, verificationCode);
@@ -41,15 +41,15 @@ async function sendViaGmail(userEmail, userName, verificationCode) {
       port: 587,
       secure: false,
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ""), // Remove espaços
+        user: import.meta.env.VITE_GMAIL_USER,
+        pass: import.meta.env.VITE_GMAIL_APP_PASSWORD.replace(/\s/g, ""), // Remove espaços
       },
     });
 
     const htmlEmail = getVerificationEmailTemplate(userName, verificationCode);
 
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `AgroColetivo <${import.meta.env.VITE_GMAIL_USER}>`,
       to: userEmail,
       subject: "✉️ Confirme seu email - AgroColetivo",
       html: htmlEmail,
@@ -182,7 +182,7 @@ export function getVerificationEmailTemplate(userName, verificationCode) {
 
 export async function sendNewOrderEmailToManager(managerEmail, managerName, orderData) {
   try {
-    const useGmail = process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD;
+    const useGmail = import.meta.env.VITE_GMAIL_USER && import.meta.env.VITE_GMAIL_APP_PASSWORD;
     const nodemailer = await import("nodemailer");
 
     const transporter = nodemailer.default.createTransport({
@@ -190,15 +190,15 @@ export async function sendNewOrderEmailToManager(managerEmail, managerName, orde
       port: 587,
       secure: false,
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ""),
+        user: import.meta.env.VITE_GMAIL_USER,
+        pass: import.meta.env.VITE_GMAIL_APP_PASSWORD.replace(/\s/g, ""),
       },
     });
 
     const htmlEmail = getNewOrderEmailTemplate(managerName, orderData);
 
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `AgroColetivo <${import.meta.env.VITE_GMAIL_USER}>`,
       to: managerEmail,
       subject: `📦 Novo Pedido Recebido: ${orderData.productName}`,
       html: htmlEmail,
@@ -225,15 +225,15 @@ export async function sendNewProposalEmailToVendor(vendorEmail, vendorName, prop
       port: 587,
       secure: false,
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ""),
+        user: import.meta.env.VITE_GMAIL_USER,
+        pass: import.meta.env.VITE_GMAIL_APP_PASSWORD.replace(/\s/g, ""),
       },
     });
 
     const htmlEmail = getNewProposalEmailTemplate(vendorName, proposalData);
 
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `AgroColetivo <${import.meta.env.VITE_GMAIL_USER}>`,
       to: vendorEmail,
       subject: `🎯 Oportunidade de Venda: ${proposalData.productName}`,
       html: htmlEmail,
@@ -260,15 +260,15 @@ export async function sendProposalReceivedEmailToManager(managerEmail, managerNa
       port: 587,
       secure: false,
       auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ""),
+        user: import.meta.env.VITE_GMAIL_USER,
+        pass: import.meta.env.VITE_GMAIL_APP_PASSWORD.replace(/\s/g, ""),
       },
     });
 
     const htmlEmail = getProposalReceivedEmailTemplate(managerName, proposalData);
 
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `AgroColetivo <${import.meta.env.VITE_GMAIL_USER}>`,
       to: managerEmail,
       subject: `✅ Proposta Recebida: ${proposalData.vendorName} - ${proposalData.productName}`,
       html: htmlEmail,

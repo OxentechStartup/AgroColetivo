@@ -44,10 +44,8 @@ import { ProducerOrderModal } from "../components/ProducerOrderModal";
 import { ShareModal } from "../components/ShareModal";
 import { PublishToVendorsModal } from "../components/PublishToVendorsModal";
 import {
-  totalOrdered,
   STATUS_LABEL,
   calcSupplyStats,
-  daysUntilDeadline,
 } from "../utils/data";
 import {
   formatCurrency,
@@ -1257,7 +1255,7 @@ function ModalAddLot({ unit, onClose, onSave }) {
   );
 }
 
-function ModalFreight({ campaign, userName, onClose, onSave }) {
+function ModalFreight({ campaign, _userName, onClose, onSave }) {
   const toMask = (v) => (v > 0 ? Number(v).toFixed(2).replace(".", ",") : "");
   const [freight, setFreight] = useState(toMask(campaign.freightTotal ?? 0));
   const [markup, setMarkup] = useState(toMask(campaign.markupTotal ?? 0));
@@ -1370,25 +1368,14 @@ function ModalFreight({ campaign, userName, onClose, onSave }) {
 // PÁGINA PRINCIPAL (CONSOLIDADA)
 // ═══════════════════════════════════════════════════════════════════════════
 
-export function CampaignsPage({ user, setPage }) {
-  // ✅ Usar useContext para obter dados e funções de atualização
+export function CampaignsPage({ user, _setPage }) {
   const context = useContext(AppContext);
 
-  if (!context) {
-    return (
-      <div style={{ padding: "20px", color: "var(--red)" }}>
-        ❌ AppProvider não configurado. CampaignsPage precisa estar dentro de
-        AppProvider.
-      </div>
-    );
-  }
-
-  const { campaigns = [], vendors = [] } = context;
-
   const {
+    campaigns = [],
+    vendors = [],
     addCampaign,
     addOrder,
-    removeOrder,
     closeCampaign,
     finishCampaign,
     reopenCampaign,
@@ -1404,7 +1391,7 @@ export function CampaignsPage({ user, setPage }) {
     addLot,
     removeLot,
     saveFinancials,
-  } = context;
+  } = context ?? {};
 
   const isAdmin = user?.role === "admin";
 
@@ -1417,7 +1404,15 @@ export function CampaignsPage({ user, setPage }) {
   const [showPublish, setShowPublish] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // { type: 'close'|'reopen'|'delete', id }
+  const [confirmAction, setConfirmAction] = useState(null);
+
+  if (!context) {
+    return (
+      <div style={{ padding: "20px", color: "var(--red)" }}>
+        AppProvider não configurado.
+      </div>
+    );
+  }
 
   const active = campaigns.find((c) => c.id === selectedId) ?? null;
   const lots = active?.lots ?? [];
@@ -1442,7 +1437,7 @@ export function CampaignsPage({ user, setPage }) {
       }
     };
 
-  const handleApprove = async (orderId, order) => {
+  const handleApprove = async (orderId, _order) => {
     try {
       await approvePending(active.id, orderId);
       showToast("Pedido aprovado!");

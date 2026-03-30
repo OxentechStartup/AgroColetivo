@@ -1,0 +1,235 @@
+================================================================================
+AGROCOLETIVO APPLICATION - PRODUCTION READINESS AUDIT REPORT
+================================================================================
+Date: March 27, 2026
+Audit Scope: Authentication, Database Security, Business Logic, API Endpoints
+Overall Status: CRITICAL ISSUES FOUND - NOT PRODUCTION READY
+================================================================================
+
+EXECUTIVE SUMMARY
+=================
+The AgroColetivo application has a well-designed authentication system using 
+Supabase Auth with JWT tokens and bcrypt. However, CRITICAL security issues 
+must be resolved before any production deployment:
+
+1. EXPOSED Supabase credentials in .env file (CRITICAL)
+2. Row Level Security (RLS) DISABLED on ALL 12 database tables (CRITICAL)
+3. NO authentication checks on API endpoints (CRITICAL)
+4. Missing input validation on business operations (HIGH)
+5. Missing ownership validation on resources (HIGH)
+6. No rate limiting on API endpoints (HIGH)
+7. CORS allows any origin (*) (HIGH)
+8. Missing CSRF protection (HIGH)
+
+Current Production Readiness: 0% - NOT SAFE FOR PRODUCTION
+
+================================================================================
+CRITICAL SEVERITY ISSUES (3)
+================================================================================
+
+[CRITICAL-1] EXPOSED SUPABASE CREDENTIALS IN .ENV FILE
+File: .env (lines 1-20)
+Issue: The .env file contains production Supabase credentials:
+  - VITE_SUPABASE_URL=https://iepgeibcwthilohdlfse.supabase.co
+  - VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+  
+These are accessible to anyone with repository access. The JWT token is valid
+until 2088, allowing indefinite unauthorized database access.
+
+Impact: 
+  - Complete database compromise
+  - Read/write/delete all user data
+  - Access to all campaigns, orders, vendor information
+  - User credentials exposure
+
+Fixes Required:
+  1. IMMEDIATELY revoke the exposed ANON_KEY in Supabase dashboard
+  2. Generate new ANON_KEY
+  3. Remove .env from git history: git filter-branch --tree-filter 'rm .env'
+  4. Add .env to .gitignore
+  5. Use environment management (GitHub Secrets, Render env vars)
+  6. Implement secret rotation policy
+
+---
+
+[CRITICAL-2] ROW LEVEL SECURITY (RLS) DISABLED ON ALL TABLES
+File: schema.sql (lines 356-370)
+Issue: All 12 database tables have RLS disabled:
+  - users, vendors, campaigns, campaign_lots, vendor_campaign_offers
+  - products, product_promotions, orders, buyers, notifications
+  - email_verifications, pending_registrations
+
+With RLS disabled, any authenticated user can:
+  - Read any user's email, phone, password_hash
+  - Modify any campaign
+  - Read/write orders from other users
+  - Access all vendor information
+
+This is CRITICAL because authorization is enforced only in application code,
+not in the database. Database vulnerabilities or code bypasses grant full access.
+
+Impact:
+  - Lateral movement between user accounts
+  - Privilege escalation (vendor accessing admin data)
+  - Complete data breach of all users
+  - Unauthorized order creation/modification
+  - Campaign tampering
+
+Fixes Required:
+  1. ENABLE RLS on all tables
+  2. Create specific policies for each table:
+     
+     ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+     CREATE POLICY "users_select_self" ON users FOR SELECT 
+       USING (auth.uid() = id);
+     CREATE POLICY "users_update_self" ON users FOR UPDATE 
+       USING (auth.uid() = id);
+     
+     ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
+     CREATE POLICY "campaigns_read" ON campaigns FOR SELECT USING (
+       pivo_id = auth.uid() OR 
+       EXISTS(SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
+     );
+     
+     -- (Similar for all 12 tables - see detailed audit report)
+  
+  3. Test all policies thoroughly
+  4. Add RLS tests to CI/CD pipeline
+  5. Monitor for policy bypasses
+
+---
+
+[CRITICAL-3] NO AUTHENTICATION ON API ENDPOINTS
+Files: 
+  - server.mjs (lines 32-44)
+  - api/send-verification-email.js (line 148)
+  - api/send-notification-emails.js (lines 18-56)
+
+Issue: All API endpoints are UNPROTECTED:
+  
+  app.post("/api/send-verification-email", sendVerificationEmailHandler);
+  app.post("/api/send-order-email", handleSendOrderEmail);
+  app.post("/api/send-proposal-email", handleSendProposalEmail);
+  app.post("/api/send-proposal-received-email", handleSendProposalReceivedEmail);
+  
+No verification that caller is authenticated or authorized.
+
+Attack Vectors:
+  - Anyone can trigger unlimited verification emails (email spam/DOS)
+  - Enumerate user emails by checking which ones trigger emails
+  - Spoof notifications (fake order/proposal emails)
+  - DOS attack by flooding email endpoints
+  - No audit trail of who called what
+
+Impact:
+  - Service disruption
+  - User enumeration
+  - Fraudulent emails sent to users
+  - Reputation damage
+  - Regulatory violations (GDPR/CCPA)
+
+Fixes Required:
+  1. Add JWT verification middleware to ALL endpoints
+  2. Verify caller is authenticated user
+  3. Log all API access
+  4. Add rate limiting per user
+  5. Example implementation:
+  
+     async function verifyAuth(req, res, next) {
+       const token = req.headers.authorization?.slice(7);
+       if (!token) return res.status(401).json({ error: "Unauthorized" });
+       
+       try {
+         const { data: { user }, error } = await supabase.auth.getUser(token);
+         if (error || !user) return res.status(401).json({ error: "Invalid token" });
+         req.user = user;
+         next();
+       } catch (err) {
+         return res.status(401).json({ error: "Auth failed" });
+       }
+     }
+     
+     app.post("/api/send-verification-email", verifyAuth, sendVerificationEmailHandler);
+     app.post("/api/send-order-email", verifyAuth, handleSendOrderEmail);
+
+================================================================================
+HIGH SEVERITY ISSUES (10)
+================================================================================
+
+[HIGH-1] MISSING INPUT VALIDATION ON BUSINESS OPERATIONS
+Files: src/lib/campaigns.js, src/lib/vendors.js, src/lib/offers.js
+
+Issues:
+  - No validation of numeric ranges (goal_qty could be negative)
+  - Campaign slug not validated for uniqueness
+  - Product prices not checked (could be negative)
+  - Quantities not validated (could be > 1 million)
+  - No text field length limits
+  - No duplicate prevention
+
+Example Vulnerable Code:
+  const payload = {
+    goal_qty: Number(c.goalQty),  // Could be NaN or negative
+    min_qty: Number(c.minQty),
+  };
+
+Fixes: Add validation schemas for all operations
+
+---
+
+[HIGH-2] MISSING OWNERSHIP VALIDATION
+Files: src/lib/offers.js, src/lib/products.js, src/lib/vendors.js
+
+Issue: No verification that user owns resource being modified
+
+Example:
+  export async function createOffer(campaignId, vendorId, offer) {
+    // No check that vendorId belongs to current user!
+    // Authenticated vendor could create offers for other vendors
+  }
+
+Risk: Vendor A could create offers as Vendor B
+
+Fix: Verify ownership before all modify operations
+
+---
+
+[HIGH-3] PASSWORD RESET TIMING LEAK
+File: src/lib/auth.js (lines 614-618)
+
+Issue: Password reset reveals which phones/emails exist (timing-based enumeration)
+
+  const email = await getEmailByPhone(phone);
+  if (!email) {
+    return { message: "..." };  // Returns instantly
+  }
+  return resetPasswordByEmail(email);  // Delayed response
+
+Attack: Measure response time to detect valid users
+
+Fix: Always take same time to respond (constant-time comparison)
+
+---
+
+[HIGH-4] RATE LIMITING INCOMPLETE
+File: src/lib/buyers.js (client-side only), missing on API endpoints
+
+Issue: 
+  - No server-side rate limiting on API endpoints
+  - Email endpoints can be spammed
+  - Buyer portal has only client-side limit (bypassed by disabling JS)
+
+Risk: DOS attack, email spam, resource exhaustion
+
+Fix: Add server-side rate limiting to all endpoints
+
+---
+
+[HIGH-5] CORS MISCONFIGURATION
+File: api/send-verification-email.js (line 148)
+
+Issue:
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  
+Allows requests from ANY website, not just your app.
+

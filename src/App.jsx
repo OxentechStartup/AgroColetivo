@@ -5,10 +5,10 @@ import { Sidebar } from "./components/Sidebar";
 import { Topbar } from "./components/Topbar";
 import { DeleteAccountModal } from "./components/DeleteAccountModal";
 import { LoadingScreen, ErrorScreen } from "./components/LoadingScreen";
-import { LoginPage } from "./pages/LoginPage";
-import { ConfirmEmailPage } from "./pages/ConfirmEmailPage";
-import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
-import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { LoginPage } from "./pages/LoginPage-new.jsx";
+import { ConfirmEmailPage } from "./pages/ConfirmEmailPage-new.jsx";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage-new.jsx";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage-new.jsx";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CampaignsPage } from "./pages/CampaignsPage";
 import { ProducersPage } from "./pages/ProducersPage";
@@ -91,12 +91,10 @@ function AppContent() {
   );
   const [isResetPassword, setIsResetPassword] = useState(isResetPasswordRoute);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [passwordRecoveryEmail, setPasswordRecoveryEmail] = useState(null);
+  const [page, setPageState] = useState("dashboard");
 
   const context = useContext(AppContext);
-
-  if (!context) {
-    return <LoadingScreen message="Inicializando aplicação..." />;
-  }
 
   const {
     user,
@@ -118,9 +116,7 @@ function AppContent() {
     addVendor,
     removeVendor,
     ownVendor,
-  } = context;
-
-  const [page, setPageState] = useState(() => defaultPage(user?.role));
+  } = context ?? {};
 
   // Vendor atual
   const vendor =
@@ -188,18 +184,69 @@ function AppContent() {
     [deleteUserAccount],
   );
 
+  // ── Handlers para navegar entre telas de autenticação ─────────────────────
+  const handleForgotPasswordRequest = useCallback((email) => {
+    setPasswordRecoveryEmail(email);
+    // Navegar para tela de reset de senha
+    window.location.hash = "#/auth/resetar-senha";
+  }, []);
+
+  const handleForgotPasswordClick = useCallback(() => {
+    // Navegar para tela de "esqueci minha senha"
+    window.location.hash = "#/auth/recuperar-senha";
+  }, []);
+
+  const handlePasswordRecoveryBack = useCallback(() => {
+    setPasswordRecoveryEmail(null);
+    // Voltar para login
+    window.location.hash = "";
+  }, []);
+
+  const handlePasswordRecoverySuccess = useCallback(() => {
+    setPasswordRecoveryEmail(null);
+    // Voltar para login após alguns segundos
+    setTimeout(() => {
+      window.location.hash = "";
+    }, 3000);
+  }, []);
+
+  // ── Guard: contexto não pronto ─────────────────────────────────────────────
+  if (!context) {
+    return <LoadingScreen message="Inicializando aplicação..." />;
+  }
+
   // ── Rotas especiais ────────────────────────────────────────────────────────
   if (isPortal) return <ProducerPortalPage onSubmit={addPendingOrder} />;
-  if (isConfirmEmail) return <ConfirmEmailPage />;
-  if (isForgotPassword) return <ForgotPasswordPage />;
-  if (isResetPassword) return <ResetPasswordPage />;
 
   // Mostrar página de confirmação de email após registro ou login com email não verificado
   if (pendingVerificationUser) {
     return (
       <ConfirmEmailPage
+        pendingId={pendingVerificationUser.id}
+        email={pendingVerificationUser.email}
         onVerified={onEmailVerified}
-        emailSent={pendingVerificationUser.emailSent}
+        devCode={pendingVerificationUser.devCode}
+      />
+    );
+  }
+
+  // Mostrar página de recuperação de senha se solicitada
+  if (isForgotPassword) {
+    return (
+      <ForgotPasswordPage
+        onRequestSent={handleForgotPasswordRequest}
+        onBack={handlePasswordRecoveryBack}
+      />
+    );
+  }
+
+  // Mostrar página de reset de senha
+  if (isResetPassword && passwordRecoveryEmail) {
+    return (
+      <ResetPasswordPage
+        email={passwordRecoveryEmail}
+        onSuccess={handlePasswordRecoverySuccess}
+        onBack={handlePasswordRecoveryBack}
       />
     );
   }
@@ -211,6 +258,7 @@ function AppContent() {
         onRegister={signUp}
         loading={authLoading}
         error={authError}
+        onForgotPassword={handleForgotPasswordClick}
       />
     );
 

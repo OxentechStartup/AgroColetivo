@@ -7,7 +7,7 @@ import {
   getSession,
   saveSession,
   clearSession,
-} from "../lib/auth";
+} from "../lib/auth-new.js";
 import { supabase } from "../lib/supabase.js";
 import { parseSupabaseError } from "../lib/security-console.js";
 
@@ -24,13 +24,17 @@ export function useAuth() {
     const initSession = async () => {
       try {
         // Verifica se há sessão Supabase ativa
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
         if (session?.user) {
           // Busca dados do usuário na tabela users
           const { data: userData } = await supabase
             .from("users")
-            .select("id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url")
+            .select(
+              "id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url",
+            )
             .eq("id", session.user.id)
             .single();
 
@@ -55,14 +59,18 @@ export function useAuth() {
     initSession();
 
     // Escuta mudanças de autenticação do Supabase
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (manualAuthInProgress.current) return;
 
       if (event === "SIGNED_IN" && session?.user) {
         // Busca dados do usuário
         const { data: userData } = await supabase
           .from("users")
-          .select("id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url")
+          .select(
+            "id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url",
+          )
           .eq("id", session.user.id)
           .single();
 
@@ -92,11 +100,14 @@ export function useAuth() {
       setUser(u);
     } catch (err) {
       const msg = err?.message || "Erro desconhecido ao fazer login";
-      
+
       // Usuário legado que precisa migrar (resetar senha)
-      if (err?.code === "LEGACY_USER" || msg === "LEGACY_USER_REQUIRES_MIGRATION") {
+      if (
+        err?.code === "LEGACY_USER" ||
+        msg === "LEGACY_USER_REQUIRES_MIGRATION"
+      ) {
         setError(
-          "Sua conta precisa ser atualizada. Clique em 'Esqueceu?' para redefinir sua senha e migrar para o novo sistema."
+          "Sua conta precisa ser atualizada. Clique em 'Esqueceu?' para redefinir sua senha e migrar para o novo sistema.",
         );
         // Armazena o email para pré-preencher na tela de recuperação
         localStorage.setItem("agro_legacy_email", email);
@@ -181,41 +192,28 @@ export function useAuth() {
   }, []);
 
   // Chamado pela ConfirmEmailPage quando o email for verificado com sucesso
-  // O usuário já foi criado no Supabase Auth durante verifyEmail()
+  // A conta foi criada automaticamente em Supabase Auth durante a verificação
+  // Agora basta retornar à tela de login para autenticar
   const onEmailVerified = useCallback(async (verifyResult) => {
-    if (!verifyResult || !verifyResult.user) return;
+    if (!verifyResult || !verifyResult.email) return;
 
     try {
-      const { user: userData } = verifyResult;
+      // Email foi verificado e conta foi criada
+      // Basta limpar o estado pendente para voltar à tela de login
+      localStorage.removeItem("agro_pending_registration");
 
-      // Salvar dados do usuário na sessão local
-      const sessionUser = {
-        ...userData,
-        blocked: userData.active === false,
-      };
-      saveSession(sessionUser);
-      setUser(sessionUser);
-
-      console.log("✅ Usuário verificado e sessão salva:", {
-        id: sessionUser.id,
-        email: sessionUser.email,
+      console.log("✅ Email verificado com sucesso:", {
+        email: verifyResult.email,
+        id: verifyResult.id,
+        message: "Conta criada! Pronto para fazer login",
       });
+
+      // Limpar estado pendente para voltar à tela de login
+      setPendingVerificationUser(null);
     } catch (err) {
       console.error("Erro ao processar verificação de email:", err);
-      // Ainda assim salvamos a sessão se houver dados
-      if (verifyResult?.user) {
-        const sessionUser = {
-          ...verifyResult.user,
-          blocked: verifyResult.user.active === false,
-        };
-        saveSession(sessionUser);
-        setUser(sessionUser);
-      }
+      setError(err?.message || "Erro ao processar verificação de email");
     }
-
-    // Limpar dados do registro pendente
-    setPendingVerificationUser(null);
-    localStorage.removeItem("agro_pending_registration");
   }, []);
 
   const signOut = useCallback(async () => {
@@ -226,7 +224,9 @@ export function useAuth() {
     try {
       await supabase.auth.signOut();
       await logout();
-    } catch {}
+    } catch {
+      // handled by caller
+    }
   }, []);
 
   const deleteUserAccount = useCallback(
@@ -285,7 +285,9 @@ export function useAuth() {
             saveSession(updated);
             setUser(updated);
           }
-        } catch {}
+        } catch {
+          // handled by caller
+        }
       }
     },
     [user],
