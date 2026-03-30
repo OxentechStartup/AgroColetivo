@@ -8,10 +8,29 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  import.meta.env?.VITE_SUPABASE_URL || "",
-  import.meta.env?.VITE_SUPABASE_ANON_KEY || "",
-);
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  import.meta.env?.VITE_SUPABASE_URL ||
+  "";
+
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env?.VITE_SUPABASE_ANON_KEY ||
+  "";
+
+const supabase =
+  SUPABASE_URL && SUPABASE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_KEY)
+    : null;
+
+if (!supabase) {
+  console.warn(
+    "[email-security] Supabase não configurado; logs/auditoria de email serão ignorados.",
+  );
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RATE LIMITING (in-memory com cleanup)
@@ -128,7 +147,7 @@ export function getClientIp(req) {
  * Validar JWT do Supabase
  */
 export async function verifyJWT(token) {
-  if (!token) return null;
+  if (!token || !supabase) return null;
 
   try {
     // Remover "Bearer " se presente
@@ -258,6 +277,8 @@ export async function logEmailAttempt(
   messageId = null,
   errorMessage = null,
 ) {
+  if (!supabase) return;
+
   try {
     const { error } = await supabase.from("email_logs").insert({
       type,
@@ -290,6 +311,8 @@ export async function updateEmailLogStatus(
   messageId = null,
   errorMessage = null,
 ) {
+  if (!supabase) return;
+
   try {
     const { error } = await supabase
       .from("email_logs")
