@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: agrocoletivo
+    name: agrocoletivo-backend
     env: node
-    buildCommand: npm run build
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -13,9 +13,9 @@ services:
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
         sync: false
-      - key: VITE_APP_URL
-        sync: false
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: SENDGRID_API_KEY
         sync: false
