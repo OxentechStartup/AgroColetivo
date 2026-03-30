@@ -2,10 +2,15 @@
  * Production Server para Render
  * Serve os arquivos estáticos do Vite build
  */
+import dotenv from "dotenv";
 import express from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+
+// Carregar variáveis de ambiente
+dotenv.config();
+
 import sendVerificationEmailHandler from "./api/send-verification-email.js";
 import sendLoginAlertEmailHandler from "./api/send-login-alert-email.js";
 import {
@@ -30,6 +35,34 @@ app.get("/api/ping", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
+// Debug endpoint para diagnosticar problemas (DEV/PROD)
+app.get("/api/debug", (req, res) => {
+  res.json({
+    status: "🟢 Server OK",
+    timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || "development",
+      PORT: process.env.PORT || 3000,
+      hasSupabaseUrl: !!process.env.VITE_SUPABASE_URL,
+      hasSupabaseKey: !!process.env.VITE_SUPABASE_ANON_KEY,
+      hasGmailUser: !!process.env.GMAIL_USER,
+      hasGmailPassword: !!process.env.GMAIL_APP_PASSWORD,
+    },
+    server: {
+      uptime: process.uptime(),
+      memoryUsage: {
+        heapUsed:
+          Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + "MB",
+        heapTotal:
+          Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + "MB",
+      },
+      distPath: distPath,
+      distExists: fs.existsSync(distPath),
+      indexExists: fs.existsSync(path.join(distPath, "index.html")),
+    },
+  });
+});
+
 // Email verification endpoint
 app.post("/api/send-verification-email", sendVerificationEmailHandler);
 app.options("/api/send-verification-email", sendVerificationEmailHandler);
@@ -46,7 +79,10 @@ app.post("/api/send-proposal-email", handleSendProposalEmail);
 app.options("/api/send-proposal-email", handleSendProposalEmail);
 
 app.post("/api/send-proposal-received-email", handleSendProposalReceivedEmail);
-app.options("/api/send-proposal-received-email", handleSendProposalReceivedEmail);
+app.options(
+  "/api/send-proposal-received-email",
+  handleSendProposalReceivedEmail,
+);
 
 // SPA fallback: retorna index.html para rotas não encontradas
 app.use((req, res) => {
@@ -60,6 +96,32 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`✅ Servidor rodando em http://0.0.0.0:${PORT}`);
-  console.log(`📁 Servindo arquivos de: ${distPath}`);
+  console.log(`\n${"=".repeat(80)}`);
+  console.log(`✅ SERVIDOR INICIADO COM SUCESSO`);
+  console.log(`=`.repeat(80));
+  console.log(`🌐 URL: http://0.0.0.0:${PORT}`);
+  console.log(`📁 Dist path: ${distPath}`);
+  console.log(
+    `📦 Status arquivos estáticos: ${fs.existsSync(distPath) ? "✅ OK" : "❌ FALTANDO"}`,
+  );
+  console.log(
+    `📄 Index.html: ${fs.existsSync(path.join(distPath, "index.html")) ? "✅ OK" : "❌ FALTANDO"}`,
+  );
+  console.log(`\n🔐 Configuração:`);
+  console.log(`   NODE_ENV: ${process.env.NODE_ENV || "development"}`);
+  console.log(
+    `   Supabase: ${process.env.VITE_SUPABASE_URL ? "✅" : "⚠️ não configurado"}`,
+  );
+  console.log(
+    `   Gmail User: ${process.env.GMAIL_USER ? "✅" : "⚠️ não configurado"}`,
+  );
+  console.log(
+    `   Gmail Password: ${process.env.GMAIL_APP_PASSWORD ? "✅" : "⚠️ não configurado"}`,
+  );
+  console.log(`\n📊 Sistema:`);
+  console.log(
+    `   Memória: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB / ${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
+  );
+  console.log(`   Node.js: ${process.version}`);
+  console.log(`${"=".repeat(80)}\n`);
 });

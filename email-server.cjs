@@ -31,14 +31,27 @@ const transporter = nodemailer.createTransport({
 
 // ── Endpoint: Enviar email de verificação ───────────────────────────────────
 app.post("/api/send-verification-email", async (req, res) => {
+  const startTime = Date.now();
+  console.log(`\n${"=".repeat(80)}`);
+  console.log(`📨 [${new Date().toISOString()}] HANDLER INICIADO`);
+  console.log(`   Método: ${req.method}`);
+  console.log(`   Body: ${JSON.stringify(req.body)}`);
+  console.log(`=`.repeat(80));
+
   try {
     const { email, name, code } = req.body;
+    console.log(
+      `📧 Email recebido: ${email}, Name: ${name}, Code: ${code ? "presente" : "FALTANDO"}`,
+    );
 
     // Validar input
     if (!email || !name || !code) {
+      console.log(`❌ Validação falhou: faltam campos`);
       return res.status(400).json({ error: "Email, name, and code required" });
     }
+    console.log("✅ Validação passou");
 
+    console.log(`📤 Conectando ao SMTP do Gmail...`);
     // Enviar email
     const result = await transporter.sendMail({
       from: `AgroColetivo <${process.env.GMAIL_USER}>`,
@@ -86,7 +99,9 @@ app.post("/api/send-verification-email", async (req, res) => {
       `,
     });
 
-    console.log(`✅ Email enviado para ${email} - ID: ${result.messageId}`);
+    console.log(`✅ Email aceito pelo Gmail (MessageID: ${result.messageId})`);
+    const duration = Date.now() - startTime;
+    console.log(`✅ RESPOSTA SUCESSO (${duration}ms) - Serviço: gmail`);
 
     res.json({
       success: true,
@@ -94,7 +109,10 @@ app.post("/api/send-verification-email", async (req, res) => {
       message: "Email enviado com sucesso",
     });
   } catch (error) {
-    console.error("❌ Erro ao enviar email:", error.message);
+    const duration = Date.now() - startTime;
+    console.error(`\n❌ ERRO (${duration}ms):`);
+    console.error(`   Mensagem: ${error.message}`);
+    console.error(`   Stack: ${error.stack}`);
 
     res.status(500).json({
       success: false,
@@ -164,7 +182,9 @@ app.post("/api/send-login-alert-email", async (req, res) => {
       `,
     });
 
-    console.log(`✅ Email de aviso de login enviado para ${email} - ID: ${result.messageId}`);
+    console.log(
+      `✅ Email de aviso de login enviado para ${email} - ID: ${result.messageId}`,
+    );
 
     res.json({
       success: true,
