@@ -18,43 +18,58 @@ export async function sendVerificationEmail(
   // Produção: /api/send-verification-email (Vercel Serverless)
   const endpoint = "/api/send-verification-email";
 
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: userEmail,
-        name: userName,
-        code: verificationCode,
-      }),
-    });
+  const transient = new Set([502, 503, 504]);
+  let lastError = null;
 
-    if (response.ok) {
-      const data = await response.json();
-      return {
-        success: true,
-        service: "api-endpoint",
-        messageId: data.messageId,
-        message: "Email enviado com sucesso",
-      };
-    } else {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: userEmail,
+          name: userName,
+          code: verificationCode,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          success: true,
+          service: "api-endpoint",
+          messageId: data.messageId,
+          message: "Email enviado com sucesso",
+        };
+      }
+
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error || `Servidor retornou ${response.status}`);
-    }
-  } catch (error) {
-    console.warn(
-      "⚠️ Não foi possível enviar email de verificação:",
-      error?.message,
-    );
+      const message = errData.error || `Servidor retornou ${response.status}`;
 
-    // Fallback silencioso — não bloqueia o registro
-    // O usuário pode reenviar o código pela tela de verificação
-    return {
-      success: false,
-      service: "fallback",
-      message: "Email será reenviado manualmente",
-    };
+      if (!transient.has(response.status) || attempt === 2) {
+        throw new Error(message);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    } catch (error) {
+      lastError = error;
+      if (attempt === 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
   }
+
+  console.warn(
+    "⚠️ Não foi possível enviar email de verificação:",
+    lastError?.message || "Falha no envio de email",
+  );
+
+  // Fallback silencioso — não bloqueia o registro
+  // O usuário pode reenviar o código pela tela de verificação
+  return {
+    success: false,
+    service: "fallback",
+    message: "Email será reenviado manualmente",
+  };
 }
 
 /**
