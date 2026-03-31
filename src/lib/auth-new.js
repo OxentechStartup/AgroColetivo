@@ -22,11 +22,6 @@ import {
   registerLimiter,
 } from "../utils/security.js";
 import { logSecurityEvent } from "./authorization.js";
-import {
-  sendVerificationEmail,
-  sendPasswordRecoveryEmail,
-  sendLoginAlertEmail,
-} from "./email-client.js";
 
 // ────────────────────────────────────────────────────────────────────────────
 // UTILITÁRIOS
@@ -129,16 +124,17 @@ export async function register(email, password, role, extra = {}) {
 
   // Enviar email com código
   let emailSent = false;
-  try {
-    const emailResult = await sendVerificationEmail(
-      email,
-      extra.company_name || "Usuário",
-      verificationCode,
-    );
-    emailSent = emailResult?.success === true;
-  } catch (emailError) {
-    console.error("Erro ao enviar email de verificação:", emailError);
-  }
+  // TODO: Reabilitar quando email estiver configurado
+  // try {
+  //   const emailResult = await sendVerificationEmail(
+  //     email,
+  //     extra.company_name || "Usuário",
+  //     verificationCode,
+  //   );
+  //   emailSent = emailResult?.success === true;
+  // } catch (emailError) {
+  //   console.error("Erro ao enviar email de verificação:", emailError);
+  // }
 
   await logSecurityEvent(
     "register_pending",
@@ -333,13 +329,14 @@ export async function login(email, password) {
         typeof navigator !== "undefined" ? navigator.language : "unknown",
     };
 
-    await sendLoginAlertEmail(
-      userData.email,
-      userData.name || "Usuário",
-      loginDetails,
-    );
+    // TODO: Reabilitar quando email estiver configurado
+    // await sendLoginAlertEmail(
+    //   userData.email,
+    //   userData.name || "Usuário",
+    //   loginDetails,
+    // );
   } catch (emailError) {
-    console.warn("Falha ao enviar aviso de login:", emailError?.message);
+    // console.warn("Falha ao enviar aviso de login:", emailError?.message);
   }
 
   return userData;
@@ -385,26 +382,27 @@ export async function startPasswordRecovery(email) {
       code: verificationCode,
       expires_at: expiresAt.toISOString(),
       verified: false,
-    });
+     });
 
-  if (insertError) {
-    throw new Error("Erro ao processar recuperação de senha.");
-  }
+   if (insertError) {
+     throw new Error("Erro ao processar recuperação de senha.");
+   }
 
-  // Enviar email com código
-  let emailSent = false;
-  try {
-    const emailResult = await sendPasswordRecoveryEmail(
-      email,
-      user.name,
-      verificationCode,
-    );
-    emailSent = emailResult?.success === true;
-  } catch (err) {
-    console.error("Erro ao enviar email de recuperação:", err);
-  }
+   // Enviar email com código
+   let emailSent = false;
+   // TODO: Reabilitar quando email estiver configurado
+   // try {
+   //   const emailResult = await sendPasswordRecoveryEmail(
+   //     email,
+   //     user.name,
+   //     verificationCode,
+   //   );
+   //   emailSent = emailResult?.success === true;
+   // } catch (err) {
+   //   console.error("Erro ao enviar email de recuperação:", err);
+   // }
 
-  await logSecurityEvent(
+   await logSecurityEvent(
     "password_recovery_started",
     { email },
     "auth",
@@ -507,16 +505,17 @@ export async function resendVerificationCode(email, type = "registration") {
     const newCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await supabase
-      .from("pending_registrations")
-      .update({
-        verification_code: newCode,
-        expires_at: expiresAt.toISOString(),
-      })
-      .eq("id", pending.id);
+     await supabase
+       .from("pending_registrations")
+       .update({
+         verification_code: newCode,
+         expires_at: expiresAt.toISOString(),
+       })
+       .eq("id", pending.id);
 
-    await sendVerificationEmail(email, pending.name, newCode);
-    return { success: true, message: "Código reenviado!" };
+     // TODO: Reabilitar quando email estiver configurado
+     // await sendVerificationEmail(email, pending.name, newCode);
+     return { success: true, message: "Código reenviado!" };
   }
 
   if (type === "password") {
@@ -536,19 +535,20 @@ export async function resendVerificationCode(email, type = "registration") {
     await supabase
       .from("password_recovery")
       .update({
-        recovery_code: newCode,
-        expires_at: expiresAt.toISOString(),
-      })
-      .eq("id", recovery.id);
+         recovery_code: newCode,
+         expires_at: expiresAt.toISOString(),
+       })
+       .eq("id", recovery.id);
 
-    const { data: user } = await supabase
-      .from("users")
-      .select("name")
-      .eq("id", recovery.user_id)
-      .single();
+     const { data: user } = await supabase
+       .from("users")
+       .select("name")
+       .eq("id", recovery.user_id)
+       .single();
 
-    await sendPasswordRecoveryEmail(email, user?.name, newCode);
-    return { success: true, message: "Código reenviado!" };
+     // TODO: Reabilitar quando email estiver configurado
+     // await sendPasswordRecoveryEmail(email, user?.name, newCode);
+     return { success: true, message: "Código reenviado!" };
   }
 
   throw new Error("Tipo de reenvio inválido");
