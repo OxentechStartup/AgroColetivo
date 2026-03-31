@@ -9,10 +9,8 @@ const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
  * Send email through n8n webhook
  * @param {Object} payload - Email payload
  * @param {string} payload.to - Recipient email
- * @param {string} payload.type - Email type (verification, password_reset, login_alert)
- * @param {string} payload.code - Verification or reset code
- * @param {string} payload.name - User name
- * @param {string} payload.resetUrl - Reset password URL (for password_reset type)
+ * @param {string} payload.subject - Email subject
+ * @param {string} payload.body - Email body (HTML or plain text)
  * @returns {Promise<void>}
  */
 export async function sendEmailViaWebhook(payload) {
@@ -49,11 +47,24 @@ export async function sendEmailViaWebhook(payload) {
  * @param {string} userName - User name
  */
 export async function sendVerificationEmail(email, verificationCode, userName) {
+  const subject = 'Verifique seu email - AgroColetivo';
+  const body = `
+    <html>
+      <body>
+        <h2>Bem-vindo, ${userName}!</h2>
+        <p>Para completar seu cadastro, use o código de verificação abaixo:</p>
+        <h1 style="color: #4CAF50; letter-spacing: 2px;">${verificationCode}</h1>
+        <p>Este código expira em 24 horas.</p>
+        <hr>
+        <small>Se você não solicitou este cadastro, ignore este email.</small>
+      </body>
+    </html>
+  `;
+
   return sendEmailViaWebhook({
-    type: 'email_verification',
     to: email,
-    code: verificationCode,
-    name: userName,
+    subject: subject,
+    body: body,
   });
 }
 
@@ -65,12 +76,24 @@ export async function sendVerificationEmail(email, verificationCode, userName) {
  * @param {string} userName - User name
  */
 export async function sendPasswordRecoveryEmail(email, resetCode, resetUrl, userName) {
+  const subject = 'Recuperar senha - AgroColetivo';
+  const body = `
+    <html>
+      <body>
+        <h2>Oi ${userName},</h2>
+        <p>Recebemos uma solicitação para recuperar sua senha. Use o código abaixo:</p>
+        <h1 style="color: #2196F3; letter-spacing: 2px;">${resetCode}</h1>
+        <p>Este código expira em 15 minutos.</p>
+        <hr>
+        <p><small>Se você não solicitou uma recuperação de senha, ignore este email.</small></p>
+      </body>
+    </html>
+  `;
+
   return sendEmailViaWebhook({
-    type: 'password_reset',
     to: email,
-    code: resetCode,
-    resetUrl: resetUrl,
-    name: userName,
+    subject: subject,
+    body: body,
   });
 }
 
@@ -81,10 +104,26 @@ export async function sendPasswordRecoveryEmail(email, resetCode, resetUrl, user
  * @param {string} location - Login location (optional)
  */
 export async function sendLoginAlertEmail(email, userName, location = 'Unknown') {
+  const subject = 'Novo acesso à sua conta - AgroColetivo';
+  const body = `
+    <html>
+      <body>
+        <h2>Olá ${userName},</h2>
+        <p>Detectamos um novo acesso à sua conta:</p>
+        <ul>
+          <li><strong>Horário:</strong> ${new Date().toLocaleString('pt-BR')}</li>
+          <li><strong>Local:</strong> ${location}</li>
+        </ul>
+        <p>Se isso não foi você, altere sua senha imediatamente.</p>
+        <hr>
+        <small>Este é um aviso de segurança automático da AgroColetivo.</small>
+      </body>
+    </html>
+  `;
+
   return sendEmailViaWebhook({
-    type: 'login_alert',
     to: email,
-    name: userName,
-    location: location,
+    subject: subject,
+    body: body,
   });
 }
