@@ -112,14 +112,14 @@ export function ResetPasswordPage({ email, onSuccess, onBack }) {
   const handleResendCode = async () => {
     if (!canResend) return;
 
-    setResending(true);
-    setError("");
+     setResending(true);
+     setError("");
 
-    try {
-      await resendVerificationCode(email, "password");
-      setSuccess("✅ Novo código enviado!");
-      setCanResend(false);
-      setTimeout(() => setCanResend(true), 60000);
+     try {
+       await resendVerificationCode(email, "password");
+       setSuccess("Novo código enviado!");
+       setCanResend(false);
+       setTimeout(() => setCanResend(true), 60000);
     } catch (err) {
       setError(err.message || "Erro ao reenviar código.");
     } finally {
@@ -312,16 +312,16 @@ export function ResetPasswordPage({ email, onSuccess, onBack }) {
       <div className={styles.container}>
         <div className={styles.content}>
           <Card className={styles.card}>
-            <div style={{ textAlign: "center", padding: "40px 20px" }}>
-              <CheckCircle
-                size={64}
-                color="#22c55e"
-                style={{ marginBottom: 16 }}
-              />
-              <h1>✅ Senha Alterada com Sucesso!</h1>
-              <p>Você pode fazer login com sua nova senha agora.</p>
-              <p>Redirecionando...</p>
-            </div>
+             <div style={{ textAlign: "center", padding: "40px 20px" }}>
+               <CheckCircle
+                 size={64}
+                 color="#22c55e"
+                 style={{ marginBottom: 16 }}
+               />
+               <h1>Senha Alterada com Sucesso</h1>
+               <p>Você pode fazer login com sua nova senha agora.</p>
+               <p>Redirecionando...</p>
+             </div>
           </Card>
         </div>
       </div>

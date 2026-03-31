@@ -69,7 +69,7 @@ export function ForgotPasswordPage({ onRequestSent, onBack }) {
             >
               <ArrowLeft size={20} /> Voltar
             </button>
-            <h1>🔑 Recuperar Senha</h1>
+            <h1>Recuperar Senha</h1>
             <p className={styles.subtitle}>
               Informe seu email para receber um código de verificação
             </p>

@@ -68,7 +68,7 @@ export function ConfirmEmailPage({ pendingId, email, onVerified }) {
 
     try {
       const user = await verifyEmailForRegistration(pendingId, code);
-      setSuccess("✅ Email verificado com sucesso! Entrando no sistema...");
+      setSuccess("Email verificado com sucesso! Entrando no sistema...");
 
       // Callback para fazer login automático
       setTimeout(() => {
@@ -91,11 +91,11 @@ export function ConfirmEmailPage({ pendingId, email, onVerified }) {
     setError("");
 
     try {
-      await resendVerificationCode(email, "registration");
-      setSuccess("✅ Novo código enviado para seu email!");
-      setCanResend(false);
-      setResendCountdown(60);
-      setCode("");
+       await resendVerificationCode(email, "registration");
+       setSuccess("Novo código enviado para seu email!");
+       setCanResend(false);
+       setResendCountdown(60);
+       setCode("");
     } catch (err) {
       setError(err.message || "Erro ao reenviar código. Tente novamente.");
     } finally {
@@ -108,7 +108,7 @@ export function ConfirmEmailPage({ pendingId, email, onVerified }) {
       <div className={styles.content}>
         <Card className={styles.card}>
           <div className={styles.header}>
-            <h1>✉️ Confirme seu Email</h1>
+            <h1>Confirme seu Email</h1>
             <p className={styles.subtitle}>
               Um código de verificação foi enviado para:
             </p>
