@@ -22,6 +22,11 @@ import {
   registerLimiter,
 } from "../utils/security.js";
 import { logSecurityEvent } from "./authorization.js";
+import {
+  sendVerificationEmail,
+  sendPasswordRecoveryEmail,
+  sendLoginAlertEmail,
+} from "./n8n-client.js";
 
 // ────────────────────────────────────────────────────────────────────────────
 // UTILITÁRIOS
@@ -122,19 +127,19 @@ export async function register(email, password, role, extra = {}) {
     throw new Error("Não foi possível iniciar o cadastro. Tente novamente.");
   }
 
-  // Enviar email com código
+  // Enviar email com código via n8n webhook
   let emailSent = false;
-  // TODO: Reabilitar quando email estiver configurado
-  // try {
-  //   const emailResult = await sendVerificationEmail(
-  //     email,
-  //     extra.company_name || "Usuário",
-  //     verificationCode,
-  //   );
-  //   emailSent = emailResult?.success === true;
-  // } catch (emailError) {
-  //   console.error("Erro ao enviar email de verificação:", emailError);
-  // }
+  try {
+    await sendVerificationEmail(
+      email,
+      verificationCode,
+      extra.company_name || "Usuário",
+    );
+    emailSent = true;
+  } catch (emailError) {
+    console.error("Erro ao enviar email de verificação:", emailError);
+    emailSent = false;
+  }
 
   await logSecurityEvent(
     "register_pending",
@@ -329,14 +334,14 @@ export async function login(email, password) {
         typeof navigator !== "undefined" ? navigator.language : "unknown",
     };
 
-    // TODO: Reabilitar quando email estiver configurado
-    // await sendLoginAlertEmail(
-    //   userData.email,
-    //   userData.name || "Usuário",
-    //   loginDetails,
-    // );
+    await sendLoginAlertEmail(
+      userData.email,
+      userData.name || "Usuário",
+      loginDetails.location || "Unknown",
+    );
   } catch (emailError) {
-    // console.warn("Falha ao enviar aviso de login:", emailError?.message);
+    // Silenciosamente falhar - login alert não é crítico
+    console.warn("Falha ao enviar aviso de login:", emailError?.message);
   }
 
   return userData;
@@ -388,19 +393,20 @@ export async function startPasswordRecovery(email) {
      throw new Error("Erro ao processar recuperação de senha.");
    }
 
-   // Enviar email com código
+   // Enviar email com código via n8n webhook
    let emailSent = false;
-   // TODO: Reabilitar quando email estiver configurado
-   // try {
-   //   const emailResult = await sendPasswordRecoveryEmail(
-   //     email,
-   //     user.name,
-   //     verificationCode,
-   //   );
-   //   emailSent = emailResult?.success === true;
-   // } catch (err) {
-   //   console.error("Erro ao enviar email de recuperação:", err);
-   // }
+   try {
+     await sendPasswordRecoveryEmail(
+       email,
+       verificationCode,
+       "",
+       user.name || "Usuário",
+     );
+     emailSent = true;
+   } catch (err) {
+     console.error("Erro ao enviar email de recuperação:", err);
+     emailSent = false;
+   }
 
    await logSecurityEvent(
     "password_recovery_started",
@@ -513,8 +519,11 @@ export async function resendVerificationCode(email, type = "registration") {
        })
        .eq("id", pending.id);
 
-     // TODO: Reabilitar quando email estiver configurado
-     // await sendVerificationEmail(email, pending.name, newCode);
+     try {
+       await sendVerificationEmail(email, newCode, pending.name);
+     } catch (err) {
+       console.error("Erro ao reenviar código:", err);
+     }
      return { success: true, message: "Código reenviado!" };
   }
 
@@ -532,13 +541,13 @@ export async function resendVerificationCode(email, type = "registration") {
     const newCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    await supabase
-      .from("password_recovery")
-      .update({
-         recovery_code: newCode,
-         expires_at: expiresAt.toISOString(),
-       })
-       .eq("id", recovery.id);
+     await supabase
+       .from("password_recovery")
+       .update({
+          recovery_code: newCode,
+          expires_at: expiresAt.toISOString(),
+        })
+        .eq("id", recovery.id);
 
      const { data: user } = await supabase
        .from("users")
@@ -546,8 +555,11 @@ export async function resendVerificationCode(email, type = "registration") {
        .eq("id", recovery.user_id)
        .single();
 
-     // TODO: Reabilitar quando email estiver configurado
-     // await sendPasswordRecoveryEmail(email, user?.name, newCode);
+     try {
+       await sendPasswordRecoveryEmail(email, newCode, "", user?.name || "Usuário");
+     } catch (err) {
+       console.error("Erro ao reenviar código de recuperação:", err);
+     }
      return { success: true, message: "Código reenviado!" };
   }
 
