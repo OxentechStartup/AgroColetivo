@@ -5,9 +5,10 @@
   "description": "AgroColetivo - Sistema de gestão agrícola com Supabase",
   "main": "server.mjs",
   "scripts": {
-    "dev": "npm run build && node server.mjs",
+    "dev": "vite",
+    "dev:server": "node server.mjs",
     "build": "vite build",
-    "start": "node server.mjs",
+    "start": "npm run build && node server.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
