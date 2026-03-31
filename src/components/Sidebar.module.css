@@ -1,0 +1,227 @@
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100dvh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 200;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+}
+
+/* Efeito Glassmorphism se suportado */
+@supports (backdrop-filter: blur(1px)) {
+  .sidebar {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+  }
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  min-height: var(--topbar-h);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.brandName {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.closeBtn {
+  display: none;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--r);
+  transition: all 0.2s;
+}
+
+/* ── Navegação ── */
+.nav {
+  flex: 1;
+  padding: 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.navItem svg {
+  color: var(--text3);
+  transition: color 0.2s;
+}
+
+.navItem:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.navItem:hover svg {
+  color: var(--primary);
+}
+
+.navActive {
+  background: var(--surface) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary-border) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.navActive svg {
+  color: var(--primary) !important;
+}
+
+.navLocked {
+  opacity: 0.4;
+  cursor: not-allowed !important;
+}
+
+/* ── Perfil do Usuário ── */
+.userChip {
+  margin: 12px;
+  padding: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.userChip:hover {
+  background: var(--surface3);
+  border-color: var(--border2);
+}
+
+.userAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--primary-mid);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px var(--primary-border);
+}
+
+.userNameWrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.userNameText {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.roleGestor { color: var(--blue); }
+.roleAdmin { color: var(--amber); }
+.roleVendor { color: var(--primary); }
+
+/* ── Dropdown Portal ── */
+.dropdownPortal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  min-width: 200px;
+  animation: dropdownFade 0.2s ease;
+}
+
+@keyframes dropdownFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text2);
+  transition: all 0.15s;
+}
+
+.dropItem:hover {
+  background: var(--surface2);
+  color: var(--primary);
+}
+
+.dropDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+  .open { transform: translateX(0); box-shadow: 20px 0 60px rgba(0,0,0,0.1); }
+  .closeBtn { display: flex; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px); z-index: 199;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .overlayOpen { opacity: 1; pointer-events: all; }
+}

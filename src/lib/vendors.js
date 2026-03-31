@@ -1,0 +1,117 @@
+import { supabase } from "./supabase.js";
+import { ROLES } from "../constants/roles.js";
+// Função de imagem centralizada em imageUpload.js
+export { uploadVendorPhoto } from "./imageUpload.js";
+
+// Busca fornecedores conforme o papel do usuário:
+// - admin: todos os fornecedores
+// - gestor (pivo): todos os fornecedores cadastrados no sistema
+// - vendor: lista vazia (vendors não devem ver outros vendors)
+export async function fetchVendors(userId, role) {
+  if (role !== ROLES.ADMIN && role !== ROLES.GESTOR) return [];
+
+  // Não incluir photo_url na listagem para evitar 406 com RLS
+  // photo_url é carregado separadamente quando necessário
+  const { data, error } = await supabase
+    .from("vendors")
+    .select(
+      "id, name, phone, city, notes, user_id, users(id, name, email, phone, city, role)",
+    )
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(error?.message || "Erro ao buscar vendors");
+  return (data ?? []).map((v) => ({
+    ...v,
+    admin_user_id: v.user_id,
+    company_name: v.users?.name ?? v.name,
+    email: v.users?.email ?? null,
+  }));
+}
+
+export async function createVendor(vendor) {
+  // INSERT sem .select() para evitar 406 com RLS
+  const { error: insertError } = await supabase.from("vendors").insert({
+    name: vendor.name.trim(),
+    phone: (vendor.phone ?? "").replace(/\D/g, ""),
+    city: vendor.city?.trim() || null,
+    notes: vendor.notes?.trim() || null,
+    photo_url: vendor.photo_url || null,
+    user_id: vendor.user_id ?? null,
+  });
+
+  if (insertError)
+    throw new Error(insertError?.message || "Erro ao criar vendor");
+
+  // Buscar o vendor criado sem incluir photo_url na listagem
+  const { data, error } = await supabase
+    .from("vendors")
+    .select("id, name, phone, city, notes, user_id, photo_url")
+    .eq("name", vendor.name.trim())
+    .eq("user_id", vendor.user_id ?? null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) throw new Error(error?.message || "Erro ao criar vendor");
+
+  // Sincroniza photo_url do vendor com profile_photo_url do usuário
+  if (vendor.photo_url && vendor.user_id) {
+    await supabase
+      .from("users")
+      .update({ profile_photo_url: vendor.photo_url })
+      .eq("id", vendor.user_id);
+  }
+
+  return { ...data, admin_user_id: data.user_id };
+}
+
+export async function updateVendor(id, patch) {
+  const payload = {
+    name: patch.name?.trim(),
+    phone: (patch.phone ?? "").replace(/\D/g, ""),
+    city: patch.city?.trim() || null,
+    notes: patch.notes?.trim() || null,
+  };
+  if (patch.photo_url !== undefined) {
+    payload.photo_url = patch.photo_url;
+  }
+
+  // UPDATE simples sem .select() para evitar conflitos com RLS
+  const { error: updateError } = await supabase
+    .from("vendors")
+    .update(payload)
+    .eq("id", id);
+
+  if (updateError)
+    throw new Error(updateError?.message || "Erro ao atualizar vendor");
+
+  // SELECT separado para carregar dados atualizados incluindo foto
+  const { data, error: selectError } = await supabase
+    .from("vendors")
+    .select("id, name, phone, city, notes, user_id, photo_url")
+    .eq("id", id)
+    .single();
+
+  if (selectError)
+    throw new Error(selectError?.message || "Erro ao carregar vendor");
+
+  // Sincroniza photo_url do vendor com profile_photo_url do usuário
+  if (patch.photo_url !== undefined && data.user_id) {
+    await supabase
+      .from("users")
+      .update({ profile_photo_url: patch.photo_url || null })
+      .eq("id", data.user_id);
+  }
+
+  return { ...data, admin_user_id: data.user_id };
+}
+
+export async function deleteVendor(id, userId, role) {
+  let query = supabase.from("vendors").delete().eq("id", id);
+  // Gestor só apaga o que ele mesmo criou
+  if (role !== ROLES.ADMIN && userId) {
+    query = query.eq("user_id", userId);
+  }
+  const { error } = await query;
+  if (error) throw new Error(error?.message || "Erro ao deletar vendor");
+}

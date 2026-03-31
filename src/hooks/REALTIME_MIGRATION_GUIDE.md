@@ -1,0 +1,281 @@
+/\*\*
+
+- ATUALIZAÇÃO EM TEMPO REAL — GUIA COMPLETO
+-
+- ============================================================================
+- SISTEMA DE AUTO-REFRESH SEM PRECISAR APERTAR F5
+- ============================================================================
+-
+- Este sistema implementa atualização automática em tempo real para TODAS as
+- páginas do AgroColetivo, usando Supabase RealtimeSubscriptions.
+-
+- ============================================================================
+- 1.  ENTENDER OS HOOKS DISPONÍVEIS
+- ============================================================================
+-
+- import { useRealtimeSubscription, useMultipleRealtimeSubscriptions } from '../hooks/useRealtimeSubscription';
+- import {
+- useOffersRealtime,
+- useOrdersRealtime,
+- useLotsRealtime,
+- useVendorsRealtime,
+- useGestoresRealtime,
+- useUserProfileRealtime,
+- useVendorProfileRealtime
+- } from '../hooks/useRealtimeData';
+-
+- ============================================================================
+- 2.  EXEMPLO: BuyerOrderStatusPage (SEM atualização → COM atualização)
+- ============================================================================
+-
+- ANTES (sem realtime):
+- ***
+- export function BuyerOrderStatusPage({ campaign, vendor }) {
+- const [offers, setOffers] = useState([]);
+-
+- useEffect(() => {
+-     loadOffers();
+- }, [campaign.id]);
+-
+- // ❌ Ofertas só atualizam ao montar ou trocar campanha
+- }
+-
+- DEPOIS (com realtime):
+- ***
+- import { useOffersRealtime } from '../hooks/useRealtimeData';
+-
+- export function BuyerOrderStatusPage({ campaign, vendor }) {
+- const { offers, loadingOffers } = useOffersRealtime(campaign.id);
+-
+- // ✅ Ofertas ATUALIZAM AUTOMATICAMENTE quando alguma oferece uma proposta
+- }
+-
+- ============================================================================
+- 3.  EXEMPLO: AdminPage (SEM atualização → COM atualização)
+- ============================================================================
+-
+- ANTES (sem realtime):
+- ***
+- export function AdminPage({ campaigns }) {
+- const [gestores, setGestores] = useState([]);
+-
+- useEffect(() => {
+-     loadGestores();
+- }, []);
+-
+- // ❌ Gestores carregam UMA VEZ ao montar
+- }
+-
+- DEPOIS (com realtime):
+- ***
+- import { useGestoresRealtime } from '../hooks/useRealtimeData';
+-
+- export function AdminPage({ campaigns }) {
+- const { gestores, loadingGestores } = useGestoresRealtime();
+-
+- // ✅ Gestores atualizam quando novo usuário se cadastra
+- }
+-
+- ============================================================================
+- 4.  EXEMPLO: ProducerOrdersPage (SEM atualização → COM atualização)
+- ============================================================================
+-
+- ANTES:
+- ***
+- export function ProducerOrdersPage({ buyer }) {
+- const [orders, setOrders] = useState([]);
+- const [offers, setOffers] = useState([]);
+-
+- useEffect(() => {
+-     loadOrders();
+-     loadOffers();
+- }, [buyer.id]);
+-
+- // ❌ Dados estáticos, sem atualização automática
+- }
+-
+- DEPOIS:
+- ***
+- import { useOrdersRealtime, useOffersRealtime } from '../hooks/useRealtimeData';
+-
+- export function ProducerOrdersPage({ buyer, campaign }) {
+- const { orders, loadingOrders } = useOrdersRealtime(campaign.id);
+- const { offers, loadingOffers } = useOffersRealtime(campaign.id);
+-
+- // ✅ Pedidos e ofertas atualizam em TEMPO REAL
+- }
+-
+- ============================================================================
+- 5.  EXEMPLO: PivoProfilePage (SEM atualização → COM atualização)
+- ============================================================================
+-
+- ANTES:
+- ***
+- export function PivoProfilePage({ user }) {
+- const [profile, setProfile] = useState(user);
+-
+- // ❌ Alterado externamente? Precisa recarregar manualmente
+- }
+-
+- DEPOIS:
+- ***
+- import { useUserProfileRealtime } from '../hooks/useRealtimeData';
+-
+- export function PivoProfilePage({ user }) {
+- const { profile, loadingProfile } = useUserProfileRealtime(user.id);
+-
+- // ✅ Perfil atualiza em TEMPO REAL quando outro admin edita
+- }
+-
+- ============================================================================
+- 6.  EXEMPLO: VendorProfilePage (O mesmo para perfis de fornecedor)
+- ============================================================================
+-
+- import { useVendorProfileRealtime } from '../hooks/useRealtimeData';
+-
+- export function VendorProfilePage({ vendor }) {
+- const { vendor: updatedVendor, loadingVendor } = useVendorProfileRealtime(vendor.id);
+-
+- // ✅ Perfil do fornecedor atualiza automaticamente
+- }
+-
+- ============================================================================
+- 7.  EXEMPLO: MÚLTIPLAS SUBSCRIPTIONS (Advanced)
+- ============================================================================
+-
+- Quando uma página precisa assistir várias tabelas:
+-
+- import { useMultipleRealtimeSubscriptions } from '../hooks/useRealtimeSubscription';
+-
+- export function ComplexPage({ userId, campaignId }) {
+- const [data, setData] = useState(null);
+-
+- // Assistir usuarios, campanhas E ofertas
+- useMultipleRealtimeSubscriptions(
+-     [
+-       { table: 'users', filterColumn: 'id', filterValue: userId },
+-       { table: 'campaigns', filterColumn: 'id', filterValue: campaignId },
+-       { table: 'vendor_campaign_offers', filterColumn: 'campaign_id', filterValue: campaignId }
+-     ],
+-     () => loadAllData() // Chamado quando QUALQUER tabela muda
+- );
+-
+- // ✅ Dados de múltiplas tabelas atualizam simultaneamente
+- }
+-
+- ============================================================================
+- 8.  PÁGINAS QUE PRECISAM SER ATUALIZADAS (PRIORITY LIST)
+- ============================================================================
+-
+- 🔴 ALTA PRIORIDADE (dados que mudam frequentemente):
+- 1. BuyerOrderStatusPage → use useOffersRealtime(campaignId)
+- 2. AdminPage → use useGestoresRealtime()
+- 3. ProducerOrdersPage → use useOrdersRealtime() + useOffersRealtime()
+- 4. CampaignsPage → já tem realtime para offers
+-
+- 🟠 MÉDIA PRIORIDADE (dados que mudam moderadamente):
+- 5. PivoProfilePage → use useUserProfileRealtime(userId)
+- 6. VendorProfilePage → use useVendorProfileRealtime(vendorId)
+- 7. ProducerPortalPage → já tem realtime mas pode aprimorar
+-
+- 🟡 BAIXA PRIORIDADE (dados estáticos):
+- 8. DashboardPage → props apenas, sem dados a atualizar
+- 9. VendorPivosPage → props apenas
+- 10. ProducersPage → props apenas
+-
+- ============================================================================
+- 9.  CHECKLIST DE MIGRAÇÃO
+- ============================================================================
+-
+- Para cada página, fazer:
+-
+- [ ] 1.  Importar os hooks necessários
+- [ ] 2.  Remover useState/useEffect de carregamento manual
+- [ ] 3.  Chamar o hook apropriado: useXxxRealtime()
+- [ ] 4.  Usar `loading` do hook para mostrar spinner
+- [ ] 5.  Usar dados do hook em vez de state local
+- [ ] 6.  Testar: mudar dados em outro abrebrowser e ver atualizar
+-
+- ============================================================================
+- 10. EXEMPLO COMPLETO DE MIGRAÇÃO
+- ============================================================================
+-
+- ARQUIVO: BuyerOrderStatusPage.jsx
+-
+- // ANTES:
+- import { useState, useEffect } from 'react';
+- import { supabase } from '../lib/supabase';
+-
+- export function BuyerOrderStatusPage({ campaign, vendor }) {
+- const [offers, setOffers] = useState([]);
+- const [loading, setLoading] = useState(true);
+-
+- const loadOffers = async () => {
+-     setLoading(true);
+-     const { data } = await supabase
+-       .from('vendor_campaign_offers')
+-       .select('*')
+-       .eq('campaign_id', campaign.id);
+-     setOffers(data || []);
+-     setLoading(false);
+- };
+-
+- useEffect(() => {
+-     loadOffers();
+- }, [campaign.id]);
+-
+- return (
+-     <div>
+-       {loading ? <LoadingScreen /> : (
+-         <div>
+-           {offers.map(offer => <OfferCard key={offer.id} offer={offer} />)}
+-         </div>
+-       )}
+-     </div>
+- );
+- }
+-
+- // DEPOIS:
+- import { useOffersRealtime } from '../hooks/useRealtimeData';
+-
+- export function BuyerOrderStatusPage({ campaign, vendor }) {
+- const { offers, loadingOffers } = useOffersRealtime(campaign.id);
+-
+- return (
+-     <div>
+-       {loadingOffers ? <LoadingScreen /> : (
+-         <div>
+-           {offers.map(offer => <OfferCard key={offer.id} offer={offer} />)}
+-         </div>
+-       )}
+-     </div>
+- );
+- }
+-
+- RESULTADO:
+- ✅ 5 linhas de código ao invés de 20
+- ✅ Atualização automática em tempo real
+- ✅ Sem precisar apertar F5
+-
+- ============================================================================
+- DÚVIDAS FREQUENTES
+- ============================================================================
+-
+- P: Por que meus dados não atualizam?
+- R: Verifique se:
+- 1. O hook está sendo chamado (não dentro de if/for)
+- 2. O filterValue está correto
+- 3. A tabela Supabase tem row-level security corretamente configurada
+- 4. Abra DevTools → Network → WebSocket para ver subscrições
+-
+- P: Como desabilitar a atualização em tempo real?
+- R: Remova o hook de realtime e use useState + useEffect tradicional
+-
+- P: Isso afeta performance?
+- R: Não, as subscrições são gerenciadas automaticamente e se disp quando
+- o componente desmonta. Usar é mais eficiente que polling constante.
+-
+- ============================================================================
+  \*/
+
+export const REALTIME_MIGRATION_GUIDE = {};

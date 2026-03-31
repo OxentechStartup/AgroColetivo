@@ -1,21 +1,29 @@
 {
-  "name": "agro-coletivo-backend",
+  "name": "agro-coletivo",
   "version": "0.21.0",
   "type": "module",
-  "description": "AgroColetivo Backend API - Email, Authentication, and Data Management",
+  "description": "AgroColetivo - Sistema de gestão agrícola com Supabase",
   "main": "server.mjs",
   "scripts": {
+    "dev": "npm run build && node server.mjs",
+    "build": "vite build",
     "start": "node server.mjs",
-    "dev": "node server.mjs",
-    "email-server": "node email-server.cjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
+    "dompurify": "^3.3.3",
     "express": "^5.2.1",
-    "nodemailer": "^8.0.3",
-    "resend": "^6.9.4"
+    "lucide-react": "^0.263.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "terser": "^5.46.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.1"
   },
   "engines": {
     "node": ">=18.0.0"
