@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   fetchCampaigns,
   setCampaignStatus,
@@ -28,6 +28,16 @@ import {
 } from "../lib/notifications.js";
 import { ROLES } from "../constants/roles.js";
 import { supabase } from "../lib/supabase.js";
+import {
+  isRealtimeAvailable,
+  markRealtimeFailure,
+  clearRealtimeBackoff,
+  cleanupRealtimeChannel,
+} from "../lib/realtimeGuard.js";
+
+const REALTIME_RELOAD_DEBOUNCE_MS = 700;
+const BACKGROUND_SYNC_INTERVAL_MS = 45000;
+const CAMPAIGNS_LOAD_WATCHDOG_MS = 15000;
 
 export function useCampaigns(user) {
   const [campaigns, setCampaigns] = useState([]);
@@ -35,6 +45,8 @@ export function useCampaigns(user) {
   const [ownVendor, setOwnVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const syncTimerRef = useRef(null);
+  const syncInFlightRef = useRef(false);
 
   const reloadCampaign = useCallback(
     async (campaignId) => {
@@ -90,155 +102,295 @@ export function useCampaigns(user) {
     [user],
   );
 
-  const loadAll = useCallback(async () => {
-    if (!user) {
-      setCampaigns([]);
-      setVendors([]);
-      setLoading(false);
+  const loadAll = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!user) {
+        console.log("📊 useCampaigns: sem user, limpando");
+        setCampaigns([]);
+        setVendors([]);
+        setOwnVendor(null);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+
+      console.log("📊 useCampaigns: iniciando loadAll para user", user.email);
+      if (!silent) setLoading(true);
       setError(null);
-      return;
-    }
+      let watchdogId = null;
 
-    setLoading(true);
-    setError(null);
+      if (!silent) {
+        watchdogId = setTimeout(() => {
+          setLoading(false);
+          setError(
+            "Carregamento demorou mais que o esperado. Verifique sua conexao e tente novamente.",
+          );
+        }, CAMPAIGNS_LOAD_WATCHDOG_MS);
+      }
 
-    // Timeout de 30 segundos para evitar carregamento infinito
-    // Essencial para cold starts no Render
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(
-        () =>
-          reject(
-            new Error(
-              "Timeout ao carregar cotações. Verifique sua conexão e tente novamente.",
-            ),
-          ),
-        30000,
-      ),
-    );
+      try {
+        let userWithVendorId = user;
 
-    try {
-      await Promise.race([
-        (async () => {
-          let userWithVendorId = user;
+        // Step 1: Resolve vendorId se vendor ainda não tem
+        if (user.role === ROLES.VENDOR && !user.vendorId) {
+          console.log("📊 Step 1: Buscando vendorId");
+          let { data: vRow } = await supabase
+            .from("vendors")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
 
-          // Resolve vendorId se vendor ainda não tem
-          if (user.role === ROLES.VENDOR && !user.vendorId) {
-            let { data: vRow } = await supabase
+          if (!vRow && user.phone) {
+            const { data: vByPhone } = await supabase
               .from("vendors")
               .select("id")
-              .eq("user_id", user.id)
+              .eq("phone", user.phone.replace(/\D/g, ""))
               .maybeSingle();
-
-            if (!vRow && user.phone) {
-              const { data: vByPhone } = await supabase
+            if (vByPhone) {
+              await supabase
                 .from("vendors")
-                .select("id")
-                .eq("phone", user.phone.replace(/\D/g, ""))
-                .maybeSingle();
-              if (vByPhone) {
-                await supabase
-                  .from("vendors")
-                  .update({ user_id: user.id })
-                  .eq("id", vByPhone.id);
-                vRow = vByPhone;
-              }
+                .update({ user_id: user.id })
+                .eq("id", vByPhone.id);
+              vRow = vByPhone;
             }
-            if (vRow) userWithVendorId = { ...user, vendorId: vRow.id };
           }
-
-          const isVendor = user.role === ROLES.VENDOR;
-          const vendorId = userWithVendorId?.vendorId ?? null;
-
-          // Busca campanhas, vendors e vendor próprio em paralelo
-          const [rawCampaigns, rawVendors, ownVendorData] = await Promise.all([
-            fetchCampaigns(userWithVendorId),
-            fetchVendors(user.id, user.role),
-            // Busca vendor próprio se necessário
-            isVendor && vendorId
-              ? supabase
-                  .from("vendors")
-                  .select("*")
-                  .eq("id", vendorId)
-                  .maybeSingle()
-                  .then(({ data }) => data)
-              : Promise.resolve(null),
-          ]);
-
-          // Atualiza vendor próprio se encontrou
-          if (ownVendorData) {
-            setOwnVendor({
-              ...ownVendorData,
-              admin_user_id: ownVendorData.user_id,
-            });
+          if (vRow) {
+            userWithVendorId = { ...user, vendorId: vRow.id };
+            console.log("📊 Step 1 OK: vendorId =", vRow.id);
           }
+        }
 
-          if (rawCampaigns.length === 0) {
-            setCampaigns([]);
-            setVendors(rawVendors);
-            return;
-          }
+        const isVendor = user.role === ROLES.VENDOR;
+        const vendorId = userWithVendorId?.vendorId ?? null;
 
-          // ── OTIMIZAÇÃO: busca orders e lots de TODAS as campanhas de uma vez ──
-          // Antes: 1 query por campanha × N campanhas = N+1 queries
-          // Agora: 2 queries totais independente de quantas campanhas existem
-          const campaignIds = rawCampaigns.map((c) => c.id);
-          const [allOrders, allLots] = await Promise.all([
-            isVendor
-              ? Promise.resolve([])
-              : fetchAllOrdersForCampaigns(campaignIds),
-            fetchAllLotsForCampaigns(campaignIds),
-          ]);
+        // Step 2: Busca campanhas, vendors e vendor próprio em paralelo
+        console.log("📊 Step 2: Buscando campanhas, vendors, ownVendor");
+        const [rawCampaigns, rawVendors, ownVendorData] = await Promise.all([
+          fetchCampaigns(userWithVendorId),
+          fetchVendors(user.id, user.role),
+          isVendor && vendorId
+            ? supabase
+                .from("vendors")
+                .select("*")
+                .eq("id", vendorId)
+                .maybeSingle()
+                .then(({ data }) => data)
+            : Promise.resolve(null),
+        ]);
 
-          // Agrupa por campaign_id em memória
-          const ordersByCampaign = groupBy(allOrders, "campaign_id");
-          const lotsByCampaign = groupBy(allLots, "campaign_id");
+        console.log(
+          "📊 Step 2 OK: campanhas =",
+          rawCampaigns.length,
+          "vendors =",
+          rawVendors.length,
+        );
 
-          const withOrders = rawCampaigns.map((c) => {
-            const orders = ordersByCampaign[c.id] ?? [];
-            const lots = (lotsByCampaign[c.id] ?? []).map(normalizeLotRaw);
-
-            const visibleLots =
-              isVendor && vendorId
-                ? lots.filter((l) => l.vendorId === vendorId)
-                : lots;
-            const totalSupplied = lots.reduce(
-              (s, l) => s + (l.qtyAvailable ?? 0),
-              0,
-            );
-            const approved = orders
-              .filter((o) => o.status === "approved")
-              .map(normalizeOrder);
-            const pending = orders
-              .filter((o) => o.status === "pending")
-              .map(normalizeOrder);
-
-            return {
-              ...c,
-              orders: isVendor ? [] : approved,
-              pendingOrders: isVendor ? [] : pending,
-              lots: visibleLots,
-              totalSupplied,
-              approvedCount: approved.length,
-              totalOrdered: approved.reduce((s, o) => s + o.qty, 0),
-              pendingCount: pending.length,
-            };
+        // Atualiza vendor próprio se encontrou
+        if (ownVendorData) {
+          console.log("📊 Step 2: Atualizando ownVendor");
+          setOwnVendor({
+            ...ownVendorData,
+            admin_user_id: ownVendorData.user_id,
           });
+        }
 
-          setCampaigns(withOrders);
+        if (rawCampaigns.length === 0) {
+          console.log("📊 Nenhuma campanha, finalizando");
+          setCampaigns([]);
           setVendors(rawVendors);
-        })(),
-        timeoutPromise,
-      ]);
-    } catch (err) {
-      setError(err?.message || "Erro ao carregar cotações");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+          setError(null);
+          if (!silent) setLoading(false);
+          return;
+        }
+
+        // Step 3: Busca orders e lots
+        console.log("📊 Step 3: Buscando orders e lots");
+        const campaignIds = rawCampaigns.map((c) => c.id);
+        const [allOrders, allLots] = await Promise.all([
+          isVendor
+            ? Promise.resolve([])
+            : fetchAllOrdersForCampaigns(campaignIds),
+          fetchAllLotsForCampaigns(campaignIds),
+        ]);
+
+        console.log(
+          "📊 Step 3 OK: orders =",
+          allOrders.length,
+          "lots =",
+          allLots.length,
+        );
+
+        // Step 4: Agrupa e normaliza
+        console.log("📊 Step 4: Agrupando e normalizando");
+        const ordersByCampaign = groupBy(allOrders, "campaign_id");
+        const lotsByCampaign = groupBy(allLots, "campaign_id");
+
+        const withOrders = rawCampaigns.map((c) => {
+          const orders = ordersByCampaign[c.id] ?? [];
+          const lots = (lotsByCampaign[c.id] ?? []).map(normalizeLotRaw);
+
+          const visibleLots =
+            isVendor && vendorId
+              ? lots.filter((l) => l.vendorId === vendorId)
+              : lots;
+          const totalSupplied = lots.reduce(
+            (s, l) => s + (l.qtyAvailable ?? 0),
+            0,
+          );
+          const approved = orders
+            .filter((o) => o.status === "approved")
+            .map(normalizeOrder);
+          const pending = orders
+            .filter((o) => o.status === "pending")
+            .map(normalizeOrder);
+
+          return {
+            ...c,
+            orders: isVendor ? [] : approved,
+            pendingOrders: isVendor ? [] : pending,
+            lots: visibleLots,
+            totalSupplied,
+            approvedCount: approved.length,
+            totalOrdered: approved.reduce((s, o) => s + o.qty, 0),
+            pendingCount: pending.length,
+          };
+        });
+
+        console.log("📊 Step 4 OK: campanhas normalizadas");
+        setCampaigns(withOrders);
+        setVendors(rawVendors);
+        setError(null);
+        console.log("✅ useCampaigns: loadAll concluído com sucesso");
+      } catch (err) {
+        console.error("❌ useCampaigns erro:", err?.message);
+        setError(err?.message || "Erro ao carregar cotações");
+      } finally {
+        if (watchdogId) clearTimeout(watchdogId);
+        if (!silent) setLoading(false);
+      }
+    },
+    [user],
+  );
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  const syncNow = useCallback(async () => {
+    if (!user?.id || syncInFlightRef.current) return;
+
+    syncInFlightRef.current = true;
+    try {
+      await loadAll({ silent: true });
+    } finally {
+      syncInFlightRef.current = false;
+    }
+  }, [loadAll, user?.id]);
+
+  const scheduleSync = useCallback(
+    (delay = REALTIME_RELOAD_DEBOUNCE_MS) => {
+      if (!user?.id) return;
+
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+
+      syncTimerRef.current = setTimeout(() => {
+        syncNow().catch(() => {});
+      }, delay);
+    },
+    [syncNow, user?.id],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (syncTimerRef.current) {
+        clearTimeout(syncTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id || !isRealtimeAvailable()) return;
+
+    const onDbChange = () => scheduleSync();
+    const channel = supabase
+      .channel(`app_data_sync_${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "campaigns" },
+        onDbChange,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        onDbChange,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "campaign_lots" },
+        onDbChange,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "vendors" },
+        onDbChange,
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          clearRealtimeBackoff();
+          return;
+        }
+
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          markRealtimeFailure("useCampaigns", status);
+          cleanupRealtimeChannel(supabase, channel);
+        }
+      });
+
+    return () => {
+      cleanupRealtimeChannel(supabase, channel);
+    };
+  }, [scheduleSync, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const refreshOnResume = () => scheduleSync(0);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        scheduleSync(0);
+      }
+    };
+
+    window.addEventListener("focus", refreshOnResume);
+    window.addEventListener("online", refreshOnResume);
+    window.addEventListener("pageshow", refreshOnResume);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnResume);
+      window.removeEventListener("online", refreshOnResume);
+      window.removeEventListener("pageshow", refreshOnResume);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [scheduleSync, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const intervalId = setInterval(() => {
+      scheduleSync(0);
+    }, BACKGROUND_SYNC_INTERVAL_MS);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [scheduleSync, user?.id]);
 
   const addCampaign = async (c) => {
     const created = await createCampaign(c, user?.id);

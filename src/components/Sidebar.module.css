@@ -1,8 +1,8 @@
 .sidebar {
   width: var(--sidebar-w);
   min-height: 100dvh;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: linear-gradient(178deg, #0c4e45 0%, #0c4b67 58%, #0a3c56 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -12,13 +12,19 @@
   z-index: 200;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-y: auto;
+  box-shadow: 24px 0 48px -36px rgba(1, 16, 14, 0.8);
 }
 
 /* Efeito Glassmorphism se suportado */
 @supports (backdrop-filter: blur(1px)) {
   .sidebar {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
+    background: linear-gradient(
+      176deg,
+      rgba(7, 63, 54, 0.88) 0%,
+      rgba(8, 56, 76, 0.86) 54%,
+      rgba(8, 48, 68, 0.88) 100%
+    );
+    backdrop-filter: blur(14px);
   }
 }
 
@@ -28,22 +34,23 @@
   gap: 12px;
   padding: 0 20px;
   min-height: var(--topbar-h);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
   margin-bottom: 12px;
 }
 
 .brandName {
   font-size: 1.1rem;
   font-weight: 800;
-  color: var(--text);
+  color: rgba(244, 255, 250, 0.96);
   letter-spacing: -0.02em;
+  font-family: var(--font-display);
 }
 
 .closeBtn {
   display: none;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text2);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(229, 247, 241, 0.86);
   cursor: pointer;
   padding: 6px;
   border-radius: var(--r);
@@ -68,7 +75,7 @@
   border-radius: var(--r);
   background: transparent;
   border: 1px solid transparent;
-  color: var(--text2);
+  color: rgba(225, 243, 237, 0.84);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
@@ -77,28 +84,32 @@
 }
 
 .navItem svg {
-  color: var(--text3);
+  color: rgba(190, 225, 215, 0.72);
   transition: color 0.2s;
 }
 
 .navItem:hover {
-  background: var(--surface2);
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(246, 255, 252, 0.98);
 }
 
 .navItem:hover svg {
-  color: var(--primary);
+  color: #9ee8d2;
 }
 
 .navActive {
-  background: var(--surface) !important;
-  color: var(--primary) !important;
-  border-color: var(--primary-border) !important;
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(
+    96deg,
+    rgba(152, 236, 211, 0.2) 0%,
+    rgba(120, 173, 230, 0.2) 100%
+  ) !important;
+  color: #ebfff8 !important;
+  border-color: rgba(154, 230, 209, 0.58) !important;
+  box-shadow: inset 0 0 0 1px rgba(162, 233, 215, 0.28);
 }
 
 .navActive svg {
-  color: var(--primary) !important;
+  color: #a6edd8 !important;
 }
 
 .navLocked {
@@ -108,36 +119,39 @@
 
 /* ── Perfil do Usuário ── */
 .userChip {
+  width: calc(100% - 24px);
+  box-sizing: border-box;
   margin: 12px;
   padding: 12px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--r-lg);
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .userChip:hover {
-  background: var(--surface3);
-  border-color: var(--border2);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(180, 229, 214, 0.45);
 }
 
 .userAvatar {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--primary-mid);
-  color: var(--primary);
+  background: linear-gradient(130deg, #11a37d 0%, #2e7ccf 100%);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.875rem;
   font-weight: 800;
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px var(--primary-border);
+  box-shadow: 0 8px 16px -12px rgba(2, 25, 21, 0.7);
 }
 
 .userNameWrap {
@@ -150,7 +164,7 @@
 .userNameText {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: var(--text);
+  color: rgba(244, 255, 250, 0.94);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -163,14 +177,33 @@
   letter-spacing: 0.05em;
 }
 
-.roleGestor { color: var(--blue); }
-.roleAdmin { color: var(--amber); }
-.roleVendor { color: var(--primary); }
+.roleGestor {
+  color: #9fcdfd;
+}
+.roleAdmin {
+  color: #ffd29b;
+}
+.roleVendor {
+  color: #a8f0da;
+}
+
+.userChipChevron {
+  margin-left: auto;
+  align-self: center;
+  flex-shrink: 0;
+  color: rgba(201, 231, 221, 0.84);
+  transition: transform 0.2s ease;
+  transform: rotate(180deg);
+}
+
+.userChipChevronOpen {
+  transform: rotate(0deg);
+}
 
 /* ── Dropdown Portal ── */
 .dropdownPortal {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border-strong);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
   padding: 6px;
@@ -179,8 +212,14 @@
 }
 
 @keyframes dropdownFade {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropItem {
@@ -195,12 +234,12 @@
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--text2);
+  color: #1e3d35;
   transition: all 0.15s;
 }
 
 .dropItem:hover {
-  background: var(--surface2);
+  background: rgba(11, 143, 108, 0.08);
   color: var(--primary);
 }
 
@@ -216,12 +255,25 @@
     transform: translateX(-100%);
     width: 280px;
   }
-  .open { transform: translateX(0); box-shadow: 20px 0 60px rgba(0,0,0,0.1); }
-  .closeBtn { display: flex; }
-  .overlay {
-    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(4px); z-index: 199;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  .open {
+    transform: translateX(0);
+    box-shadow: 26px 0 64px rgba(1, 15, 13, 0.45);
   }
-  .overlayOpen { opacity: 1; pointer-events: all; }
+  .closeBtn {
+    display: flex;
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 199;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .overlayOpen {
+    opacity: 1;
+    pointer-events: all;
+  }
 }

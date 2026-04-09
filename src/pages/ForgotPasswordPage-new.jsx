@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Loader, Mail, Lock, ArrowLeft } from "lucide-react";
+import { Loader, Mail, ArrowLeft, ShieldCheck } from "lucide-react";
 import { startPasswordRecovery } from "../lib/auth-new.js";
 import { Card } from "../components/ui/Card.jsx";
 import { Button } from "../components/ui/Button.jsx";
 import { Toast } from "../components/ui/Toast.jsx";
+import { AuthShell } from "../components/AuthShell";
 import styles from "./ForgotPasswordPage.module.css";
 
 /**
@@ -58,17 +59,30 @@ export function ForgotPasswordPage({ onRequestSent, onBack }) {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
+    <AuthShell
+      kicker="Recuperacao de acesso"
+      title="Recupere sua senha"
+      subtitle="Receba um codigo de verificacao para redefinir sua senha com seguranca."
+      bullets={[
+        "Codigo enviado para o email informado",
+        "Fluxo protegido com validacao por etapa",
+        "Retorno rapido para o painel apos reset",
+      ]}
+      contentMaxWidth={520}
+    >
         <Card className={styles.card}>
           <div className={styles.header}>
             <button
               type="button"
               className={styles.backButton}
               onClick={onBack}
+              aria-label="Voltar para login"
             >
               <ArrowLeft size={20} /> Voltar
             </button>
+            <div className={styles.headerBadge}>
+              <ShieldCheck size={14} /> Recuperacao segura
+            </div>
             <h1>Recuperar Senha</h1>
             <p className={styles.subtitle}>
               Informe seu email para receber um código de verificação
@@ -78,16 +92,8 @@ export function ForgotPasswordPage({ onRequestSent, onBack }) {
           <form onSubmit={handleSubmit} className={styles.form}>
             <div className="form-group">
               <label htmlFor="email">Email</label>
-              <div style={{ position: "relative" }}>
-                <Mail
-                  size={18}
-                  style={{
-                    position: "absolute",
-                    left: 12,
-                    top: 12,
-                    color: "var(--text2)",
-                  }}
-                />
+              <div className={styles.inputWrap}>
+                <Mail size={18} className={styles.inputIcon} />
                 <input
                   id="email"
                   className="form-input"
@@ -98,7 +104,6 @@ export function ForgotPasswordPage({ onRequestSent, onBack }) {
                     setEmail(e.target.value.toLowerCase().trim())
                   }
                   autoComplete="off"
-                  style={{ paddingLeft: 40 }}
                 />
               </div>
             </div>
@@ -134,11 +139,10 @@ export function ForgotPasswordPage({ onRequestSent, onBack }) {
             </p>
           </div>
         </Card>
-      </div>
 
       {success && (
         <Toast type="success" message={success} onDone={() => setSuccess("")} />
       )}
-    </div>
+    </AuthShell>
   );
 }

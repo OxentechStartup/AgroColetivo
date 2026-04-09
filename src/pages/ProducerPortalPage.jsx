@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useContext, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   ShoppingCart,
   Plus,
   X,
-  Edit2,
   Trash2,
   Send,
   Phone,
@@ -14,88 +14,188 @@ import {
   Zap,
   Wheat,
   LayoutGrid,
-  ChevronRight,
-  ChevronDown,
   CheckCircle,
-  CalendarDays,
   Clock,
   Search,
   AlertCircle,
-  ChevronLeft,
   Package,
-  MapPin,
   Briefcase,
 } from "lucide-react";
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { daysUntilDeadline } from "../utils/data";
 import { supabase } from "../lib/supabase";
-import { useAuth } from "../hooks/useAuth";
+import {
+  isRealtimeAvailable,
+  markRealtimeFailure,
+  clearRealtimeBackoff,
+  cleanupRealtimeChannel,
+} from "../lib/realtimeGuard.js";
+import AppContext from "../context/AppContext";
 import { BuyerOrderStatusPage } from "./BuyerOrderStatusPage";
+import { BRAND_NAME, BRAND_LOGO_URL } from "../constants/branding";
 import styles from "./ProducerPortalPage.module.css";
 
-// Categorias
 const CATEGORIES = [
   { id: "all", name: "Todos", icon: LayoutGrid, color: "#16A34A" },
-  { id: "grains", name: "Grãos", icon: Wheat, color: "#DC2626" },
+  { id: "grains", name: "Graos", icon: Wheat, color: "#DC2626" },
   { id: "seeds", name: "Sementes", icon: Leaf, color: "#7C3AED" },
   { id: "nutrients", name: "Nutrientes", icon: Droplet, color: "#0EA5E9" },
   { id: "tools", name: "Equipamentos", icon: Zap, color: "#F59E0B" },
 ];
 
-// Categorizar produto automaticamente
+const CAMPAIGNS_TIMEOUT_MS = 15000;
+const PORTAL_SYNC_INTERVAL_MS = 60000;
+const PORTAL_SYNC_DEBOUNCE_MS = 450;
+
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || "";
+
+const portalSupabase =
+  SUPABASE_URL && SUPABASE_ANON_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      })
+    : null;
+
 function getCategoryId(product) {
-  const text = product.toLowerCase();
+  const text = String(product || "").toLowerCase();
   if (text.includes("semente") || text.includes("semilla")) return "seeds";
   if (
     text.includes("milho") ||
     text.includes("soja") ||
     text.includes("arroz") ||
     text.includes("trigo") ||
-    text.includes("feijão") ||
+    text.includes("feijao") ||
     text.includes("cereal") ||
-    text.includes("grão")
-  )
+    text.includes("grao")
+  ) {
     return "grains";
+  }
   if (
     text.includes("nutrient") ||
-    text.includes("ração") ||
+    text.includes("racao") ||
     text.includes("adubo")
-  )
+  ) {
     return "nutrients";
+  }
   if (
     text.includes("equipament") ||
-    text.includes("máquina") ||
+    text.includes("maquina") ||
     text.includes("bomba")
-  )
+  ) {
     return "tools";
+  }
   return "all";
 }
 
-async function fetchOpenCampaigns() {
-  const { data, error } = await supabase
-    .from("v_campaign_summary")
-    .select("*, gestor_name:users!pivo_id(name, phone)")
-    .in("status", ["open", "negotiating"])
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error?.message || "Erro ao buscar campanhas");
-  return (data ?? []).map((row) => ({
+function clampQtyValue(value, minQty = 1, maxQty = 999) {
+  const min = Number.isFinite(minQty) ? Number(minQty) : 1;
+  const parsed = Number(value);
+  const safeMax = Number.isFinite(maxQty)
+    ? Math.max(Number(maxQty), min)
+    : Number.MAX_SAFE_INTEGER;
+
+  if (!Number.isFinite(parsed)) return min;
+  return Math.min(safeMax, Math.max(min, Math.round(parsed)));
+}
+
+function mapPortalCampaignRow(row, gestorById = null) {
+  const gestorJoin = Array.isArray(row.gestor_name)
+    ? row.gestor_name[0]
+    : row.gestor_name;
+  const gestorFallback = gestorById?.get?.(row.pivo_id);
+
+  const goalQty = Number(row.goal_qty ?? 0);
+  const totalOrdered = Number(row.total_ordered ?? 0);
+  const approval = Number(
+    row.progress_pct ?? (goalQty > 0 ? (totalOrdered / goalQty) * 100 : 0),
+  );
+
+  return {
     id: row.id,
     product: row.product,
     unit: row.unit,
     unitWeight: Number(row.unit_weight_kg ?? 25),
-    goalQty: Number(row.goal_qty),
+    goalQty,
     minQty: Number(row.min_qty ?? 1),
     maxQty: row.max_qty || null,
     status: row.status,
     deadline: row.deadline,
-    totalOrdered: Number(row.total_ordered ?? 0),
-    approval: Number(row.progress_pct ?? 0),
+    totalOrdered,
+    approval,
     imageUrl: row.image_url,
+    pricePerUnit: row.price_per_unit ? Number(row.price_per_unit) : null,
     pivoId: row.pivo_id,
-    gestorName: row.gestor_name?.[0]?.name || "Gestor",
-    gestorPhone: row.gestor_name?.[0]?.phone || "",
+    gestorName: gestorJoin?.name || gestorFallback?.name || "Gestor",
+    gestorPhone: gestorJoin?.phone || gestorFallback?.phone || "",
     category: getCategoryId(row.product),
-  }));
+  };
+}
+
+async function fetchGestorMap(client, pivoIds) {
+  if (!pivoIds.length) return new Map();
+
+  const { data, error } = await client
+    .from("users")
+    .select("id, name, phone")
+    .in("id", pivoIds);
+
+  if (error || !Array.isArray(data)) {
+    return new Map();
+  }
+
+  return new Map(
+    data.map((row) => [
+      row.id,
+      {
+        name: row.name || "Gestor",
+        phone: row.phone || "",
+      },
+    ]),
+  );
+}
+
+async function fetchOpenCampaigns() {
+  const client = portalSupabase ?? supabase;
+
+  const { data, error } = await client
+    .from("v_campaign_summary")
+    .select(
+      "id, pivo_id, product, unit, unit_weight_kg, goal_qty, min_qty, max_qty, status, deadline, total_ordered, progress_pct, image_url, price_per_unit, created_at, gestor_name:users!pivo_id(name, phone)",
+    )
+    .in("status", ["open", "negotiating"])
+    .order("created_at", { ascending: false });
+
+  if (!error && Array.isArray(data)) {
+    return data.map((row) => mapPortalCampaignRow(row));
+  }
+
+  const { data: rawCampaigns, error: fallbackError } = await client
+    .from("campaigns")
+    .select(
+      "id, pivo_id, product, unit, unit_weight_kg, goal_qty, min_qty, status, deadline, image_url, created_at",
+    )
+    .in("status", ["open", "negotiating"])
+    .order("created_at", { ascending: false });
+
+  if (fallbackError) {
+    throw new Error(
+      fallbackError?.message || error?.message || "Erro ao buscar campanhas",
+    );
+  }
+
+  const pivoIds = [
+    ...new Set((rawCampaigns ?? []).map((row) => row.pivo_id).filter(Boolean)),
+  ];
+  const gestorById = await fetchGestorMap(client, pivoIds);
+
+  return (rawCampaigns ?? []).map((row) =>
+    mapPortalCampaignRow(row, gestorById),
+  );
 }
 
 function fmtDate(iso) {
@@ -104,166 +204,63 @@ function fmtDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 // COMPONENTES
-// ══════════════════════════════════════════════════════════════════════════════
+// ============================================================================
 
 function Header({ cartCount, onCartClick }) {
+  const cartLabel = cartCount === 1 ? "1 item" : `${cartCount} itens`;
+
   return (
-    <div
-      style={{
-        background: "linear-gradient(135deg, #16A34A 0%, #15803d 100%)",
-        color: "white",
-        padding: "16px 24px",
-        borderBottom: "1px solid rgba(0,0,0,0.1)",
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 640,
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          width: "100%",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div
-            style={{
-              background: "white",
-              borderRadius: "50%",
-              width: 48,
-              height: 48,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
+    <header className={styles.portalHeader}>
+      <div className={styles.portalHeaderInner}>
+        <div className={styles.portalBrandGroup}>
+          <div className={styles.portalLogo}>
             <img
-              src="https://i.imgur.com/clDJyAh.png"
-              alt="AgroColetivo"
-              style={{ height: 40, width: "auto", objectFit: "contain" }}
+              src={BRAND_LOGO_URL}
+              alt={BRAND_NAME}
+              className={styles.portalLogoImg}
             />
           </div>
-          <div>
-            <h1
-              style={{
-                fontSize: "1.4rem",
-                fontWeight: 700,
-                margin: "0 0 2px 0",
-                color: "white",
-              }}
-            >
-              AgroColetivo
-            </h1>
-            <p
-              style={{
-                fontSize: ".8rem",
-                margin: 0,
-                opacity: 0.95,
-                color: "white",
-              }}
-            >
-              Compras coletivas
-            </p>
+
+          <div className={styles.portalBrandText}>
+            <h1 className={styles.portalBrandTitle}>HubCompras</h1>
+            <p className={styles.portalBrandSubtitle}>Compras coletivas</p>
           </div>
         </div>
+
         <button
+          type="button"
           onClick={onCartClick}
-          style={{
-            position: "relative",
-            background: "rgba(255,255,255,0.2)",
-            border: "2px solid rgba(255,255,255,0.4)",
-            borderRadius: "8px",
-            padding: "8px 12px",
-            cursor: "pointer",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            fontSize: ".9rem",
-            fontWeight: 600,
-            transition: "all 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.background = "rgba(255,255,255,0.3)";
-            e.target.style.borderColor = "rgba(255,255,255,0.6)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = "rgba(255,255,255,0.2)";
-            e.target.style.borderColor = "rgba(255,255,255,0.4)";
-          }}
+          className={styles.portalCartBtn}
+          aria-label={`Abrir carrinho com ${cartLabel}`}
         >
           <ShoppingCart size={16} />
-          {cartCount}
+          <span>{cartLabel}</span>
           {cartCount > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: "-6px",
-                right: "-6px",
-                background: "#DC2626",
-                color: "white",
-                borderRadius: "50%",
-                width: 20,
-                height: 20,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: ".7rem",
-                fontWeight: 700,
-              }}
-            >
-              {cartCount}
-            </span>
+            <span className={styles.portalCartBadge}>{cartCount}</span>
           )}
         </button>
       </div>
-    </div>
+    </header>
   );
 }
 
 function CategoryFilter({ categories, active, onChange }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "8px",
-        overflowX: "auto",
-        padding: "12px 0",
-        marginBottom: "16px",
-        scrollBehavior: "smooth",
-        WebkitOverflowScrolling: "touch",
-      }}
-    >
+    <div className={styles.filterRail}>
       {categories.map((cat) => {
         const Icon = cat.icon;
         const isActive = cat.id === active;
+        const chipToneClass =
+          styles[`chipTone_${cat.id}`] || styles.chipTone_all;
         return (
           <button
             key={cat.id}
+            type="button"
             onClick={() => onChange(cat.id)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 14px",
-              borderRadius: "20px",
-              border: `2px solid ${isActive ? cat.color : "var(--border)"}`,
-              background: isActive ? `${cat.color}15` : "var(--surface2)",
-              color: isActive ? cat.color : "var(--text2)",
-              fontSize: ".85rem",
-              fontWeight: isActive ? 600 : 500,
-              cursor: "pointer",
-              transition: "all 0.2s",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
+            className={`${styles.filterChip} ${chipToneClass} ${isActive ? styles.filterChipActive : ""}`}
+            aria-pressed={isActive}
           >
             <Icon size={14} />
             {cat.name}
@@ -276,43 +273,21 @@ function CategoryFilter({ categories, active, onChange }) {
 
 function SearchBar({ value, onChange }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        background: "var(--surface2)",
-        border: "1px solid var(--border)",
-        borderRadius: "8px",
-        padding: "10px 14px",
-        marginBottom: "20px",
-      }}
-    >
-      <Search size={16} color="var(--text3)" />
+    <div className={styles.searchBar}>
+      <Search size={16} className={styles.searchIcon} />
       <input
         type="text"
         placeholder="Buscar produto ou gestor..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        style={{
-          flex: 1,
-          border: "none",
-          background: "none",
-          outline: "none",
-          fontSize: ".9rem",
-          color: "var(--text1)",
-        }}
+        className={styles.searchInput}
       />
       {value && (
         <button
+          type="button"
           onClick={() => onChange("")}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "4px",
-            color: "var(--text3)",
-          }}
+          className={styles.searchClearBtn}
+          aria-label="Limpar busca"
         >
           <X size={16} />
         </button>
@@ -321,165 +296,82 @@ function SearchBar({ value, onChange }) {
   );
 }
 
+function BrowseSummary({ totalCampaigns, visibleCampaigns, cartCount }) {
+  return (
+    <section className={styles.summaryStrip} aria-label="Resumo das cotacoes">
+      <article className={styles.summaryPill}>
+        <span className={styles.summaryPillLabel}>Abertas</span>
+        <strong className={styles.summaryPillValue}>{totalCampaigns}</strong>
+      </article>
+
+      <article className={styles.summaryPill}>
+        <span className={styles.summaryPillLabel}>Visiveis</span>
+        <strong className={styles.summaryPillValue}>{visibleCampaigns}</strong>
+      </article>
+
+      <article className={styles.summaryPill}>
+        <span className={styles.summaryPillLabel}>Carrinho</span>
+        <strong className={styles.summaryPillValue}>{cartCount}</strong>
+      </article>
+    </section>
+  );
+}
+
 function CampaignCard({ campaign, onAddToCart }) {
   const progress = Math.min(100, Math.round(campaign.approval));
   const daysLeft = campaign.deadline && daysUntilDeadline(campaign.deadline);
   const isUrgent = daysLeft !== null && daysLeft >= 0 && daysLeft <= 3;
 
-  // Mapear a categoria para exibição
+  // Mapear a categoria para exibicao
   const categoryInfo =
     CATEGORIES.find((c) => c.id === campaign.category) || CATEGORIES[0];
   const Icon = categoryInfo.icon;
+  const categoryToneClass =
+    styles[`chipTone_${categoryInfo.id}`] || styles.chipTone_all;
 
   return (
-    <div
+    <article
       onClick={() => onAddToCart(campaign)}
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "10px",
-        overflow: "hidden",
-        transition: "all 0.3s",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        cursor: "pointer",
-        WebkitTapHighlightColor: "transparent",
-        WebkitUserSelect: "none",
-        userSelect: "none",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#16A34A";
-        e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.boxShadow = "0 8px 16px rgba(22,163,74,0.12)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--border)";
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-      }}
+      className={styles.productCard}
+      aria-label={`Adicionar ${campaign.product} ao carrinho`}
     >
-      {/* Imagem */}
-      <div
-        style={{
-          width: "100%",
-          height: 140,
-          background: "linear-gradient(135deg, #16A34A15 0%, #16A34A08 100%)",
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
+      <div className={styles.productMedia}>
         {campaign.imageUrl ? (
           <img
             src={campaign.imageUrl}
             alt={campaign.product}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
+            className={styles.productImage}
           />
         ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <div className={styles.productImageFallback}>
             <Package size={36} color="var(--primary)" opacity={0.2} />
           </div>
         )}
+
         {isUrgent && (
-          <div
-            style={{
-              position: "absolute",
-              top: "8px",
-              right: "8px",
-              background: "#DC2626",
-              color: "white",
-              padding: "4px 10px",
-              borderRadius: "6px",
-              fontSize: ".7rem",
-              fontWeight: 700,
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
+          <div className={styles.productUrgentTag}>
             <Clock size={11} /> {daysLeft}d
           </div>
         )}
       </div>
 
-      {/* Conteúdo */}
-      <div
-        style={{
-          padding: "12px",
-          display: "flex",
-          flexDirection: "column",
-          flex: 1,
-        }}
-      >
-        {/* Badge de categoria */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            marginBottom: "8px",
-            fontSize: ".7rem",
-            fontWeight: 600,
-            color: categoryInfo.color,
-            opacity: 0.8,
-          }}
-        >
+      <div className={styles.productBody}>
+        <div className={`${styles.productCategory} ${categoryToneClass}`}>
           <Icon size={12} />
           {categoryInfo.name}
         </div>
 
-        <h3
-          style={{
-            fontSize: ".95rem",
-            fontWeight: 700,
-            margin: "0 0 8px 0",
-            lineHeight: 1.2,
-            color: "var(--text1)",
-          }}
-        >
-          {campaign.product}
-        </h3>
+        <h3 className={styles.productTitle}>{campaign.product}</h3>
 
-        {/* Progress */}
-        <div style={{ marginBottom: "10px" }}>
-          <div
-            style={{
-              height: "5px",
-              background: "var(--surface2)",
-              borderRadius: "3px",
-              overflow: "hidden",
-              marginBottom: "4px",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                background: "linear-gradient(90deg, #16A34A, #15803d)",
-                width: `${progress}%`,
-                transition: "width 0.6s ease",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              fontSize: ".7rem",
-              color: "var(--text3)",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
+        <div className={styles.productProgressWrap}>
+          <progress
+            className={styles.productProgressTrack}
+            value={progress}
+            max={100}
+            aria-label={`Progresso de ${campaign.product}: ${progress}%`}
+          />
+
+          <div className={styles.productProgressMeta}>
             <span>{progress}% completo</span>
             <span>
               {campaign.goalQty} {campaign.unit}
@@ -487,44 +379,15 @@ function CampaignCard({ campaign, onAddToCart }) {
           </div>
         </div>
 
-        {/* Gestor */}
-        <div
-          style={{
-            fontSize: ".75rem",
-            color: "var(--text3)",
-            marginTop: "auto",
-            paddingTop: "10px",
-            borderTop: "1px solid var(--border)",
-            marginBottom: "10px",
-          }}
-        >
+        <div className={styles.productManagerRow}>
           <strong>{campaign.gestorName}</strong>
         </div>
 
-        {/* Button */}
-        <button
-          style={{
-            width: "100%",
-            padding: "8px",
-            background: "#16A34A",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            fontSize: ".85rem",
-            fontWeight: 600,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "4px",
-            transition: "all 0.2s",
-            pointerEvents: "none",
-          }}
-        >
+        <button type="button" className={styles.productAddBtn} tabIndex={-1}>
           <Plus size={14} /> Adicionar
         </button>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -536,145 +399,52 @@ function AddToCartModal({ campaign, onClose, onAdd }) {
     (!campaign.maxQty || qtyNum <= campaign.maxQty);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "flex-end",
-        zIndex: 100,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "var(--surface)",
-          borderRadius: "12px 12px 0 0",
-          padding: "24px",
-          width: "100%",
-          maxWidth: 600,
-          margin: "0 auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "16px",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "1.1rem",
-              fontWeight: 700,
-              margin: 0,
-              color: "var(--text1)",
-            }}
-          >
-            {campaign.product}
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--text3)",
-              padding: "4px",
-            }}
-          >
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalSheet} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>{campaign.product}</h2>
+          <button type="button" onClick={onClose} className={styles.iconBtn}>
             <X size={20} />
           </button>
         </div>
 
-        <div
-          style={{
-            background: "var(--surface2)",
-            border: "1px solid var(--border)",
-            borderRadius: "8px",
-            padding: "12px",
-            marginBottom: "20px",
-            fontSize: ".85rem",
-            color: "var(--text2)",
-          }}
-        >
-          <p style={{ margin: 0 }}>
-            Meta: {campaign.goalQty} {campaign.unit} | Mín: {campaign.minQty}
-            {campaign.maxQty && ` | Máx: ${campaign.maxQty}`}
+        <div className={styles.metaBox}>
+          <p className={styles.metaLine}>
+            Meta: {campaign.goalQty} {campaign.unit} | Min: {campaign.minQty}
+            {campaign.maxQty && ` | Max: ${campaign.maxQty}`}
           </p>
-          <p style={{ margin: "6px 0 0 0", color: "var(--text3)" }}>
+          <p className={`${styles.metaLine} ${styles.metaLineMuted}`}>
             Progresso: {campaign.approval.toFixed(0)}%
           </p>
         </div>
 
-        <div style={{ marginBottom: "20px" }}>
-          <label
-            style={{
-              display: "block",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              marginBottom: "8px",
-            }}
-          >
-            <Target
-              size={14}
-              style={{ marginRight: "4px", verticalAlign: "middle" }}
-            />
-            Quantidade ({campaign.unit}) *
+        <div className={styles.qtyGroup}>
+          <label className={styles.qtyLabel}>
+            <Target size={14} /> Quantidade ({campaign.unit}) *
           </label>
+
           <input
             type="number"
             value={qty}
             onChange={(e) => setQty(e.target.value)}
             min={campaign.minQty}
             max={campaign.maxQty || undefined}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: `1px solid ${!qtyOk && qty ? "var(--red)" : "var(--border)"}`,
-              borderRadius: "6px",
-              fontSize: "1rem",
-              background: "var(--surface2)",
-              boxSizing: "border-box",
-            }}
+            step={1}
+            inputMode="numeric"
+            className={`${styles.qtyInput} ${!qtyOk && qty ? styles.qtyInputInvalid : ""}`}
           />
         </div>
 
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: "10px",
-              background: "var(--surface2)",
-              border: "1px solid var(--border)",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              color: "var(--text2)",
-            }}
-          >
+        <div className={styles.modalActions}>
+          <button type="button" onClick={onClose} className={styles.ghostBtn}>
             Cancelar
           </button>
+
           <button
+            type="button"
             onClick={() => onAdd(qtyNum)}
             disabled={!qtyOk}
-            style={{
-              flex: 1,
-              padding: "10px",
-              background: qtyOk ? "#16A34A" : "var(--surface3)",
-              color: qtyOk ? "white" : "var(--text3)",
-              border: "none",
-              borderRadius: "6px",
-              cursor: qtyOk ? "pointer" : "not-allowed",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              transition: "all 0.2s",
-            }}
+            className={styles.primaryBtn}
           >
             Adicionar ao carrinho
           </button>
@@ -708,54 +478,17 @@ function CartModal({
 
   if (cartItems.length === 0) {
     return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 100,
-        }}
-        onClick={onClose}
-      >
+      <div className={styles.modalOverlayCenter} onClick={onClose}>
         <div
-          style={{
-            background: "var(--surface)",
-            borderRadius: "12px",
-            padding: "40px 24px",
-            maxWidth: 400,
-            textAlign: "center",
-          }}
+          className={`${styles.modalSheetCenter} ${styles.emptyCartWrap}`}
           onClick={(e) => e.stopPropagation()}
         >
-          <ShoppingCart
-            size={48}
-            style={{ margin: "0 auto 16px", opacity: 0.3 }}
-          />
-          <p
-            style={{
-              color: "var(--text2)",
-              fontSize: ".95rem",
-              fontWeight: 500,
-            }}
-          >
-            Seu carrinho está vazio
-          </p>
+          <ShoppingCart size={48} className={styles.emptyCartIcon} />
+          <p className={styles.emptyCartText}>Seu carrinho esta vazio</p>
           <button
+            type="button"
             onClick={onClose}
-            style={{
-              marginTop: "20px",
-              padding: "10px 20px",
-              background: "#16A34A",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: ".9rem",
-            }}
+            className={`${styles.primaryBtn} ${styles.emptyCartAction}`}
           >
             Continuar comprando
           </button>
@@ -765,229 +498,93 @@ function CartModal({
   }
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.qty, 0);
-  const canSubmit = producerName.trim().length > 2 && phone.trim().length > 10;
+  const cleanedPhone = unmaskPhone(phone);
+  const canSubmit = producerName.trim().length > 2 && cleanedPhone.length >= 10;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "flex-end",
-        zIndex: 100,
-      }}
-      onClick={onClose}
-    >
+    <div className={styles.modalOverlay} onClick={onClose}>
       <div
-        style={{
-          background: "var(--surface)",
-          borderRadius: "12px 12px 0 0",
-          padding: "24px",
-          width: "100%",
-          maxWidth: 600,
-          maxHeight: "90dvh",
-          overflowY: "auto",
-          margin: "0 auto",
-        }}
+        className={`${styles.modalSheet} ${styles.modalSheetScrollable}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: "20px",
-            borderBottom: "1px solid var(--border)",
-            paddingBottom: "16px",
-          }}
-        >
-          <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>
+        <div className={`${styles.modalHeader} ${styles.modalHeaderLarge}`}>
+          <h2 className={`${styles.modalTitle} ${styles.modalTitleLarge}`}>
             Carrinho ({totalItems} itens)
           </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--text3)",
-            }}
-          >
+
+          <button type="button" onClick={onClose} className={styles.iconBtn}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Items */}
-        <div style={{ marginBottom: "20px" }}>
+        <div className={styles.cartItems}>
           {cartItems.map((item, idx) => {
             const campaign = campaigns.find((c) => c.id === item.campaignId);
             if (!campaign) return null;
             const itemTotal = (campaign.pricePerUnit || 0) * item.qty;
+
             return (
-              <div
-                key={idx}
-                style={{
-                  background: "var(--surface2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  marginBottom: "12px",
-                }}
-              >
-                {/* Imagem + Info */}
-                <div style={{ display: "flex", gap: "10px", padding: "10px" }}>
-                  <div
-                    style={{
-                      width: 70,
-                      height: 70,
-                      borderRadius: "6px",
-                      background: "var(--surface)",
-                      overflow: "hidden",
-                      flexShrink: 0,
-                    }}
-                  >
+              <div key={idx} className={styles.cartItem}>
+                <div className={styles.cartItemTop}>
+                  <div className={styles.cartThumb}>
                     {campaign.imageUrl ? (
-                      <img
-                        src={campaign.imageUrl}
-                        alt={campaign.product}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
+                      <img src={campaign.imageUrl} alt={campaign.product} />
                     ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "#16A34A15",
-                        }}
-                      >
+                      <div className={styles.cartThumbFallback}>
                         <Package size={28} opacity={0.3} />
                       </div>
                     )}
                   </div>
 
-                  <div style={{ flex: 1 }}>
-                    <p
-                      style={{
-                        fontSize: ".95rem",
-                        fontWeight: 600,
-                        margin: "0 0 4px 0",
-                        color: "var(--text1)",
-                      }}
-                    >
-                      {campaign.product}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: ".75rem",
-                        color: "var(--text3)",
-                        margin: "0 0 6px 0",
-                      }}
-                    >
-                      {campaign.gestorName}
-                    </p>
-                    <div
-                      style={{
-                        height: "4px",
-                        background: "var(--surface)",
-                        borderRadius: "2px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          background:
-                            "linear-gradient(90deg, #16A34A, #15803d)",
-                          width: `${Math.min(100, campaign.approval)}%`,
-                        }}
-                      />
-                    </div>
-                    <p
-                      style={{
-                        fontSize: ".7rem",
-                        color: "var(--text3)",
-                        margin: "4px 0 0 0",
-                      }}
-                    >
+                  <div className={styles.cartInfo}>
+                    <p className={styles.cartProduct}>{campaign.product}</p>
+                    <p className={styles.cartManager}>{campaign.gestorName}</p>
+
+                    <progress
+                      className={styles.cartProgressTrack}
+                      value={Math.min(100, campaign.approval)}
+                      max={100}
+                      aria-label={`Progresso de ${campaign.product}: ${Math.min(100, campaign.approval).toFixed(0)}%`}
+                    />
+
+                    <p className={styles.cartProgressLabel}>
                       {campaign.approval.toFixed(0)}% agora
                     </p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-end",
-                      gap: "6px",
-                    }}
-                  >
+                  <div className={styles.cartQtyActions}>
                     <input
                       type="number"
                       value={item.qty}
-                      onChange={(e) => onUpdateQty(idx, +e.target.value)}
+                      onChange={(e) => onUpdateQty(idx, e.target.value)}
                       min={campaign.minQty}
                       max={campaign.maxQty || 999}
-                      style={{
-                        width: "60px",
-                        padding: "4px 6px",
-                        border: "1px solid var(--border)",
-                        borderRadius: "4px",
-                        fontSize: ".8rem",
-                        textAlign: "center",
-                      }}
+                      step={1}
+                      inputMode="numeric"
+                      className={styles.cartQtyInput}
                     />
+
                     <button
+                      type="button"
                       onClick={() => onRemove(idx)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "var(--red)",
-                        padding: "4px",
-                        display: "flex",
-                      }}
+                      className={styles.cartRemove}
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
                 </div>
 
-                {/* Preço e Quantidade */}
-                <div
-                  style={{
-                    background: "var(--surface)",
-                    padding: "8px 10px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    borderTop: "1px solid var(--border)",
-                    fontSize: ".85rem",
-                  }}
-                >
-                  <span style={{ color: "var(--text3)" }}>
-                    {item.qty} ×{" "}
+                <div className={styles.cartItemBottom}>
+                  <span className={styles.cartItemBottomLeft}>
+                    {item.qty} x{" "}
                     {campaign.pricePerUnit
                       ? `R$ ${campaign.pricePerUnit.toFixed(2)}`
                       : "C.O."}
                   </span>
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      color: "var(--primary)",
-                      fontSize: ".95rem",
-                    }}
-                  >
+                  <span className={styles.cartItemBottomRight}>
                     {campaign.pricePerUnit
                       ? `R$ ${itemTotal.toFixed(2)}`
-                      : "Cotação"}
+                      : "Cotacao"}
                   </span>
                 </div>
               </div>
@@ -995,26 +592,12 @@ function CartModal({
           })}
         </div>
 
-        {/* Resumo de Totais */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #16A34A12 0%, #16A34A08 100%)",
-            border: "1px solid #16A34A30",
-            borderRadius: "8px",
-            padding: "14px",
-            marginBottom: "20px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "8px",
-            }}
-          >
-            <span style={{ color: "var(--text2)" }}>Itens no carrinho</span>
-            <span style={{ fontWeight: 600 }}>{totalItems}</span>
+        <div className={styles.summaryBox}>
+          <div className={styles.summaryRow}>
+            <span className={styles.summaryLabel}>Itens no carrinho</span>
+            <span className={styles.summaryValue}>{totalItems}</span>
           </div>
+
           {(() => {
             const total = cartItems.reduce((sum, item) => {
               const c = campaigns.find((c) => c.id === item.campaignId);
@@ -1026,37 +609,18 @@ function CartModal({
             );
             return (
               <>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "1.05rem",
-                      color: "var(--primary)",
-                    }}
-                  >
+                <div className={styles.summaryTotal}>
+                  <span className={styles.summaryTotalLabel}>
                     Total estimado
                   </span>
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      fontSize: "1.15rem",
-                      color: "var(--primary)",
-                    }}
-                  >
-                    {hasMissingPrice ? "—" : `R$ ${total.toFixed(2)}`}
+                  <span className={styles.summaryTotalValue}>
+                    {hasMissingPrice ? "-" : `R$ ${total.toFixed(2)}`}
                   </span>
                 </div>
+
                 {hasMissingPrice && (
-                  <p
-                    style={{
-                      fontSize: ".75rem",
-                      margin: "8px 0 0 0",
-                      color: "var(--text3)",
-                    }}
-                  >
-                    Alguns preços serão confirmados após aceitação
+                  <p className={styles.summaryHint}>
+                    Alguns precos serao confirmados apos aceitacao
                   </p>
                 )}
               </>
@@ -1064,147 +628,68 @@ function CartModal({
           })()}
         </div>
 
-        {/* Dados */}
-        <div
-          style={{
-            borderTop: "1px solid var(--border)",
-            paddingTop: "20px",
-            marginBottom: "20px",
-          }}
-        >
-          <h3
-            style={{
-              fontSize: ".95rem",
-              fontWeight: 700,
-              marginBottom: "12px",
-              color: "var(--text1)",
-            }}
-          >
-            Seus dados
-          </h3>
+        <div className={styles.contactSection}>
+          <h3 className={styles.contactTitle}>Seus dados</h3>
 
-          <div style={{ marginBottom: "12px" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".8rem",
-                fontWeight: 600,
-                marginBottom: "6px",
-              }}
-            >
-              <User
-                size={12}
-                style={{ marginRight: "4px", verticalAlign: "middle" }}
-              />
-              Nome completo *
+          <div className={styles.fieldGroup}>
+            <label className={styles.fieldLabel}>
+              <User size={12} /> Nome completo *
             </label>
+
             <input
               type="text"
               value={producerName}
               onChange={(e) => setProducerName(e.target.value)}
               placeholder="Seu nome"
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
-                fontSize: ".9rem",
-                background: "var(--surface2)",
-                boxSizing: "border-box",
-              }}
+              className={styles.fieldInput}
             />
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: ".8rem",
-                fontWeight: 600,
-                marginBottom: "6px",
-              }}
-            >
-              <Phone
-                size={12}
-                style={{ marginRight: "4px", verticalAlign: "middle" }}
-              />
-              Telefone/WhatsApp *
+            <label className={styles.fieldLabel}>
+              <Phone size={12} /> Telefone/WhatsApp *
             </label>
+
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(maskPhone(e.target.value))}
-              placeholder="(00) 0000-0000"
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
-                fontSize: ".9rem",
-                background: "var(--surface2)",
-                boxSizing: "border-box",
-              }}
+              placeholder="(00) 00000-0000"
+              className={styles.fieldInput}
             />
           </div>
         </div>
 
-        {/* Buttons */}
-        <div style={{ display: "flex", gap: "12px" }}>
+        <div className={styles.cartActions}>
           <button
+            type="button"
             onClick={onClose}
             disabled={submitting}
-            style={{
-              flex: 1,
-              padding: "12px",
-              background: "var(--surface2)",
-              border: "1px solid var(--border)",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              color: "var(--text2)",
-              transition: "all 0.2s",
-            }}
+            className={styles.ghostBtn}
           >
             Continuar
           </button>
+
           <button
+            type="button"
             onClick={() => {
-              // Salvar dados do produtor para próxima vez
-              const cleaned = unmaskPhone(phone);
               localStorage.setItem(
                 "agro_producer",
                 JSON.stringify({
                   name: producerName.trim(),
-                  phone: cleaned,
+                  phone: cleanedPhone,
                 }),
               );
-              localStorage.setItem("agro_producer_phone", cleaned);
+              localStorage.setItem("agro_producer_phone", cleanedPhone);
 
               onSubmit({
                 items: cartItems,
                 producerName: producerName.trim(),
-                phone: cleaned,
+                phone: cleanedPhone,
               });
             }}
             disabled={!canSubmit || submitting}
-            style={{
-              flex: 1,
-              padding: "12px",
-              background:
-                canSubmit && !submitting ? "#16A34A" : "var(--surface3)",
-              color: canSubmit && !submitting ? "white" : "var(--text3)",
-              border: "none",
-              borderRadius: "6px",
-              cursor: canSubmit && !submitting ? "pointer" : "not-allowed",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-              transition: "all 0.2s",
-            }}
+            className={styles.primaryBtn}
           >
             <Send size={14} />
             {submitting ? "Enviando..." : "Enviar pedidos"}
@@ -1224,64 +709,29 @@ function DuplicateItemModal({
   onAdd,
 }) {
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 101,
-      }}
-      onClick={onClose}
-    >
+    <div className={styles.modalOverlayCenter} onClick={onClose}>
       <div
-        style={{
-          background: "var(--surface)",
-          borderRadius: "12px",
-          padding: "28px",
-          maxWidth: 400,
-          margin: "0 20px",
-        }}
+        className={styles.modalSheetCenter}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "16px",
-          }}
-        >
-          <AlertCircle size={24} color="#16A34A" />
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, margin: 0 }}>
-            Produto já no carrinho
-          </h2>
+        <div className={styles.duplicateTitleRow}>
+          <AlertCircle size={24} className={styles.duplicateIcon} />
+          <h2 className={styles.modalTitle}>Produto ja no carrinho</h2>
         </div>
 
-        <p style={{ color: "var(--text2)", marginBottom: "16px" }}>
-          <strong>{campaign.product}</strong> já está no carrinho com{" "}
+        <p className={styles.duplicateText}>
+          <strong>{campaign.product}</strong> ja esta no carrinho com{" "}
           {existingQty} {campaign.unit}. O que deseja fazer?
         </p>
 
-        <div
-          style={{
-            background: "var(--surface2)",
-            borderRadius: "8px",
-            padding: "12px",
-            marginBottom: "20px",
-            fontSize: ".85rem",
-            color: "var(--text3)",
-          }}
-        >
-          <p style={{ margin: 0 }}>
+        <div className={styles.metaBox}>
+          <p className={styles.metaLine}>
             Quantidade atual:{" "}
             <strong>
               {existingQty} {campaign.unit}
             </strong>
           </p>
-          <p style={{ margin: "6px 0 0 0" }}>
+          <p className={`${styles.metaLine} ${styles.metaLineMuted}`}>
             Nova quantidade:{" "}
             <strong>
               {newQty} {campaign.unit}
@@ -1289,64 +739,27 @@ function DuplicateItemModal({
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
+        <div className={styles.duplicateActions}>
           <button
+            type="button"
             onClick={() => onReplace(newQty)}
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "#16A34A",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => (e.target.style.background = "#15803d")}
-            onMouseLeave={(e) => (e.target.style.background = "#16A34A")}
+            className={styles.duplicatePrimary}
           >
-            ✌ Substituir por {newQty}
+            Substituir por {newQty}
           </button>
+
           <button
+            type="button"
             onClick={() => onAdd(newQty)}
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "var(--surface2)",
-              color: "var(--text1)",
-              border: "1px solid var(--border)",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: ".9rem",
-              fontWeight: 600,
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "var(--surface3)";
-              e.target.style.borderColor = "var(--primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "var(--surface2)";
-              e.target.style.borderColor = "var(--border)";
-            }}
+            className={styles.duplicateSecondary}
           >
-            ➕ Adicionar {newQty} (total: {existingQty + newQty})
+            Adicionar {newQty} (total: {existingQty + newQty})
           </button>
+
           <button
+            type="button"
             onClick={onClose}
-            style={{
-              width: "100%",
-              padding: "10px",
-              background: "none",
-              color: "var(--text3)",
-              border: "1px solid var(--border)",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: ".9rem",
-              fontWeight: 500,
-            }}
+            className={styles.duplicateCancel}
           >
             Cancelar
           </button>
@@ -1358,54 +771,33 @@ function DuplicateItemModal({
 
 function SuccessView({ itemCount, producerName, onReset }) {
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 20px",
-        textAlign: "center",
-      }}
-    >
-      <CheckCircle size={64} color="#16A34A" style={{ marginBottom: "16px" }} />
-      <h2 style={{ fontSize: "1.3rem", fontWeight: 700, margin: "0 0 8px 0" }}>
-        Pedidos enviados!
-      </h2>
-      <p style={{ color: "var(--text2)", marginBottom: "20px" }}>
-        {itemCount} cotação{itemCount > 1 ? "s" : ""} adicionada
-        {itemCount > 1 ? "s" : ""}. Os gestores receberão via WhatsApp em breve.
+    <div className={styles.successWrap}>
+      <CheckCircle size={64} className={styles.successIcon} />
+      <h2>Pedidos enviados!</h2>
+      <p>
+        {itemCount} cotacao{itemCount > 1 ? "es" : ""} adicionada
+        {itemCount > 1 ? "s" : ""}. Os gestores receberao via WhatsApp em breve.
       </p>
-
-      <button
-        onClick={onReset}
-        style={{
-          background: "#16A34A",
-          color: "white",
-          border: "none",
-          padding: "12px 32px",
-          borderRadius: "6px",
-          cursor: "pointer",
-          fontSize: ".95rem",
-          fontWeight: 600,
-        }}
-      >
+      <button type="button" onClick={onReset} className={styles.successAction}>
         Fazer novos pedidos
       </button>
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// PÁGINA PRINCIPAL
-// ══════════════════════════════════════════════════════════════════════════════
+// ============================================================================
+// PAGINA PRINCIPAL
+// ============================================================================
 
 export function ProducerPortalPage({ onSubmit }) {
-  const { user } = useAuth();
+  const { user } = useContext(AppContext) ?? {};
   const [currentTab, setCurrentTab] = useState("products"); // products | orders
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reloadTick, setReloadTick] = useState(0);
+  const initialLoadDoneRef = useRef(false);
+  const reloadTimerRef = useRef(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [cartItems, setCartItems] = useState(() => {
@@ -1424,41 +816,168 @@ export function ProducerPortalPage({ onSubmit }) {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateData, setDuplicateData] = useState(null);
 
+  const triggerReload = useCallback((delay = PORTAL_SYNC_DEBOUNCE_MS) => {
+    if (reloadTimerRef.current) {
+      clearTimeout(reloadTimerRef.current);
+    }
+
+    reloadTimerRef.current = setTimeout(() => {
+      setReloadTick((v) => v + 1);
+    }, delay);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+      }
+    };
+  }, []);
+
   // Carregar campanhas
   useEffect(() => {
-    fetchOpenCampaigns()
-      .then((data) => {
-        setCampaigns(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+    let isActive = true;
 
-    // Realtime subscription para atualizar campanhas automaticamente
-    const subscription = supabase
-      .channel("campaigns_updates")
+    const loadCampaigns = async () => {
+      if (!initialLoadDoneRef.current) setLoading(true);
+      setLoadError("");
+
+      try {
+        const data = await Promise.race([
+          fetchOpenCampaigns(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () =>
+                reject(
+                  new Error(
+                    "As cotacoes demoraram para carregar. Verifique sua conexao e tente novamente.",
+                  ),
+                ),
+              CAMPAIGNS_TIMEOUT_MS,
+            ),
+          ),
+        ]);
+
+        if (!isActive) return;
+        setCampaigns(data);
+      } catch (err) {
+        if (!isActive) return;
+        setCampaigns([]);
+        setLoadError(
+          err?.message || "Nao foi possivel carregar as cotacoes no momento.",
+        );
+      } finally {
+        if (isActive) {
+          setLoading(false);
+          initialLoadDoneRef.current = true;
+        }
+      }
+    };
+
+    loadCampaigns();
+
+    return () => {
+      isActive = false;
+    };
+  }, [reloadTick]);
+
+  useEffect(() => {
+    if (!isRealtimeAvailable()) return;
+
+    // Realtime subscription para atualizar dados do portal automaticamente
+    const realtimeClient = portalSupabase ?? supabase;
+    const onDbChange = () => triggerReload();
+
+    const subscription = realtimeClient
+      .channel("portal_data_sync")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "campaigns",
-          filter: "status=in.(open,negotiating)",
         },
-        () => {
-          // Recarregar campanhas quando há mudanças
-          fetchOpenCampaigns()
-            .then(setCampaigns)
-            .catch(() => {});
-        },
+        onDbChange,
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+        },
+        onDbChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "campaign_lots",
+        },
+        onDbChange,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "users",
+          filter: "role=eq.pivo",
+        },
+        onDbChange,
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          clearRealtimeBackoff();
+          return;
+        }
+
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          markRealtimeFailure("ProducerPortalPage", status);
+          cleanupRealtimeChannel(realtimeClient, subscription);
+        }
+      });
 
     return () => {
-      subscription.unsubscribe();
+      cleanupRealtimeChannel(realtimeClient, subscription);
     };
-  }, []);
+  }, [triggerReload]);
+
+  useEffect(() => {
+    const refreshNow = () => triggerReload(0);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        triggerReload(0);
+      }
+    };
+
+    window.addEventListener("focus", refreshNow);
+    window.addEventListener("online", refreshNow);
+    window.addEventListener("pageshow", refreshNow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", refreshNow);
+      window.removeEventListener("online", refreshNow);
+      window.removeEventListener("pageshow", refreshNow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [triggerReload]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      triggerReload(0);
+    }, PORTAL_SYNC_INTERVAL_MS);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [triggerReload]);
 
   // Persistir carrinho
   useEffect(() => {
@@ -1475,21 +994,29 @@ export function ProducerPortalPage({ onSubmit }) {
     return matchCategory && matchSearch;
   });
 
+  const cartQtyTotal = cartItems.reduce((sum, item) => sum + item.qty, 0);
+
   const handleAddToCart = (campaign) => {
     setAddToCartCampaign(campaign);
   };
 
   const handleConfirmAddToCart = (qty) => {
     if (addToCartCampaign) {
+      const safeQty = clampQtyValue(
+        qty,
+        addToCartCampaign.minQty,
+        addToCartCampaign.maxQty,
+      );
+
       const existingIndex = cartItems.findIndex(
         (item) => item.campaignId === addToCartCampaign.id,
       );
 
       if (existingIndex !== -1) {
-        // Produto já está no carrinho - mostrar modal
+        // Produto ja esta no carrinho - mostrar modal
         setDuplicateData({
           campaignId: addToCartCampaign.id,
-          newQty: qty,
+          newQty: safeQty,
           existingQty: cartItems[existingIndex].qty,
           existingIndex,
         });
@@ -1500,7 +1027,7 @@ export function ProducerPortalPage({ onSubmit }) {
           ...cartItems,
           {
             campaignId: addToCartCampaign.id,
-            qty,
+            qty: safeQty,
           },
         ]);
         setAddToCartCampaign(null);
@@ -1532,7 +1059,14 @@ export function ProducerPortalPage({ onSubmit }) {
 
   const handleUpdateQty = (idx, newQty) => {
     const newCart = [...cartItems];
-    newCart[idx].qty = newQty;
+    const item = newCart[idx];
+    if (!item) return;
+
+    const campaign = campaigns.find((c) => c.id === item.campaignId);
+    const minQty = campaign?.minQty ?? 1;
+    const maxQty = campaign?.maxQty ?? 999;
+
+    newCart[idx].qty = clampQtyValue(newQty, minQty, maxQty);
     setCartItems(newCart);
   };
 
@@ -1564,7 +1098,7 @@ export function ProducerPortalPage({ onSubmit }) {
               `Erro ao enviar pedido para "${campaign.product}": ${itemErr.message}`,
             );
             setSubmitting(false);
-            return; // Parar aqui - não continuar com outros items
+            return; // Parar aqui - nao continuar com outros items
           }
         }
       }
@@ -1596,40 +1130,25 @@ export function ProducerPortalPage({ onSubmit }) {
   if (loading) {
     return (
       <div
-        style={{
-          minHeight: "100dvh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--bg)",
-        }}
+        className={styles.loadingState}
+        role="status"
+        aria-live="polite"
+        aria-label="Carregando cotacoes"
       >
-        <Package
-          size={32}
-          color="var(--primary)"
-          style={{ animation: "spin 1s linear infinite" }}
-        />
+        <Package size={32} className={styles.loadingSpinner} />
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--bg)",
-        paddingBottom: "70px",
-      }}
-    >
+    <div className={styles.portalPage}>
+      <Header
+        cartCount={cartQtyTotal}
+        onCartClick={() => setShowCartModal(true)}
+      />
+
       {currentTab === "products" ? (
         <>
-          <Header
-            cartCount={cartItems.length}
-            onCartClick={() => setShowCartModal(true)}
-          />
-
           {step === "success" ? (
             <SuccessView
               itemCount={successCount}
@@ -1637,45 +1156,50 @@ export function ProducerPortalPage({ onSubmit }) {
               onReset={handleReset}
             />
           ) : (
-            <div
-              style={{
-                flex: 1,
-                padding: "20px",
-                maxWidth: 900,
-                margin: "0 auto",
-                width: "100%",
-              }}
-            >
+            <div className={styles.browseContent}>
               <CategoryFilter
                 categories={CATEGORIES}
                 active={selectedCategory}
                 onChange={setSelectedCategory}
               />
 
-              {/* SearchBar sempre visível */}
+              {/* SearchBar sempre visivel */}
               <SearchBar value={searchQuery} onChange={setSearchQuery} />
 
+              <BrowseSummary
+                totalCampaigns={campaigns.length}
+                visibleCampaigns={filtered.length}
+                cartCount={cartQtyTotal}
+              />
+
+              {loadError && (
+                <div className={styles.loadErrorBar}>
+                  <span className={styles.loadErrorText}>
+                    <AlertCircle size={15} />
+                    {loadError}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={triggerReload}
+                    className={styles.retryBtn}
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+
               {filtered.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px" }}>
-                  <Package
-                    size={48}
-                    style={{ margin: "0 auto 16px", opacity: 0.2 }}
-                  />
-                  <p style={{ color: "var(--text3)" }}>
+                <div className={styles.emptyState}>
+                  <Package size={48} className={styles.emptyStateIcon} />
+                  <p className={styles.emptyStateText}>
                     {searchQuery
-                      ? "Nenhuma cotação encontrada"
-                      : "Nenhuma cotação nesta categoria"}
+                      ? "Nenhuma cotacao encontrada"
+                      : "Nenhuma cotacao nesta categoria"}
                   </p>
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(200px, 1fr))",
-                    gap: "16px",
-                  }}
-                >
+                <div className={styles.campaignGrid}>
                   {filtered.map((c) => (
                     <CampaignCard
                       key={c.id}
@@ -1726,109 +1250,30 @@ export function ProducerPortalPage({ onSubmit }) {
           )}
         </>
       ) : (
-        <BuyerOrderStatusPage userPhone={user?.phone} />
+        <div className={styles.ordersContent}>
+          <BuyerOrderStatusPage userPhone={user?.phone} embedded />
+        </div>
       )}
 
-      {/* Bottom Navigation Bar */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "70px",
-          background: "white",
-          borderTop: "1px solid #E5E7EB",
-          display: "flex",
-          justifyContent: "space-around",
-          alignItems: "center",
-          zIndex: 50,
-          boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
-        }}
-      >
+      <div className={styles.bottomNav}>
         <button
+          type="button"
           onClick={() => setCurrentTab("products")}
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "4px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: currentTab === "products" ? "#16A34A" : "#9CA3AF",
-            transition: "all 0.2s",
-            borderTop:
-              currentTab === "products"
-                ? "3px solid #16A34A"
-                : "3px solid transparent",
-            padding: "8px 0",
-          }}
+          className={`${styles.bottomNavBtn} ${currentTab === "products" ? styles.bottomNavBtnActive : ""}`}
         >
-          <ShoppingCart
-            size={24}
-            style={{
-              color: currentTab === "products" ? "#16A34A" : "#9CA3AF",
-            }}
-          />
-          <span
-            style={{
-              fontSize: ".75rem",
-              fontWeight: currentTab === "products" ? 600 : 500,
-            }}
-          >
-            Produtos
-          </span>
+          <ShoppingCart size={24} />
+          <span className={styles.bottomNavLabel}>Produtos</span>
         </button>
 
         <button
+          type="button"
           onClick={() => setCurrentTab("orders")}
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "4px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: currentTab === "orders" ? "#16A34A" : "#9CA3AF",
-            transition: "all 0.2s",
-            borderTop:
-              currentTab === "orders"
-                ? "3px solid #16A34A"
-                : "3px solid transparent",
-            padding: "8px 0",
-          }}
+          className={`${styles.bottomNavBtn} ${currentTab === "orders" ? styles.bottomNavBtnActive : ""}`}
         >
-          <Briefcase
-            size={24}
-            style={{
-              color: currentTab === "orders" ? "#16A34A" : "#9CA3AF",
-            }}
-          />
-          <span
-            style={{
-              fontSize: ".75rem",
-              fontWeight: currentTab === "orders" ? 600 : 500,
-            }}
-          >
-            Meus Pedidos
-          </span>
+          <Briefcase size={24} />
+          <span className={styles.bottomNavLabel}>Meus Pedidos</span>
         </button>
       </div>
-
-      <style>
-        {`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}
-      </style>
     </div>
   );
 }

@@ -59,7 +59,7 @@ export function VendorPivosPage({ pivos = [], loading = false }) {
               {p.phone && (
                 <a
                   href={`https://wa.me/55${p.phone.replace(/\D/g,'')}?text=${encodeURIComponent(
-                    'Olá! Sou um fornecedor cadastrado no AgroColetivo e gostaria de conversar sobre oportunidades de fornecimento.'
+                    'Olá! Sou um fornecedor cadastrado no HubCompras e gostaria de conversar sobre oportunidades de fornecimento.'
                   )}`}
                   target="_blank" rel="noreferrer"
                   className={styles.waBtn}

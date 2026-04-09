@@ -103,6 +103,8 @@ export async function createCampaign(c, gestorId) {
     unit_weight_kg: Number(c.unitWeight),
     goal_qty: Number(c.goalQty),
     min_qty: Number(c.minQty),
+    max_qty:
+      c.maxQty != null && c.maxQty !== "" ? Number(c.maxQty) : null,
     deadline: c.deadline || null,
     status: "open",
     pivo_id: validGestorId,
@@ -224,13 +226,22 @@ export async function deleteOrder(orderId) {
   if (error) throw new Error(error?.message || "Erro ao deletar pedido");
 }
 
-export async function markFeePaid(campaignId, adminName) {
+export async function markFeePaid(campaignId, adminUserId = null) {
+  let feePaidBy = adminUserId;
+
+  if (!feePaidBy) {
+    const { data } = await supabase.auth.getUser().catch(() => ({ data: null }));
+    feePaidBy = data?.user?.id ?? null;
+  }
+
+  const patch = {
+    fee_paid_at: new Date().toISOString(),
+    fee_paid_by: feePaidBy,
+  };
+
   const { error } = await supabase
     .from("campaigns")
-    .update({
-      fee_paid_at: new Date().toISOString(),
-      fee_paid_by: adminName ?? "Admin",
-    })
+    .update(patch)
     .eq("id", campaignId);
   if (error) throw new Error(error?.message || "Erro ao registrar pagamento");
 }

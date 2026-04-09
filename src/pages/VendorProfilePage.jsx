@@ -160,44 +160,17 @@ export function VendorProfilePage({
               />
               Foto do perfil
             </label>
-            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <div className={styles.photoWrap}>
               {photoUrl && (
-                <div
-                  style={{
-                    position: "relative",
-                    width: 100,
-                    height: 100,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    background: "var(--bg2)",
-                    flexShrink: 0,
-                  }}
-                >
+                <div className={styles.photoPreview}>
                   <img
                     src={photoUrl}
                     alt="Foto do perfil"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
                     onError={handlePhotoError}
                   />
                   <button
                     onClick={handleRemovePhoto}
-                    style={{
-                      position: "absolute",
-                      top: 4,
-                      right: 4,
-                      background: "rgba(0,0,0,0.6)",
-                      border: "none",
-                      borderRadius: 4,
-                      color: "white",
-                      cursor: "pointer",
-                      padding: "4px 6px",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
+                    className={styles.photoRemove}
                     title="Remover foto"
                   >
                     <X size={14} />
@@ -207,19 +180,7 @@ export function VendorProfilePage({
               <div style={{ flex: 1 }}>
                 <label
                   htmlFor="vendor-photo-input"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "10px 16px",
-                    background: "var(--bg2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                    color: "var(--text1)",
-                    transition: "background 0.2s",
-                  }}
+                  className={styles.photoButton}
                 >
                   <Camera size={16} />
                   {photoUrl ? "Trocar foto" : "Escolher foto"}
@@ -231,13 +192,7 @@ export function VendorProfilePage({
                   onChange={handlePhotoChange}
                   style={{ display: "none" }}
                 />
-                <p
-                  style={{
-                    fontSize: ".75rem",
-                    color: "var(--text3)",
-                    marginTop: 8,
-                  }}
-                >
+                <p className={styles.photoHint}>
                   JPG, PNG ou WebP · Máx. 5 MB
                 </p>
               </div>

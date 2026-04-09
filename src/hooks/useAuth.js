@@ -11,48 +11,127 @@ import {
 import { supabase } from "../lib/supabase.js";
 import { parseSupabaseError } from "../lib/security-console.js";
 
+const AUTH_WATCHDOG_MS = 6000;
+const AUTH_INIT_TIMEOUT_MS = 3500;
+const AUTH_PROFILE_TIMEOUT_MS = 2500;
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId = null;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 export function useAuth() {
-  const [user, setUser] = useState(() => getSession());
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState(null);
   // userId pendente de verificação de email (após registro)
   const [pendingVerificationUser, setPendingVerificationUser] = useState(null);
   const manualAuthInProgress = useRef(false);
 
+  // Watchdog global: impede loading infinito em qualquer fluxo de auth
+  useEffect(() => {
+    if (!loading) return;
+
+    const watchdog = setTimeout(() => {
+      setLoading(false);
+      setError(
+        (prev) =>
+          prev ||
+          "A autenticacao demorou mais que o esperado. Verifique sua conexao e tente novamente.",
+      );
+      manualAuthInProgress.current = false;
+    }, AUTH_WATCHDOG_MS);
+
+    return () => clearTimeout(watchdog);
+  }, [loading]);
+
   // Inicializa a sessão do Supabase Auth ao carregar
   useEffect(() => {
     const initSession = async () => {
+      const cachedUser = getSession();
+      const hasCachedUser = !!cachedUser?.id;
+
+      // Hidrata imediatamente para evitar espera longa no refresh
+      if (hasCachedUser) {
+        setUser(cachedUser);
+        setLoading(false);
+      }
+
       try {
         // Verifica se há sessão Supabase ativa
         const {
           data: { session },
-        } = await supabase.auth.getSession();
+        } = await withTimeout(
+          supabase.auth.getSession(),
+          AUTH_INIT_TIMEOUT_MS,
+          "AUTH_INIT_TIMEOUT",
+        );
 
         if (session?.user) {
           // Busca dados do usuário na tabela users
-          const { data: userData } = await supabase
-            .from("users")
-            .select(
-              "id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url",
-            )
-            .eq("id", session.user.id)
-            .single();
+          const { data: userData } = await withTimeout(
+            supabase
+              .from("users")
+              .select(
+                "id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url",
+              )
+              .eq("id", session.user.id)
+              .maybeSingle(),
+            AUTH_PROFILE_TIMEOUT_MS,
+            "AUTH_PROFILE_TIMEOUT",
+          );
 
           if (userData) {
             saveSession(userData);
             setUser(userData);
+          } else {
+            // Sessão de auth existe, mas sem perfil local -> evita loop de loading
+            clearSession();
+            setUser(null);
           }
         } else {
-          // Sem sessão Supabase, verifica localStorage manual
-          const localUser = getSession();
-          if (localUser) {
-            setUser(localUser);
-          }
+          // Sem sessão Supabase: não autentica via localStorage
+          clearSession();
+          setUser(null);
         }
       } catch (err) {
-        console.error("Erro ao inicializar sessão:", err);
+        const timeoutError =
+          err?.message === "AUTH_INIT_TIMEOUT" ||
+          err?.message === "AUTH_PROFILE_TIMEOUT";
+
+        const lockError =
+          err?.name === "NavigatorLockAcquireTimeoutError" ||
+          String(err?.message || "").includes("lock:supabase_auth");
+
+        if (lockError || timeoutError) {
+          // Se já há sessão local, mantém UI responsiva e tenta sincronizar depois
+          if (!hasCachedUser) {
+            clearSession();
+            setUser(null);
+            if (timeoutError) {
+              setError(
+                "A autenticacao demorou mais que o esperado. Recarregue a pagina e tente novamente.",
+              );
+            }
+          }
+        } else {
+          console.error("Erro ao inicializar sessão:", err);
+        }
       } finally {
-        setLoading(false);
+        if (!hasCachedUser) {
+          setLoading(false);
+        }
+        setInitialized(true);
       }
     };
 
@@ -65,20 +144,36 @@ export function useAuth() {
       if (manualAuthInProgress.current) return;
 
       if (event === "SIGNED_IN" && session?.user) {
-        // Busca dados do usuário
-        const { data: userData } = await supabase
-          .from("users")
-          .select(
-            "id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url",
-          )
-          .eq("id", session.user.id)
-          .single();
+        try {
+          // Busca dados do usuário
+          const { data: userData } = await withTimeout(
+            supabase
+              .from("users")
+              .select(
+                "id, name, email, phone, role, city, notes, active, email_verified, profile_photo_url",
+              )
+              .eq("id", session.user.id)
+              .maybeSingle(),
+            AUTH_PROFILE_TIMEOUT_MS,
+            "AUTH_PROFILE_TIMEOUT",
+          );
 
-        if (userData) {
-          saveSession(userData);
-          setUser(userData);
+          if (userData) {
+            saveSession(userData);
+            setUser(userData);
+          } else {
+            clearSession();
+            setUser(null);
+          }
+        } catch {
+          clearSession();
+          setUser(null);
         }
       } else if (event === "SIGNED_OUT") {
+        clearSession();
+        setUser(null);
+      } else if (event === "INITIAL_SESSION" && !session?.user) {
+        // Garante estado limpo em refresh sem sessão válida
         clearSession();
         setUser(null);
       }
@@ -112,6 +207,10 @@ export function useAuth() {
         // Armazena o email para pré-preencher na tela de recuperação
         localStorage.setItem("agro_legacy_email", email);
         setPendingVerificationUser(null);
+      } else if (msg === "EMAIL_NOT_REGISTERED") {
+        setPendingVerificationUser(null);
+        localStorage.removeItem("agro_auth");
+        setError("Email não cadastrado.");
       } else if (msg === "EMAIL_NOT_VERIFIED") {
         // Usuário existe mas não verificou o email — busca dados para tela de confirmação
         try {
@@ -293,10 +392,16 @@ export function useAuth() {
     [user],
   );
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     user,
     loading,
+    initialized,
     error,
+    clearError,
     signIn,
     signUp,
     signOut,

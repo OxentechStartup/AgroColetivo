@@ -1,4 +1,4 @@
-# 🌾 AgroColetivo — Plataforma de Compras Coletivas
+# 🌾 HubCompras — Plataforma de Compras Coletivas
 
 Sistema web para consolidação de demanda, ofertas e transações agrícolas com gestão de campanhas e lotes.
 
@@ -14,9 +14,16 @@ npm run dev  # Abre em http://localhost:5173
 ### 1. Variáveis de Ambiente (.env)
 
 ```
+# Frontend
 VITE_SUPABASE_URL=https://iepgeibcwthilohdlfse.supabase.co
 VITE_SUPABASE_ANON_KEY=seu_chave_aqui
+
+# Backend (endpoints /api/register, /api/reset-password, /api/delete-account)
+SUPABASE_URL=https://iepgeibcwthilohdlfse.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key_aqui
 ```
+
+⚠️ Nunca exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend (variáveis `VITE_*`).
 
 ### 2. Setup do Banco de Dados
 
@@ -91,7 +98,7 @@ npm run preview  # Preview do build
 ## 🐛 Troubleshooting
 
 **"Erro 500" ao registrar?**
-→ Verifique variáveis `.env` e execute `schema.sql`
+→ Verifique `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` no backend e execute `schema.sql`
 
 **"Email ou senha incorretos" ao logar?**
 → Use emails dos dados de teste acima ou registre uma conta nova

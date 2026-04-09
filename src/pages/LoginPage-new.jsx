@@ -18,16 +18,15 @@ import {
 } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import { maskPhone, unmaskPhone } from "../utils/masks";
+import { BRAND_NAME, BRAND_LOGO_URL } from "../constants/branding";
 import styles from "./LoginPage.module.css";
 
 function LogoMark() {
   return (
     <img
-      src="https://i.imgur.com/clDJyAh.png"
-      alt="AgroColetivo"
-      width="44"
-      height="44"
-      style={{ borderRadius: 12, objectFit: "cover" }}
+      src={BRAND_LOGO_URL}
+      alt={BRAND_NAME}
+      className={styles.visualLogoMark}
     />
   );
 }
@@ -43,6 +42,7 @@ export function LoginPage({
   onRegister,
   loading,
   error,
+  onClearError,
   onForgotPassword,
 }) {
   const [screen, setScreen] = useState("login"); // login | register
@@ -52,12 +52,12 @@ export function LoginPage({
   const [confirm, setConfirm] = useState("");
   const [role, setRole] = useState(ROLES.VENDOR);
   const [showPwd, setShowPwd] = useState(false);
-  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [company, setCompany] = useState("");
   const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [localErr, setLocalErr] = useState("");
+  const [lastSubmitScreen, setLastSubmitScreen] = useState(null);
   const [notes, setNotes] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
 
@@ -90,6 +90,8 @@ export function LoginPage({
   const passwordScore = passwordRules.filter((rule) => rule.ok).length;
   const passwordStrength =
     passwordScore <= 1 ? "weak" : passwordScore <= 3 ? "medium" : "strong";
+  const loginReady = isValidEmail(email) && password.length >= 6;
+  const remoteError = lastSubmitScreen === screen ? error : "";
 
   const resetForm = (newScreen) => {
     setScreen(newScreen);
@@ -104,9 +106,12 @@ export function LoginPage({
     setNotes("");
     setAcceptTerms(false);
     setLocalErr("");
+    setLastSubmitScreen(null);
     setShowPwd(false);
-    setShowConfirmPwd(false);
     setRegisterStep(1);
+    if (typeof onClearError === "function") {
+      onClearError();
+    }
   };
 
   const validateRegisterStepOne = () => {
@@ -133,15 +138,23 @@ export function LoginPage({
 
   const validateRegisterStepTwo = () => {
     const missingRule = passwordRules.find((rule) => !rule.ok);
-    if (missingRule) return "Sua senha ainda não atende aos requisitos mínimos.";
+    if (missingRule)
+      return "Sua senha ainda não atende aos requisitos mínimos.";
     if (password !== confirm) return "As senhas não coincidem.";
     if (!acceptTerms) return "Você precisa aceitar os termos para continuar.";
     return "";
   };
 
+  const registerStepOneError = validateRegisterStepOne();
+  const registerStepTwoError = validateRegisterStepTwo();
+
   const handleLogin = (e) => {
     e.preventDefault();
+    setLastSubmitScreen("login");
     setLocalErr("");
+    if (typeof onClearError === "function") {
+      onClearError();
+    }
 
     if (!isValidEmail(email)) {
       setLocalErr("Email inválido.");
@@ -157,7 +170,11 @@ export function LoginPage({
 
   const handleRegister = (e) => {
     e.preventDefault();
+    setLastSubmitScreen("register");
     setLocalErr("");
+    if (typeof onClearError === "function") {
+      onClearError();
+    }
 
     const stepOneError = validateRegisterStepOne();
     if (stepOneError) {
@@ -183,7 +200,11 @@ export function LoginPage({
   };
 
   const handleGoToRegisterStepTwo = () => {
+    setLastSubmitScreen("register");
     setLocalErr("");
+    if (typeof onClearError === "function") {
+      onClearError();
+    }
     const stepOneError = validateRegisterStepOne();
     if (stepOneError) {
       setLocalErr(stepOneError);
@@ -198,47 +219,53 @@ export function LoginPage({
 
   if (screen === "login") {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} ${styles.pageLogin}`}>
         <div className={styles.splitLayout}>
           <div className={styles.visualSide}>
+            <div className={styles.bgImage} aria-hidden="true" />
             <div className={styles.overlay} />
-            <img
-              src="/agro_login_bg_1774615846296.png"
-              alt="Agro Technology"
-              className={styles.bgImage}
-            />
+            <div className={styles.visualGlowA} aria-hidden="true" />
+            <div className={styles.visualGlowB} aria-hidden="true" />
             <div className={styles.visualContent}>
-              <div className={styles.visualLogo}>
-                <LogoMark />
-                <span className={styles.visualBrand}>AgroColetivo</span>
-              </div>
+              <div className={styles.visualShell}>
+                <div className={styles.visualLogo}>
+                  <LogoMark />
+                  <span className={styles.visualBrand}>{BRAND_NAME}</span>
+                </div>
 
-              <span className={styles.visualKicker}>Plataforma de compras coletivas</span>
-              <h2 className={styles.visualTitle}>Conecte produtores, gestores e fornecedores em um so fluxo.</h2>
-              <p className={styles.visualSub}>
-                Organize cotacoes, receba propostas e acompanhe pedidos com seguranca e agilidade.
-              </p>
+                <span className={styles.visualKicker}>
+                  Acesso da Plataforma
+                </span>
+                <h2 className={styles.visualTitle}>Bem-vindo de volta!</h2>
+                <p className={styles.visualSub}>
+                  Entre para acessar seu painel no {BRAND_NAME} e acompanhar suas
+                  cotações em tempo real.
+                </p>
 
-              <div className={styles.visualBullets}>
-                <div className={styles.visualBullet}>
-                  <Check size={15} /> Cadastro com verificacao por email
+                <div className={styles.visualBullets}>
+                  <div className={styles.visualBullet}>
+                    <Check size={15} /> Fluxo seguro para gestores e
+                    fornecedores
+                  </div>
+                  <div className={styles.visualBullet}>
+                    <Check size={15} /> Atualização automática sem precisar
+                    recarregar
+                  </div>
+                  <div className={styles.visualBullet}>
+                    <Check size={15} /> Pedidos, propostas e monitoramento em um
+                    só lugar
+                  </div>
                 </div>
-                <div className={styles.visualBullet}>
-                  <Check size={15} /> Fluxo otimizado para campo e escritorio
-                </div>
-                <div className={styles.visualBullet}>
-                  <Check size={15} /> Alertas de login e trilha de seguranca
-                </div>
-              </div>
 
-              <div className={styles.visualStats}>
-                <div className={styles.statCard}>
-                  <strong>100%</strong>
-                  <span>foco em compras coletivas</span>
-                </div>
-                <div className={styles.statCard}>
-                  <strong>2 perfis</strong>
-                  <span>Gestor e Fornecedor</span>
+                <div className={styles.visualStats}>
+                  <div className={styles.statCard}>
+                    <strong>+ controle</strong>
+                    <span>de ponta a ponta</span>
+                  </div>
+                  <div className={styles.statCard}>
+                    <strong>tempo real</strong>
+                    <span>para toda operação</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -246,12 +273,31 @@ export function LoginPage({
 
           <div className={styles.authSide}>
             <div className={styles.authContainer}>
-              <div className={styles.contentAnim}>
+              <div className={styles.authBrandRow}>
+                <div className={styles.authBrandMain}>
+                  <LogoMark />
+                  <div className={styles.authBrandText}>
+                    <strong>{BRAND_NAME}</strong>
+                    <span>Plataforma B2B rural</span>
+                  </div>
+                </div>
+                <span className={styles.authBrandBadge}>Acesso Seguro</span>
+              </div>
+
+              <div className={`${styles.contentAnim} ${styles.authCard}`}>
                 <div className={styles.formHeader}>
-                  <h1 className={styles.title}>Bem-vindo de volta</h1>
+                  <h1 className={styles.title}>Entrar</h1>
                   <p className={styles.sub}>
-                    Entre com seu email e senha para acessar seu painel
+                    Acesse sua plataforma de gestão rural.
                   </p>
+                  <div className={styles.metaRow}>
+                    <span className={styles.metaChip}>
+                      <ShieldCheck size={13} /> Login protegido
+                    </span>
+                    <span className={styles.metaChip}>
+                      <Check size={13} /> Fluxo rápido
+                    </span>
+                  </div>
                 </div>
 
                 <form
@@ -261,20 +307,21 @@ export function LoginPage({
                 >
                   <div className="form-group">
                     <label className="form-label" htmlFor="login-email">
-                      Email
+                      E-mail
                     </label>
                     <div className={styles.inputIconWrapper}>
                       <Mail size={18} className={styles.inputIcon} />
                       <input
                         id="login-email"
+                        name="email"
                         className="form-input"
                         type="email"
-                        placeholder="seu@email.com"
+                        placeholder="nome@fazenda.com.br"
                         value={email}
                         onChange={(e) =>
                           setEmail(e.target.value.toLowerCase().trim())
                         }
-                        autoComplete="email"
+                        autoComplete="username"
                         autoFocus
                       />
                     </div>
@@ -294,16 +341,17 @@ export function LoginPage({
                           }
                         }}
                       >
-                        Esqueceu?
+                        Esqueceu a senha?
                       </button>
                     </div>
                     <div className={styles.inputIconWrapper}>
                       <Lock size={18} className={styles.inputIcon} />
                       <input
                         id="login-password"
+                        name="password"
                         className="form-input"
                         type={showPwd ? "text" : "password"}
-                        placeholder="Sua senha"
+                        placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         autoComplete="current-password"
@@ -312,41 +360,46 @@ export function LoginPage({
                         type="button"
                         className={styles.eyeBtn}
                         onClick={() => setShowPwd(!showPwd)}
+                        aria-label={showPwd ? "Ocultar senha" : "Mostrar senha"}
                       >
                         {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
 
-                  {(localErr || error) && (
-                    <div className={styles.errorAlert} role="alert">
-                      {localErr || error}
+                  {(localErr || remoteError) && (
+                    <div
+                      className={styles.errorAlert}
+                      role="alert"
+                      aria-live="polite"
+                    >
+                      {localErr || remoteError}
                     </div>
                   )}
 
                   <button
                     type="submit"
                     className={styles.mainActionBtn}
-                    disabled={loading || !isValidEmail(email) || !password}
+                    disabled={loading || !loginReady}
                   >
                     {loading ? (
                       <>
                         <Loader size={18} className="spin" /> Entrando...
                       </>
                     ) : (
-                      "Acessar Plataforma"
+                      "Entrar"
                     )}
                   </button>
                 </form>
 
                 <div className={styles.footer}>
-                  <p>Novo por aqui?</p>
+                  <p>Não tem uma conta?</p>
                   <button
                     type="button"
                     className={styles.secondaryActionBtn}
                     onClick={() => resetForm("register")}
                   >
-                    Criar conta gratuita <ArrowRight size={14} />
+                    Crie uma conta <ArrowRight size={14} />
                   </button>
                 </div>
               </div>
@@ -363,48 +416,89 @@ export function LoginPage({
 
   if (screen === "register") {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} ${styles.pageLogin}`}>
         <div className={styles.splitLayout}>
           <div className={styles.visualSide}>
+            <div className={styles.bgImage} aria-hidden="true" />
             <div className={styles.overlay} />
-            <img
-              src="/agro_login_bg_1774615846296.png"
-              alt="Agro Technology"
-              className={styles.bgImage}
-            />
+            <div className={styles.visualGlowA} aria-hidden="true" />
+            <div className={styles.visualGlowB} aria-hidden="true" />
             <div className={styles.visualContent}>
-              <div className={styles.visualLogo}>
-                <LogoMark />
-                <span className={styles.visualBrand}>AgroColetivo</span>
-              </div>
+              <div className={styles.visualShell}>
+                <div className={styles.visualLogo}>
+                  <LogoMark />
+                  <span className={styles.visualBrand}>HubCompras</span>
+                </div>
 
-              <span className={styles.visualKicker}>Cadastro inteligente</span>
-              <h2 className={styles.visualTitle}>Crie sua conta em dois passos.</h2>
-              <p className={styles.visualSub}>
-                Coletamos somente o necessario para liberar seu acesso com seguranca.
-              </p>
+                <span className={styles.visualKicker}>
+                  Cadastro inteligente
+                </span>
+                <h2 className={styles.visualTitle}>
+                  Crie sua conta em dois passos.
+                </h2>
+                <p className={styles.visualSub}>
+                  Coletamos somente o necessario para liberar seu acesso com
+                  seguranca.
+                </p>
+              </div>
             </div>
           </div>
 
           <div className={styles.authSide}>
             <div className={styles.authContainer}>
-              <div className={styles.contentAnim}>
+              <div className={styles.authBrandRow}>
+                <div className={styles.authBrandMain}>
+                  <LogoMark />
+                  <div className={styles.authBrandText}>
+                    <strong>{BRAND_NAME}</strong>
+                    <span>Plataforma B2B rural</span>
+                  </div>
+                </div>
+                <span className={styles.authBrandBadge}>Novo Cadastro</span>
+              </div>
+
+              <div className={`${styles.contentAnim} ${styles.authCard}`}>
                 <div className={styles.formHeader}>
                   <h1 className={styles.title}>Comece agora</h1>
-                  <p className={styles.sub}>Perfil, contato e senha segura para ativar sua conta</p>
+                  <p className={styles.sub}>
+                    Perfil, contato e senha segura para ativar sua conta
+                  </p>
+                  <div className={styles.metaRow}>
+                    <span className={styles.metaChip}>
+                      <ShieldCheck size={13} /> Dados verificados por email
+                    </span>
+                    <span className={styles.metaChip}>
+                      <Check size={13} /> Cadastro em 2 etapas
+                    </span>
+                  </div>
                 </div>
 
                 <div className={styles.stepper}>
-                  <div className={`${styles.stepItem} ${registerStep >= 1 ? styles.stepActive : ""}`}>
+                  <div
+                    className={`${styles.stepItem} ${registerStep >= 1 ? styles.stepActive : ""}`}
+                  >
                     <span>1</span>
                     <p>Dados do negocio</p>
                   </div>
                   <div className={styles.stepLine} />
-                  <div className={`${styles.stepItem} ${registerStep >= 2 ? styles.stepActive : ""}`}>
+                  <div
+                    className={`${styles.stepItem} ${registerStep >= 2 ? styles.stepActive : ""}`}
+                  >
                     <span>2</span>
                     <p>Senha e seguranca</p>
                   </div>
                 </div>
+                <p className={styles.stepSummary}>Etapa {registerStep} de 2</p>
+
+                {(localErr || remoteError) && (
+                  <div
+                    className={styles.errorAlert}
+                    role="alert"
+                    aria-live="polite"
+                  >
+                    {localErr || remoteError}
+                  </div>
+                )}
 
                 <form
                   onSubmit={handleRegister}
@@ -424,7 +518,9 @@ export function LoginPage({
                           <Wheat size={20} />
                           <div className={styles.roleTexts}>
                             <span className={styles.roleName}>Fornecedor</span>
-                            <span className={styles.roleDesc}>Vender produtos</span>
+                            <span className={styles.roleDesc}>
+                              Vender produtos
+                            </span>
                           </div>
                         </button>
                         <button
@@ -437,22 +533,29 @@ export function LoginPage({
                           <Building2 size={20} />
                           <div className={styles.roleTexts}>
                             <span className={styles.roleName}>Gestor</span>
-                            <span className={styles.roleDesc}>Coordenar compras</span>
+                            <span className={styles.roleDesc}>
+                              Coordenar compras
+                            </span>
                           </div>
                         </button>
                       </div>
 
                       <div className="form-group">
-                        <label className="form-label" htmlFor="register-email">Email de trabalho</label>
+                        <label className="form-label" htmlFor="register-email">
+                          Email de trabalho
+                        </label>
                         <div className={styles.inputIconWrapper}>
                           <Mail size={18} className={styles.inputIcon} />
                           <input
                             id="register-email"
+                            name="email"
                             className="form-input"
                             type="email"
                             placeholder="seu@trabalho.com"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
+                            onChange={(e) =>
+                              setEmail(e.target.value.toLowerCase().trim())
+                            }
                             autoComplete="email"
                           />
                         </div>
@@ -460,7 +563,12 @@ export function LoginPage({
 
                       <div className="grid-2">
                         <div className="form-group">
-                          <label className="form-label" htmlFor="register-phone">WhatsApp</label>
+                          <label
+                            className="form-label"
+                            htmlFor="register-phone"
+                          >
+                            WhatsApp
+                          </label>
                           <div className={styles.inputIconWrapper}>
                             <Phone size={18} className={styles.inputIcon} />
                             <input
@@ -468,13 +576,18 @@ export function LoginPage({
                               className="form-input"
                               placeholder="(00) 00000-0000"
                               value={phone}
-                              onChange={(e) => setPhone(maskPhone(e.target.value))}
+                              onChange={(e) =>
+                                setPhone(maskPhone(e.target.value))
+                              }
                               autoComplete="tel"
                             />
                           </div>
                         </div>
                         <div className="form-group">
-                          <label className="form-label" htmlFor="register-company">
+                          <label
+                            className="form-label"
+                            htmlFor="register-company"
+                          >
                             {role === ROLES.VENDOR ? "Empresa" : "Associacao"}
                           </label>
                           <div className={styles.inputIconWrapper}>
@@ -497,7 +610,12 @@ export function LoginPage({
 
                       {role === ROLES.VENDOR && (
                         <div className="form-group">
-                          <label className="form-label" htmlFor="register-address">Endereco (opcional)</label>
+                          <label
+                            className="form-label"
+                            htmlFor="register-address"
+                          >
+                            Endereco (opcional)
+                          </label>
                           <div className={styles.inputIconWrapper}>
                             <Home size={18} className={styles.inputIcon} />
                             <input
@@ -514,7 +632,9 @@ export function LoginPage({
 
                       <div className="grid-2">
                         <div className="form-group">
-                          <label className="form-label" htmlFor="register-city">Cidade</label>
+                          <label className="form-label" htmlFor="register-city">
+                            Cidade
+                          </label>
                           <div className={styles.inputIconWrapper}>
                             <MapPin size={18} className={styles.inputIcon} />
                             <input
@@ -528,7 +648,12 @@ export function LoginPage({
                           </div>
                         </div>
                         <div className="form-group">
-                          <label className="form-label" htmlFor="register-notes">Observacoes (opcional)</label>
+                          <label
+                            className="form-label"
+                            htmlFor="register-notes"
+                          >
+                            Observacoes (opcional)
+                          </label>
                           <div className={styles.inputIconWrapper}>
                             <FileText size={18} className={styles.inputIcon} />
                             <input
@@ -551,6 +676,11 @@ export function LoginPage({
                       >
                         Avancar para senha <ArrowRight size={16} />
                       </button>
+                      {registerStepOneError && !localErr && (
+                        <p className={styles.stepSummary}>
+                          Para continuar: {registerStepOneError}
+                        </p>
+                      )}
                     </>
                   )}
 
@@ -564,11 +694,17 @@ export function LoginPage({
 
                         <div className="grid-2">
                           <div className="form-group">
-                            <label className="form-label" htmlFor="register-password">Senha de acesso</label>
+                            <label
+                              className="form-label"
+                              htmlFor="register-password"
+                            >
+                              Senha de acesso
+                            </label>
                             <div className={styles.inputIconWrapper}>
                               <Lock size={18} className={styles.inputIcon} />
                               <input
                                 id="register-password"
+                                name="new-password"
                                 className="form-input"
                                 type={showPwd ? "text" : "password"}
                                 placeholder="Digite sua senha"
@@ -580,31 +716,37 @@ export function LoginPage({
                                 type="button"
                                 className={styles.eyeBtn}
                                 onClick={() => setShowPwd(!showPwd)}
+                                aria-label={
+                                  showPwd ? "Ocultar senha" : "Mostrar senha"
+                                }
                               >
-                                {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                                {showPwd ? (
+                                  <EyeOff size={18} />
+                                ) : (
+                                  <Eye size={18} />
+                                )}
                               </button>
                             </div>
                           </div>
                           <div className="form-group">
-                            <label className="form-label" htmlFor="register-confirm">Confirmar senha</label>
+                            <label
+                              className="form-label"
+                              htmlFor="register-confirm"
+                            >
+                              Confirmar senha
+                            </label>
                             <div className={styles.inputIconWrapper}>
                               <Lock size={18} className={styles.inputIcon} />
                               <input
                                 id="register-confirm"
+                                name="confirm-password"
                                 className="form-input"
-                                type={showConfirmPwd ? "text" : "password"}
+                                type="password"
                                 placeholder="Repita a senha"
                                 value={confirm}
                                 onChange={(e) => setConfirm(e.target.value)}
                                 autoComplete="new-password"
                               />
-                              <button
-                                type="button"
-                                className={styles.eyeBtn}
-                                onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                              >
-                                {showConfirmPwd ? <EyeOff size={18} /> : <Eye size={18} />}
-                              </button>
                             </div>
                           </div>
                         </div>
@@ -612,18 +754,25 @@ export function LoginPage({
                         <div className={styles.passwordMeterWrap}>
                           <div className={styles.passwordMeterTrack}>
                             <div
-                              className={`${styles.passwordMeterFill} ${styles[`strength_${passwordStrength}`]}`}
-                              style={{ width: `${(passwordScore / 4) * 100}%` }}
+                              className={`${styles.passwordMeterFill} ${styles[`strength_${passwordStrength}`]} ${styles[`strengthWidth${passwordScore}`]}`}
                             />
                           </div>
                           <span className={styles.passwordStrengthLabel}>
-                            Forca: {passwordStrength === "weak" ? "fraca" : passwordStrength === "medium" ? "media" : "forte"}
+                            Forca:{" "}
+                            {passwordStrength === "weak"
+                              ? "fraca"
+                              : passwordStrength === "medium"
+                                ? "media"
+                                : "forte"}
                           </span>
                         </div>
 
                         <ul className={styles.passwordRules}>
                           {passwordRules.map((rule) => (
-                            <li key={rule.label} className={rule.ok ? styles.ruleOk : ""}>
+                            <li
+                              key={rule.label}
+                              className={rule.ok ? styles.ruleOk : ""}
+                            >
                               <Check size={13} /> {rule.label}
                             </li>
                           ))}
@@ -637,7 +786,8 @@ export function LoginPage({
                           onChange={(e) => setAcceptTerms(e.target.checked)}
                         />
                         <span>
-                          Eu confirmo que os dados informados sao verdadeiros e autorizo o contato da plataforma.
+                          Eu confirmo que os dados informados sao verdadeiros e
+                          autorizo o contato da plataforma.
                         </span>
                       </label>
 
@@ -647,7 +797,11 @@ export function LoginPage({
                           className={styles.backBtn}
                           onClick={() => {
                             setLocalErr("");
+                            setLastSubmitScreen("register");
                             setRegisterStep(1);
+                            if (typeof onClearError === "function") {
+                              onClearError();
+                            }
                           }}
                           disabled={loading}
                         >
@@ -657,24 +811,24 @@ export function LoginPage({
                         <button
                           type="submit"
                           className={styles.mainActionBtn}
-                          disabled={loading || passwordRules.some((rule) => !rule.ok) || password !== confirm || !acceptTerms}
+                          disabled={loading}
                         >
                           {loading ? (
                             <>
-                              <Loader size={18} className="spin" /> Criando conta...
+                              <Loader size={18} className="spin" /> Criando
+                              conta...
                             </>
                           ) : (
                             "Finalizar cadastro"
                           )}
                         </button>
                       </div>
+                      {registerStepTwoError && !localErr && (
+                        <p className={styles.stepSummary}>
+                          Para finalizar: {registerStepTwoError}
+                        </p>
+                      )}
                     </>
-                  )}
-
-                  {(localErr || error) && (
-                    <div className={styles.errorAlert} role="alert">
-                      {localErr || error}
-                    </div>
                   )}
                 </form>
 

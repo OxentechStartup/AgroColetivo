@@ -5,6 +5,7 @@
  * Não bloqueia o fluxo de autenticação quando falha.
  */
 
+import { sendLoginAlertEmail as sendViaWebhook } from "../src/lib/n8n-service.js";
 import nodemailer from "nodemailer";
 import {
   getClientIp,
@@ -51,8 +52,8 @@ const htmlBody = (name, details) => {
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
     .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 32px; }
     .header { text-align: center; border-bottom: 2px solid #e8f5e9; padding-bottom: 20px; margin-bottom: 24px; }
-    .header h1 { color: #2c5f2d; font-size: 26px; margin: 0; }
-    .info { background: #f9fafb; border-left: 4px solid #2c5f2d; padding: 14px; border-radius: 6px; margin: 16px 0; }
+    .header h1 { color: #059669; font-size: 26px; margin: 0; }
+    .info { background: #f9fafb; border-left: 4px solid #059669; padding: 14px; border-radius: 6px; margin: 16px 0; }
     .muted { color: #6b7280; font-size: 13px; }
     .warning { background: #fff7ed; border-left: 4px solid #f97316; padding: 14px; border-radius: 6px; margin-top: 20px; }
     .footer { text-align: center; color: #999; font-size: 11px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
@@ -62,7 +63,7 @@ const htmlBody = (name, details) => {
   <div class="container">
     <div class="header">
       <h1>🔐 Aviso de Login</h1>
-      <p class="muted">AgroColetivo</p>
+      <p class="muted">HubCompras</p>
     </div>
 
     <p>Olá <strong>${name}</strong>,</p>
@@ -80,7 +81,7 @@ const htmlBody = (name, details) => {
     </div>
 
     <div class="footer">
-      <p>© 2026 AgroColetivo · Oxentech Software</p>
+      <p>© 2026 HubCompras · Oxentech Software</p>
     </div>
   </div>
 </body>
@@ -109,9 +110,9 @@ async function sendViaGmail(email, name, details) {
     });
 
     const sendPromise = transporter.sendMail({
-      from: `"AgroColetivo" <${gmailUser}>`,
+      from: `"HubCompras" <${gmailUser}>`,
       to: email,
-      subject: "🔐 Novo login na sua conta - AgroColetivo",
+      subject: "🔐 Novo login na sua conta - HubCompras",
       html: htmlBody(name, details),
     });
 
@@ -185,14 +186,31 @@ export default async function handler(req, res) {
         "login_alert",
         cleanEmail,
         cleanName,
-        "🔐 Novo login na sua conta - AgroColetivo",
+        "🔐 Novo login na sua conta - HubCompras",
         "pending",
       );
     } catch {
       // Ignore falha de auditoria
     }
 
-    const sent = await sendViaGmail(cleanEmail, cleanName, cleanDetails);
+    let sent = null;
+
+    // Tentar N8N primeiro
+    console.log("🔄 Tentando N8N Webhook para aviso de login...");
+    try {
+      sent = await sendViaWebhook(cleanEmail, cleanName, cleanDetails);
+      if (sent?.success) {
+        console.log("✅ N8N webhook sucesso!");
+      }
+    } catch (error) {
+      console.log(`❌ N8N falhou: ${error.message}`);
+    }
+
+    // Fallback para Gmail
+    if (!sent) {
+      console.log("🔄 Tentando Gmail SMTP...");
+      sent = await sendViaGmail(cleanEmail, cleanName, cleanDetails);
+    }
 
     if (sent?.success) {
       try {

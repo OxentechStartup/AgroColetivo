@@ -8,7 +8,7 @@ Overall Status: CRITICAL ISSUES FOUND - NOT PRODUCTION READY
 
 EXECUTIVE SUMMARY
 =================
-The AgroColetivo application has a well-designed authentication system using 
+The HubCompras application has a well-designed authentication system using 
 Supabase Auth with JWT tokens and bcrypt. However, CRITICAL security issues 
 must be resolved before any production deployment:
 

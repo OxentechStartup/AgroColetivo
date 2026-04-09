@@ -2,11 +2,12 @@
   "name": "agro-coletivo",
   "version": "0.21.0",
   "type": "module",
-  "description": "AgroColetivo - Sistema de gestão agrícola com Supabase",
+  "description": "HubCompras - Sistema de gestão agrícola com Supabase",
   "main": "server.mjs",
   "scripts": {
     "dev": "vite",
     "dev:server": "node server.mjs",
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -ArgumentList '-NoExit','-Command','cd ''$PWD''; npm run dev:server'; npm run dev\"",
     "build": "vite build",
     "start": "npm run build && node server.mjs",
     "preview": "vite preview"

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Loader, CheckCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 import {
   verifyEmailForRegistration,
   resendVerificationCode,
@@ -7,12 +7,14 @@ import {
 import { Card } from "../components/ui/Card.jsx";
 import { Button } from "../components/ui/Button.jsx";
 import { Toast } from "../components/ui/Toast.jsx";
+import { AuthShell } from "../components/AuthShell";
+import { BRAND_NAME } from "../constants/branding";
 import styles from "./ConfirmEmailPage.module.css";
 
 /**
  * ConfirmEmailPage REFATORADA
- * - Apenas verificação de código
- * - Sem localStorage poluído
+ * - Verificação de código de 6 dígitos
+ * - Suporte a devCode para exibir código quando email não é enviado
  * - Fluxo limpo
  */
 export function ConfirmEmailPage({ pendingId, email, onVerified }) {
@@ -39,13 +41,23 @@ export function ConfirmEmailPage({ pendingId, email, onVerified }) {
 
   if (!pendingId || !email) {
     return (
-      <div className={styles.container}>
+      <AuthShell
+        kicker="Seguranca da conta"
+        title="Confirmacao de email"
+        subtitle={`Garanta que apenas voce consiga acessar sua conta no ${BRAND_NAME}.`}
+        bullets={[
+          "Fluxo protegido para gestores e fornecedores",
+          "Codigo de verificacao com validade limitada",
+          "Acesso liberado somente apos validacao",
+        ]}
+        contentMaxWidth={500}
+      >
         <Card className={styles.card}>
           <div className={styles.error}>
-            Dados de verificação não encontrados. Tente registrar novamente.
+            Dados de verificacao nao encontrados. Tente registrar novamente.
           </div>
         </Card>
-      </div>
+      </AuthShell>
     );
   }
 
@@ -91,11 +103,11 @@ export function ConfirmEmailPage({ pendingId, email, onVerified }) {
     setError("");
 
     try {
-       await resendVerificationCode(email, "registration");
-       setSuccess("Novo código enviado para seu email!");
-       setCanResend(false);
-       setResendCountdown(60);
-       setCode("");
+      await resendVerificationCode(email, "registration");
+      setSuccess("Novo código enviado para seu email!");
+      setCanResend(false);
+      setResendCountdown(60);
+      setCode("");
     } catch (err) {
       setError(err.message || "Erro ao reenviar código. Tente novamente.");
     } finally {
@@ -104,83 +116,91 @@ export function ConfirmEmailPage({ pendingId, email, onVerified }) {
   };
 
   return (
-    <div className={styles.container}>
-      <div className={styles.content}>
-        <Card className={styles.card}>
-          <div className={styles.header}>
-            <h1>Confirme seu Email</h1>
-            <p className={styles.subtitle}>
-              Um código de verificação foi enviado para:
+    <AuthShell
+      kicker="Seguranca da conta"
+      title="Confirme seu email"
+      subtitle={`Use o codigo recebido para ativar seu acesso ao ${BRAND_NAME}.`}
+      bullets={[
+        "Validacao rapida em poucos segundos",
+        "Protecao contra acessos indevidos",
+        "Reenvio de codigo quando necessario",
+      ]}
+      contentMaxWidth={500}
+    >
+      <Card className={styles.card}>
+        <div className={styles.header}>
+          <h1>Confirme seu Email</h1>
+          <p className={styles.subtitle}>
+            Um código de verificação foi enviado para:
+          </p>
+          <p className={styles.email}>{email}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.inputGroup}>
+            <label htmlFor="code">Código de Verificação (6 dígitos)</label>
+            <input
+              id="code"
+              type="text"
+              inputMode="numeric"
+              maxLength="6"
+              value={code}
+              onChange={handleCodeChange}
+              placeholder="000000"
+              className={styles.codeInput}
+              disabled={loading}
+              autoComplete="one-time-code"
+              autoFocus
+            />
+            <p className={styles.hint}>
+              Digite o código que você recebeu no seu email
             </p>
-            <p className={styles.email}>{email}</p>
           </div>
 
-          <form onSubmit={handleSubmit} className={styles.form}>
-            <div className={styles.inputGroup}>
-              <label htmlFor="code">Código de Verificação (6 dígitos)</label>
-              <input
-                id="code"
-                type="text"
-                inputMode="numeric"
-                maxLength="6"
-                value={code}
-                onChange={handleCodeChange}
-                placeholder="000000"
-                className={styles.codeInput}
-                disabled={loading}
-                autoComplete="one-time-code"
-                autoFocus
-              />
-              <p className={styles.hint}>
-                Digite o código que você recebeu no seu email
-              </p>
+          {error && (
+            <div className={styles.error}>
+              <AlertCircle size={16} />
+              {error}
             </div>
+          )}
 
-            {error && (
-              <div className={styles.error}>
-                <AlertCircle size={16} />
-                {error}
-              </div>
-            )}
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading || code.length !== 6}
+            block
+          >
+            {loading ? "Verificando..." : "Confirmar Email"}
+          </Button>
+        </form>
 
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading || code.length !== 6}
-              block
-            >
-              {loading ? "Verificando..." : "Confirmar Email"}
-            </Button>
-          </form>
+        <div className={styles.footer}>
+          <p className={styles.noCode}>Não recebeu o código?</p>
+          <Button
+            onClick={handleResendEmail}
+            variant="secondary"
+            disabled={!canResend || resending}
+            block
+          >
+            {resending
+              ? "Reenviando..."
+              : canResend
+                ? "Reenviar Código"
+                : `Reenviar em ${resendCountdown}s`}
+          </Button>
+        </div>
 
-          <div className={styles.footer}>
-            <p className={styles.noCode}>Não recebeu o código?</p>
-            <Button
-              onClick={handleResendEmail}
-              variant="secondary"
-              disabled={!canResend || resending}
-              block
-            >
-              {resending
-                ? "Reenviando..."
-                : canResend
-                  ? "Reenviar Código"
-                  : `Reenviar em ${resendCountdown}s`}
-            </Button>
-          </div>
-
-          <div className={styles.info}>
-            <p>
-              <strong>💡 Dica:</strong> O código expira em 24 horas. Verifique a
-              pasta de spam se não encontrar.
-            </p>
-          </div>
-        </Card>
-      </div>
+        <div className={styles.info}>
+          <p>
+            <strong>Dica:</strong> O codigo expira em 24 horas. Verifique a
+            pasta de spam se não encontrar.
+          </p>
+        </div>
+      </Card>
 
       {success && (
         <Toast type="success" message={success} onDone={() => setSuccess("")} />
       )}
-    </div>
+    </AuthShell>
   );
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import {
-  ShoppingCart,
   Phone,
   LogOut,
   Clock,
@@ -13,11 +12,13 @@ import {
 import { maskPhone, unmaskPhone } from "../utils/masks";
 import { supabase } from "../lib/supabase";
 import { ConfirmationModal } from "../components/ConfirmationModal";
+import styles from "./BuyerOrderStatusPage.module.css";
+
+const HUB_LOGO_URL = "https://i.imgur.com/clDJyAh.png";
 
 async function fetchBuyerOrdersWithOffers(phone) {
   const cleanPhone = unmaskPhone(phone);
 
-  // Passo 1: Buscar o buyer pelo telefone
   const { data: buyer, error: buyerError } = await supabase
     .from("buyers")
     .select("id, name, phone")
@@ -33,7 +34,6 @@ async function fetchBuyerOrdersWithOffers(phone) {
     return null;
   }
 
-  // Passo 2: Buscar os pedidos do buyer com detalhes da campanha
   const { data: orders, error: ordersError } = await supabase
     .from("orders")
     .select(
@@ -54,16 +54,24 @@ async function fetchBuyerOrdersWithOffers(phone) {
     throw ordersError;
   }
 
-  // Passo 3: Para cada order, buscar as ofertas da campanha
   const ordersWithOffers = await Promise.all(
     (orders ?? []).map(async (order) => {
+      const campaignId = order?.campaign?.id;
+      if (!campaignId) {
+        return {
+          ...order,
+          offers: [],
+          approvedOffer: null,
+          totalPrice: null,
+        };
+      }
+
       const { data: offers } = await supabase
         .from("vendor_campaign_offers")
         .select("*")
-        .eq("campaign_id", order.campaign.id)
+        .eq("campaign_id", campaignId)
         .order("price_per_unit", { ascending: true });
 
-      // Buscar dados dos vendors correspondentes
       let offersWithVendors = offers ?? [];
       if (offersWithVendors.length > 0) {
         const vendorIds = [
@@ -75,18 +83,18 @@ async function fetchBuyerOrdersWithOffers(phone) {
           .in("id", vendorIds);
 
         const vendorMap = {};
-        (vendors ?? []).forEach((v) => {
-          vendorMap[v.id] = v;
+        (vendors ?? []).forEach((vendor) => {
+          vendorMap[vendor.id] = vendor;
         });
 
-        offersWithVendors = offersWithVendors.map((o) => ({
-          ...o,
-          vendors: vendorMap[o.vendor_id] || null,
+        offersWithVendors = offersWithVendors.map((offer) => ({
+          ...offer,
+          vendors: vendorMap[offer.vendor_id] || null,
         }));
       }
 
       const approvedOffer = (offersWithVendors ?? []).find(
-        (o) => o.status === "approved",
+        (offer) => offer.status === "approved",
       );
       const totalPrice = approvedOffer
         ? approvedOffer.price_per_unit * order.qty
@@ -94,7 +102,7 @@ async function fetchBuyerOrdersWithOffers(phone) {
 
       return {
         ...order,
-        offers: offersWithVendors ?? [],
+        offers: offersWithVendors,
         approvedOffer,
         totalPrice,
       };
@@ -107,544 +115,237 @@ async function fetchBuyerOrdersWithOffers(phone) {
   };
 }
 
-function OrderCard({ order, onCancel, canceling, onSetCancelConfirm }) {
+function formatMoney(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "0,00";
+  }
+  return value.toFixed(2).replace(".", ",");
+}
+
+function BrandHeader({ title, subtitle, action }) {
+  return (
+    <header className={styles.header}>
+      <div className={styles.headerInner}>
+        <div className={styles.brandGroup}>
+          <div className={styles.logo}>
+            <img src={HUB_LOGO_URL} alt="HubCompras" />
+          </div>
+
+          <div className={styles.brandText}>
+            <h1 className={styles.brandTitle}>{title}</h1>
+            <p className={styles.brandSubtitle}>{subtitle}</p>
+          </div>
+        </div>
+
+        {action}
+      </div>
+    </header>
+  );
+}
+
+function OrderCard({ order, canceling, onSetCancelConfirm }) {
   const [expanded, setExpanded] = useState(false);
   const hasApprovedOffer = order.approvedOffer !== null;
+  const product = order?.campaign?.product || "Produto";
+  const unit = order?.campaign?.unit || "un";
+
+  const headerClass = hasApprovedOffer
+    ? `${styles.orderHeader} ${styles.orderHeaderApproved}`
+    : `${styles.orderHeader} ${styles.orderHeaderPending}`;
+
+  const campaignClosed = order?.campaign?.status === "closed";
 
   return (
-    <div
-      style={{
-        background: "white",
-        border: "1px solid #E5E7EB",
-        borderRadius: "10px",
-        marginBottom: "16px",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header - clickable */}
+    <article className={styles.orderCard}>
       <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "16px",
-          background: hasApprovedOffer ? "#F0FFF4" : "#FFFBEB",
-          border: "none",
-          cursor: "pointer",
-          borderBottom: expanded ? "1px solid #E5E7EB" : "none",
-          transition: "all 0.2s",
-        }}
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className={headerClass}
       >
-        <div style={{ flex: 1, textAlign: "left" }}>
-          <h3
-            style={{
-              fontSize: ".95rem",
-              fontWeight: 700,
-              margin: "0 0 4px 0",
-              color: "#1F2937",
-            }}
-          >
-            {order.campaign.product}
-          </h3>
-          <p
-            style={{
-              fontSize: ".8rem",
-              color: "#6B7280",
-              margin: "0",
-            }}
-          >
-            {order.qty} {order.campaign.unit}
+        <div className={styles.orderSummary}>
+          <h3 className={styles.orderProduct}>{product}</h3>
+
+          <p className={styles.orderMeta}>
+            <span>
+              {order.qty} {unit}
+            </span>
+
             {hasApprovedOffer && (
-              <span
-                style={{
-                  marginLeft: "12px",
-                  color: "#16A34A",
-                  fontWeight: 600,
-                }}
-              >
-                ✓ Oferta confirmada
+              <span className={styles.confirmedChip}>
+                <CheckCircle size={12} /> Oferta confirmada
               </span>
             )}
           </p>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
+        <div className={styles.orderHeaderRight}>
           {hasApprovedOffer && (
-            <div
-              style={{
-                textAlign: "right",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: ".75rem",
-                  color: "#6B7280",
-                  margin: "0 0 2px 0",
-                }}
-              >
-                Você pagará
-              </p>
-              <p
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#16A34A",
-                  margin: 0,
-                }}
-              >
-                R$ {order.totalPrice?.toFixed(2)}
+            <div className={styles.priceWrap}>
+              <p className={styles.priceLabel}>Você pagará</p>
+              <p className={styles.priceValue}>
+                R$ {formatMoney(order.totalPrice)}
               </p>
             </div>
           )}
+
           <ChevronDown
             size={20}
-            style={{
-              transition: "transform 0.2s",
-              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-            }}
+            className={`${styles.chevron} ${expanded ? styles.chevronExpanded : ""}`}
           />
         </div>
       </button>
 
-      {/* Expandable content */}
       {expanded && (
-        <div
-          style={{
-            padding: "16px",
-            borderTop: "1px solid #E5E7EB",
-            background: "#FAFAFA",
-          }}
-        >
-          {/* Status */}
-          <div style={{ marginBottom: "16px" }}>
-            <p
-              style={{
-                fontSize: ".75rem",
-                fontWeight: 600,
-                color: "#6B7280",
-                margin: "0 0 8px 0",
-                textTransform: "uppercase",
-              }}
-            >
-              Status da Cotação
-            </p>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              {order.campaign.status === "closed" ? (
-                <CheckCircle size={16} color="#16A34A" />
-              ) : (
-                <Clock size={16} color="#F59E0B" />
-              )}
-              <span styles={{ fontSize: ".9rem" }}>
-                {order.campaign.status === "closed"
-                  ? "Cotação encerrada"
-                  : "Esperando propostas"}
-              </span>
-            </div>
-          </div>
+        <div className={styles.orderBody}>
+          <section>
+            <p className={styles.blockTitle}>Status da cotação</p>
 
-          {/* Ofertas */}
-          {order.offers.length > 0 ? (
-            <div style={{ marginBottom: "16px" }}>
-              <p
-                style={{
-                  fontSize: ".75rem",
-                  fontWeight: 600,
-                  color: "#6B7280",
-                  margin: "0 0 8px 0",
-                  textTransform: "uppercase",
-                }}
-              >
-                Propostas Recebidas ({order.offers.length})
-              </p>
-              {order.offers.map((offer, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    background: "white",
-                    border: "1px solid #E5E7EB",
-                    borderRadius: "6px",
-                    padding: "10px",
-                    marginBottom: "8px",
-                    borderLeft: `3px solid ${
-                      offer.status === "approved" ? "#16A34A" : "#D1D5DB"
-                    }`,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        color: "#1F2937",
-                        fontSize: ".9rem",
-                      }}
-                    >
-                      {offer.vendors?.name || "Fornecedor"}
-                    </span>
-                    {offer.status === "approved" && (
-                      <span
-                        style={{
-                          background: "#DCFCE7",
-                          color: "#166534",
-                          fontSize: ".7rem",
-                          fontWeight: 700,
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        Selecionado
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      fontSize: ".85rem",
-                      color: "#6B7280",
-                    }}
-                  >
-                    <span>R$ {offer.price_per_unit?.toFixed(2)}/un</span>
-                    <span>{offer.city || ""}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div
-              style={{
-                background: "white",
-                border: "1px solid #FEE2E2",
-                borderRadius: "6px",
-                padding: "12px",
-                marginBottom: "16px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <AlertCircle size={16} color="#DC2626" />
-              <span style={{ fontSize: ".85rem", color: "#991B1B" }}>
-                Nenhuma proposta recebida ainda
+            <div className={styles.statusRow}>
+              {campaignClosed ? (
+                <CheckCircle size={16} className={styles.statusApproved} />
+              ) : (
+                <Clock size={16} className={styles.statusPending} />
+              )}
+              <span>
+                {campaignClosed ? "Cotação encerrada" : "Esperando propostas"}
               </span>
+            </div>
+          </section>
+
+          {order.offers.length > 0 ? (
+            <section>
+              <p className={styles.blockTitle}>
+                Propostas recebidas ({order.offers.length})
+              </p>
+
+              <div className={styles.offers}>
+                {order.offers.map((offer, index) => {
+                  const approved = offer.status === "approved";
+
+                  return (
+                    <div
+                      key={`${offer.vendor_id ?? "offer"}-${index}`}
+                      className={`${styles.offer} ${approved ? styles.offerApproved : ""}`}
+                    >
+                      <div className={styles.offerTop}>
+                        <span className={styles.offerVendor}>
+                          {offer.vendors?.name || "Fornecedor"}
+                        </span>
+
+                        {approved && (
+                          <span className={styles.selectedChip}>
+                            Selecionado
+                          </span>
+                        )}
+                      </div>
+
+                      <div className={styles.offerMeta}>
+                        <span>R$ {formatMoney(offer.price_per_unit)}/un</span>
+                        <span>{offer.vendors?.city || ""}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ) : (
+            <div className={styles.emptyOffers}>
+              <AlertCircle size={16} />
+              <span>Nenhuma proposta recebida ainda</span>
             </div>
           )}
 
-          {/* Botão cancelar */}
           <button
+            type="button"
             onClick={() => {
               onSetCancelConfirm({
                 open: true,
                 orderId: order.id,
-                product: order.campaign.product,
+                product,
               });
             }}
             disabled={canceling === order.id}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-              padding: "10px",
-              background: "#FEE2E2",
-              color: "#991B1B",
-              border: "1px solid #FECACA",
-              borderRadius: "6px",
-              cursor: canceling === order.id ? "not-allowed" : "pointer",
-              fontWeight: 600,
-              fontSize: ".9rem",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              if (canceling !== order.id) {
-                e.target.style.background = "#FECACA";
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "#FEE2E2";
-            }}
+            className={styles.cancelBtn}
           >
             <Trash2 size={14} />
             {canceling === order.id ? "Desistindo..." : "Desistir do pedido"}
           </button>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
-function LoginForm({ onLogin, loading, errorMessage }) {
+function LoginForm({ onLogin, loading, errorMessage, embedded = false }) {
   const [phone, setPhone] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (unmaskPhone(phone).length >= 10) {
-      onLogin(unmaskPhone(phone));
+  const cleanPhone = unmaskPhone(phone);
+  const canSubmit = cleanPhone.length >= 10 && !loading;
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (cleanPhone.length >= 10) {
+      onLogin(cleanPhone);
     }
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        background: "linear-gradient(135deg, #16A34A 0%, #15803d 100%)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* Header com Logo */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #16A34A 0%, #15803d 100%)",
-          color: "white",
-          padding: "16px 24px",
-          borderBottom: "1px solid rgba(0,0,0,0.1)",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 640,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                background: "white",
-                borderRadius: "50%",
-                width: 48,
-                height: 48,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <img
-                src="https://i.imgur.com/clDJyAh.png"
-                alt="AgroColetivo"
-                style={{ height: 40, width: "auto", objectFit: "contain" }}
-              />
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontSize: "1.4rem",
-                  fontWeight: 700,
-                  margin: "0 0 2px 0",
-                  color: "white",
-                }}
-              >
-                AgroColetivo
-              </h1>
-              <p
-                style={{
-                  fontSize: ".8rem",
-                  margin: 0,
-                  opacity: 0.95,
-                  color: "white",
-                }}
-              >
-                Meus Pedidos
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className={`${styles.page} ${embedded ? styles.pageEmbedded : ""}`}>
+      {!embedded && <BrandHeader title="HubCompras" subtitle="Meus Pedidos" />}
 
-      {/* Login Form */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "20px",
-        }}
+      <main
+        className={`${styles.loginMain} ${embedded ? styles.loginMainEmbedded : ""}`}
       >
-        <div
-          style={{
-            background: "white",
-            borderRadius: "12px",
-            padding: "32px 24px",
-            maxWidth: 400,
-            width: "100%",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-          }}
+        <section
+          className={`${styles.loginCard} ${embedded ? styles.loginCardEmbedded : ""}`}
         >
-          <h1
-            style={{
-              fontSize: "1.3rem",
-              fontWeight: 700,
-              margin: "0 0 8px 0",
-              textAlign: "center",
-              color: "#1F2937",
-            }}
-          >
-            Status dos Pedidos
-          </h1>
-          <p
-            style={{
-              fontSize: ".9rem",
-              margin: "0 0 24px 0",
-              textAlign: "center",
-              color: "#6B7280",
-            }}
-          >
-            Acompanhe suas compras
-          </p>
+          <h2 className={styles.loginTitle}>Status dos Pedidos</h2>
+          <p className={styles.loginSub}>Acompanhe suas compras</p>
 
-          {/* Mensagem de erro */}
           {errorMessage && (
-            <div
-              style={{
-                background: "#FEE2E2",
-                border: "1px solid #FECACA",
-                borderRadius: "6px",
-                padding: "12px",
-                marginBottom: "16px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <AlertCircle size={16} color="#DC2626" />
-              <span style={{ fontSize: ".85rem", color: "#991B1B" }}>
-                {errorMessage}
-              </span>
+            <div className={styles.errorBox}>
+              <AlertCircle size={16} />
+              <span>{errorMessage}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: ".9rem",
-                  fontWeight: 600,
-                  marginBottom: "8px",
-                  color: "#374151",
-                }}
-              >
-                <Phone
-                  size={14}
-                  style={{ marginRight: "6px", verticalAlign: "middle" }}
-                />
+            <div className={`form-group ${styles.inputGroup}`}>
+              <label className={`form-label ${styles.label}`}>
+                <Phone size={14} />
                 Seu telefone/WhatsApp
               </label>
+
               <input
                 autoFocus
                 type="tel"
-                value={maskPhone(phone)}
-                onChange={(e) => setPhone(maskPhone(e.target.value))}
-                placeholder="(00) 0000-0000"
+                value={phone}
+                onChange={(event) => setPhone(maskPhone(event.target.value))}
+                placeholder="(00) 00000-0000"
                 disabled={loading}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #D1D5DB",
-                  borderRadius: "6px",
-                  fontSize: ".95rem",
-                  boxSizing: "border-box",
-                  fontFamily: "inherit",
-                  transition: "border-color 0.2s",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#16A34A";
-                  e.target.style.outline = "none";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(22, 163, 74, 0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "#D1D5DB";
-                  e.target.style.boxShadow = "none";
-                }}
+                className="form-input"
               />
             </div>
 
             <button
               type="submit"
-              disabled={unmaskPhone(phone).length < 10 || loading}
-              style={{
-                width: "100%",
-                padding: "10px",
-                background:
-                  unmaskPhone(phone).length < 10 || loading
-                    ? "#E5E7EB"
-                    : "#16A34A",
-                color:
-                  unmaskPhone(phone).length < 10 || loading
-                    ? "#9CA3AF"
-                    : "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor:
-                  unmaskPhone(phone).length < 10 || loading
-                    ? "not-allowed"
-                    : "pointer",
-                fontSize: ".95rem",
-                fontWeight: 600,
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                if (unmaskPhone(phone).length >= 10 && !loading) {
-                  e.target.style.background = "#15803d";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (unmaskPhone(phone).length >= 10 && !loading) {
-                  e.target.style.background = "#16A34A";
-                }
-              }}
+              disabled={!canSubmit}
+              className={styles.submitBtn}
             >
               {loading ? "Carregando..." : "Ver pedidos"}
             </button>
           </form>
 
-          <p
-            style={{
-              fontSize: ".8rem",
-              color: "#9CA3AF",
-              textAlign: "center",
-              margin: "16px 0 0 0",
-            }}
-          >
+          <p className={styles.loginHint}>
             Use o mesmo número usado para fazer o pedido
           </p>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }
 
-export function BuyerOrderStatusPage({ userPhone }) {
+export function BuyerOrderStatusPage({ userPhone, embedded = false }) {
   const [phone, setPhone] = useState(null);
   const [buyerData, setBuyerData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -662,56 +363,78 @@ export function BuyerOrderStatusPage({ userPhone }) {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem("agro_buyer_phone");
-    if (saved) {
-      setPhone(saved);
-      // Carregar dados do localStorage
-      fetchBuyerOrdersWithOffers(saved)
-        .then((data) => {
-          if (data) {
-            setBuyerData(data);
-          }
-        })
-        .catch((err) => console.error("Erro ao carregar pedidos:", err));
-    } else if (userPhone) {
-      // Se tem userPhone (dentro do portal), usar automaticamente
+    let mounted = true;
+
+    const hydrateByPhone = async (phoneToLoad) => {
+      setLoading(true);
+
+      try {
+        const data = await fetchBuyerOrdersWithOffers(phoneToLoad);
+        if (!mounted) return;
+
+        if (data) {
+          setBuyerData(data);
+          return;
+        }
+
+        setPhone(null);
+        setBuyerData(null);
+        localStorage.removeItem("agro_buyer_phone");
+      } catch (err) {
+        if (mounted) {
+          console.error("Erro ao carregar pedidos:", err);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const savedPhone = localStorage.getItem("agro_buyer_phone");
+
+    if (savedPhone) {
+      setPhone(savedPhone);
+      hydrateByPhone(savedPhone);
+
+      return () => {
+        mounted = false;
+      };
+    }
+
+    if (userPhone) {
       const cleanPhone = unmaskPhone(userPhone);
       setPhone(cleanPhone);
-      fetchBuyerOrdersWithOffers(cleanPhone)
-        .then((data) => {
-          if (data) {
-            setBuyerData(data);
-          }
-        })
-        .catch((err) => console.error("Erro ao carregar pedidos:", err));
+      hydrateByPhone(cleanPhone);
+    } else {
+      setLoading(false);
     }
+
+    return () => {
+      mounted = false;
+    };
   }, [userPhone]);
 
-  const handleCloseAlertModal = () => {
-    setErrorMessage(null);
-    setPhone(null);
-  };
-
-  const loadOrders = async (phoneNum, showErrorMessage = true) => {
+  const loadOrders = async (phoneNum, showError = true) => {
     setLoading(true);
     setErrorMessage(null);
+
     try {
       const data = await fetchBuyerOrdersWithOffers(phoneNum);
       if (!data) {
-        if (showErrorMessage) {
+        if (showError) {
           setErrorMessage("Nenhum comprador encontrado para este telefone");
-          // Desaparecer após 3 segundos
           setTimeout(() => setErrorMessage(null), 3000);
         }
         return;
       }
-      // Só salva depois que confirma que o comprador existe
+
       setPhone(phoneNum);
       localStorage.setItem("agro_buyer_phone", phoneNum);
       setBuyerData(data);
     } catch (err) {
       console.error("Erro ao carregar pedidos:", err);
-      if (showErrorMessage) {
+      if (showError) {
         setErrorMessage(err?.message || "Tente novamente mais tarde");
         setTimeout(() => setErrorMessage(null), 3000);
       }
@@ -721,24 +444,13 @@ export function BuyerOrderStatusPage({ userPhone }) {
   };
 
   const handleLogin = async (phoneNum) => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      // Não salva no estado/localStorage até confirmar que existe
-      await loadOrders(phoneNum, true);
-    } catch (err) {
-      console.error("Erro no login:", err);
-      setErrorMessage(err?.message || "Tente novamente mais tarde");
-      setTimeout(() => setErrorMessage(null), 3000);
-    } finally {
-      setLoading(false);
-    }
+    await loadOrders(phoneNum, true);
   };
 
   const handleCancelOrder = async (orderId) => {
     setCanceling(orderId);
+
     try {
-      // Buscar dados do order para notificação
       const { data: orderData } = await supabase
         .from("orders")
         .select(
@@ -747,7 +459,6 @@ export function BuyerOrderStatusPage({ userPhone }) {
         .eq("id", orderId)
         .single();
 
-      // Cancelar o pedido
       const { error } = await supabase
         .from("orders")
         .update({ status: "rejected" })
@@ -755,7 +466,6 @@ export function BuyerOrderStatusPage({ userPhone }) {
 
       if (error) throw error;
 
-      // Criar notificação para o gestor
       if (orderData?.campaign?.pivo_id) {
         const pivoId = orderData.campaign.pivo_id;
         const isUuid =
@@ -767,6 +477,7 @@ export function BuyerOrderStatusPage({ userPhone }) {
         if (isUuid) {
           const unit = orderData.campaign.unit || "un";
           const notificationMsg = `Comprador cancelou pedido de ${orderData.campaign.product} (${orderData.qty} ${unit})`;
+
           const { error: notificationError } = await supabase
             .from("notifications")
             .insert({
@@ -794,11 +505,11 @@ export function BuyerOrderStatusPage({ userPhone }) {
         }
       }
 
-      // Recarregar pedidos
       const updatedData = await fetchBuyerOrdersWithOffers(phone);
       if (updatedData) {
         setBuyerData(updatedData);
       }
+
       setAlertModal({
         open: true,
         title: "Sucesso",
@@ -829,163 +540,85 @@ export function BuyerOrderStatusPage({ userPhone }) {
         onLogin={handleLogin}
         loading={loading}
         errorMessage={errorMessage}
+        embedded={embedded}
       />
     );
   }
 
+  const orderCount = buyerData?.orders?.length ?? 0;
+
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        background: "#FAFAFA",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #16A34A 0%, #15803d 100%)",
-          color: "white",
-          padding: "16px 24px",
-          borderBottom: "1px solid rgba(0,0,0,0.1)",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 640,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            width: "100%",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                background: "white",
-                borderRadius: "50%",
-                width: 48,
-                height: 48,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <img
-                src="https://i.imgur.com/clDJyAh.png"
-                alt="AgroColetivo"
-                style={{ height: 40, width: "auto", objectFit: "contain" }}
-              />
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  margin: "0 0 4px 0",
-                }}
-              >
-                {buyerData?.buyer.name}
-              </h1>
-              <p
-                style={{
-                  fontSize: ".8rem",
-                  color: "rgba(255,255,255,0.8)",
-                  margin: 0,
-                }}
-              >
-                {buyerData?.buyer.phone}
-              </p>
-            </div>
+    <div className={`${styles.page} ${embedded ? styles.pageEmbedded : ""}`}>
+      {embedded ? (
+        <section className={styles.embeddedTopCard}>
+          <div className={styles.embeddedIdentity}>
+            <p className={styles.embeddedLabel}>Meus pedidos</p>
+            <h2 className={styles.embeddedName}>
+              {buyerData?.buyer?.name || "Comprador"}
+            </h2>
+            <p className={styles.embeddedPhone}>
+              {buyerData?.buyer?.phone || maskPhone(phone || "")}
+            </p>
           </div>
+
           <button
+            type="button"
             onClick={handleLogout}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 16px",
-              background: "rgba(255, 255, 255, 0.2)",
-              border: "1px solid rgba(255, 255, 255, 0.3)",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: ".9rem",
-              color: "white",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "rgba(255, 255, 255, 0.3)";
-              e.target.style.borderColor = "rgba(255, 255, 255, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "rgba(255, 255, 255, 0.2)";
-              e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
-            }}
+            className={styles.embeddedLogoutBtn}
           >
-            <LogOut size={14} />
-            Sair
+            <LogOut size={14} /> Sair
           </button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, padding: "20px" }}>
-        <div style={{ maxWidth: 600, margin: "0 auto" }}>
-          {buyerData?.orders.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "60px 20px",
-              }}
+        </section>
+      ) : (
+        <BrandHeader
+          title={buyerData?.buyer?.name || "Comprador"}
+          subtitle={buyerData?.buyer?.phone || ""}
+          action={
+            <button
+              type="button"
+              onClick={handleLogout}
+              className={styles.headerAction}
             >
-              <Package
-                size={48}
-                style={{
-                  margin: "0 auto 16px",
-                  opacity: 0.3,
-                }}
-              />
-              <p style={{ color: "#6B7280", marginBottom: "12px" }}>
-                Você não tem pedidos registrados
-              </p>
-              <button
-                onClick={handleLogout}
-                style={{
-                  padding: "10px 20px",
-                  background: "#16A34A",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Voltar
-              </button>
-            </div>
-          ) : (
-            <div>
-              {buyerData?.orders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  onCancel={handleCancelOrder}
-                  canceling={canceling}
-                  onSetCancelConfirm={setCancelConfirm}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+              <LogOut size={14} /> Sair
+            </button>
+          }
+        />
+      )}
 
-      {/* Modal de confirmação */}
+      <main className={`${styles.main} ${embedded ? styles.mainEmbedded : ""}`}>
+        {!buyerData ? (
+          <section className={styles.empty}>
+            <Package size={42} className={styles.emptyIcon} />
+            <p>
+              {loading ? "Carregando pedidos..." : "Nenhum dado encontrado"}
+            </p>
+          </section>
+        ) : orderCount === 0 ? (
+          <section className={styles.empty}>
+            <Package size={46} className={styles.emptyIcon} />
+            <p>Você não tem pedidos registrados</p>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className={styles.submitBtn}
+            >
+              Voltar
+            </button>
+          </section>
+        ) : (
+          <div className={styles.list}>
+            {buyerData.orders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                canceling={canceling}
+                onSetCancelConfirm={setCancelConfirm}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
       <ConfirmationModal
         open={cancelConfirm.open}
         title="Cancelar Pedido"
@@ -1000,7 +633,6 @@ export function BuyerOrderStatusPage({ userPhone }) {
         }
       />
 
-      {/* Modal de alerta (sucesso/erro) */}
       <ConfirmationModal
         open={alertModal.open}
         title={alertModal.title}

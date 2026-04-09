@@ -7,6 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import registerHandler from "./api/register.js";
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -27,31 +28,9 @@ app.get("/api/ping", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-// Debug endpoint para diagnosticar problemas (DEV/PROD)
-app.get("/api/debug", (req, res) => {
-  res.json({
-    status: "✅ Server OK",
-    timestamp: new Date().toISOString(),
-    environment: {
-      NODE_ENV: process.env.NODE_ENV || "development",
-      PORT: process.env.PORT || 3000,
-      hasSupabaseUrl: !!process.env.VITE_SUPABASE_URL,
-      hasSupabaseKey: !!process.env.VITE_SUPABASE_ANON_KEY,
-    },
-    server: {
-      uptime: process.uptime(),
-      memoryUsage: {
-        heapUsed:
-          Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + "MB",
-        heapTotal:
-          Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + "MB",
-      },
-      distPath: distPath,
-      distExists: fs.existsSync(distPath),
-      indexExists: fs.existsSync(path.join(distPath, "index.html")),
-    },
-  });
-});
+// Endpoint de registro (ambiente local/dev)
+app.options("/api/register", (req, res) => registerHandler(req, res));
+app.post("/api/register", (req, res) => registerHandler(req, res));
 
 // SPA fallback: retorna index.html para rotas não encontradas
 app.use((req, res) => {

@@ -1,5 +1,5 @@
 -- ============================================================
---  AgroColetivo — Schema v7 (COMPLETO + MIGRAÇÕES APLICADAS)
+--  HubCompras — Schema v7 (COMPLETO + MIGRAÇÕES APLICADAS)
 -- ============================================================
 -- ✅ Schema v6 consolidado
 -- ✅ Migrações v7 aplicadas (published_to_* + vendor NOT NULL)
@@ -29,6 +29,7 @@ drop table if exists pending_registrations cascade;
 drop table if exists orders cascade;
 drop table if exists campaign_lots cascade;
 drop table if exists campaigns cascade;
+drop table if exists audit_logs cascade;
 drop table if exists product_promotions cascade;
 drop table if exists products cascade;
 drop table if exists vendors cascade;
@@ -42,6 +43,7 @@ drop type if exists user_role cascade;
 drop type if exists notification_type cascade;
 drop type if exists offer_status cascade;
 drop function if exists find_or_create_buyer cascade;
+drop function if exists log_security_event cascade;
 drop function if exists update_updated_at_column cascade;
 drop function if exists update_campaign_updated_at cascade;
 
@@ -147,6 +149,7 @@ create table public.campaigns (
   unit_weight_kg       numeric(10,3)   not null default 25,
   goal_qty             integer         not null check (goal_qty > 0),
   min_qty              integer         not null check (min_qty > 0),
+  max_qty              integer         check (max_qty is null or max_qty >= min_qty),
   price_per_unit       numeric(12,2),
   freight_total        numeric(12,2),
   markup_total         numeric(12,2),
@@ -178,9 +181,11 @@ create table public.campaign_lots (
   price_per_unit numeric(12,2) not null,
   freight        numeric(12,2) not null default 0,
   markup         numeric(12,2) not null default 0,
+  priority       integer       not null default 0 check (priority >= 0),
   notes          text,
   created_at     timestamptz   not null default now()
 );
+create index campaign_lots_campaign_priority_idx on public.campaign_lots(campaign_id, priority desc);
 
 create table public.vendor_campaign_offers (
   id              uuid        primary key default gen_random_uuid(),
@@ -189,7 +194,7 @@ create table public.vendor_campaign_offers (
   price_per_unit  numeric(12,2) not null,
   available_qty   integer     not null check (available_qty > 0),
   notes           text,
-  status          text        not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
+  status          offer_status not null default 'pending',
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -256,6 +261,22 @@ create index notifications_pivo_read_idx on public.notifications(pivo_id, read);
 create index notifications_created_at_idx on public.notifications(created_at desc);
 create index notifications_type_idx on public.notifications(type);
 
+create table public.audit_logs (
+  id          uuid        primary key default gen_random_uuid(),
+  action      text        not null,
+  user_id     uuid        references public.users(id) on delete set null,
+  user_phone  text,
+  user_role   user_role,
+  resource    text,
+  resource_id text,
+  details     text,
+  ip_hint     text,
+  created_at  timestamptz not null default now()
+);
+create index audit_logs_action_idx on public.audit_logs(action);
+create index audit_logs_user_idx on public.audit_logs(user_id);
+create index audit_logs_created_idx on public.audit_logs(created_at desc);
+
 -- ══════════════════════════════════════════════════════════════
 -- PARTE 4: CRIAR VIEWS
 -- ══════════════════════════════════════════════════════════════
@@ -263,7 +284,7 @@ create index notifications_type_idx on public.notifications(type);
 create view v_campaign_summary as
 select
   c.id, c.pivo_id, c.slug, c.product, c.unit, c.unit_weight_kg,
-  c.goal_qty, c.min_qty, c.price_per_unit,
+  c.goal_qty, c.max_qty, c.min_qty, c.price_per_unit,
   c.freight_total, c.markup_total, c.status, c.deadline, c.created_at,
   c.image_url, c.published_to_buyers, c.published_to_vendors,
   c.fee_paid_at, c.fee_paid_by,
@@ -326,6 +347,41 @@ begin
     returning id into v_id;
   end if;
   return v_id;
+end;
+$$;
+
+create function log_security_event(
+  p_action text,
+  p_user_id uuid default null,
+  p_user_phone text default null,
+  p_user_role user_role default null,
+  p_resource text default null,
+  p_resource_id text default null,
+  p_details text default null,
+  p_ip_hint text default null
+)
+returns void language plpgsql as $$
+begin
+  insert into public.audit_logs (
+    action,
+    user_id,
+    user_phone,
+    user_role,
+    resource,
+    resource_id,
+    details,
+    ip_hint
+  )
+  values (
+    p_action,
+    p_user_id,
+    p_user_phone,
+    p_user_role,
+    p_resource,
+    p_resource_id,
+    p_details,
+    p_ip_hint
+  );
 end;
 $$;
 

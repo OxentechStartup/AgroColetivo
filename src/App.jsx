@@ -23,10 +23,26 @@ import { ROLES } from "./constants/roles";
 import styles from "./App.module.css";
 
 // ── Detecção de rotas especiais ───────────────────────────────────────────────
-const matchRoute = (paths) =>
-  paths.some(
-    (p) => window.location.pathname === p || window.location.hash === `#${p}`,
-  );
+const normalizeRoutePath = (value = "") => {
+  const [pathOnly] = String(value).split(/[?#]/);
+  const normalized = pathOnly.replace(/\/+$/, "");
+  return normalized || "/";
+};
+
+const getHashPath = () => {
+  const hash = String(window.location.hash || "");
+  if (!hash.startsWith("#/")) return "";
+  return hash.slice(1);
+};
+
+const matchRoute = (paths) => {
+  const currentPath = normalizeRoutePath(window.location.pathname);
+  const currentHashPath = normalizeRoutePath(getHashPath());
+
+  return paths
+    .map((p) => normalizeRoutePath(p))
+    .some((p) => p === currentPath || p === currentHashPath);
+};
 
 const isPortalRoute = () => matchRoute(["/portalforms"]);
 const isConfirmEmailRoute = () => matchRoute(["/auth/confirmar-email"]);
@@ -99,6 +115,7 @@ function AppContent() {
   const {
     user,
     authLoading,
+    authInitialized,
     authError,
     signIn,
     signUp,
@@ -107,6 +124,7 @@ function AppContent() {
     pendingVerificationUser,
     onEmailVerified,
     refreshUser,
+    clearAuthError,
     campaigns,
     vendors,
     campaignsLoading: loading,
@@ -225,7 +243,6 @@ function AppContent() {
         pendingId={pendingVerificationUser.id}
         email={pendingVerificationUser.email}
         onVerified={onEmailVerified}
-        devCode={pendingVerificationUser.devCode}
       />
     );
   }
@@ -251,6 +268,11 @@ function AppContent() {
     );
   }
 
+  // Evita flash para tela de login durante restauração de sessão no refresh
+  if (!authInitialized && authLoading && !user) {
+    return <LoadingScreen message="Restaurando sessão..." />;
+  }
+
   if (!user)
     return (
       <LoginPage
@@ -258,6 +280,7 @@ function AppContent() {
         onRegister={signUp}
         loading={authLoading}
         error={authError}
+        onClearError={clearAuthError}
         onForgotPassword={handleForgotPasswordClick}
       />
     );
@@ -338,7 +361,7 @@ function AppContent() {
   };
 
   return (
-    <div className={styles.app}>
+    <div className={`${styles.app} ${styles.appVisual}`}>
       {/* Sidebar desktop — sempre visível, não abre */}
       <Sidebar
         page={page}

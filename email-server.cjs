@@ -71,7 +71,7 @@ function buildCodeEmailHtml({
           <div class="code">${code}</div>
           <p>Este código expira em ${expires}.</p>
           <div class="footer">
-            <p>© 2026 AgroColetivo. Todos os direitos reservados.</p>
+            <p>© 2026 HubCompras. Todos os direitos reservados.</p>
           </div>
         </div>
       </body>
@@ -104,11 +104,11 @@ app.post("/api/send-verification-email", async (req, res) => {
     console.log(`📤 Conectando ao SMTP do Gmail...`);
     // Enviar email
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `HubCompras <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: "✉️ Confirme seu email - AgroColetivo",
+      subject: "✉️ Confirme seu email - HubCompras",
       html: buildCodeEmailHtml({
-        title: "Bem-vindo ao AgroColetivo!",
+        title: "Bem-vindo ao HubCompras!",
         headingColor: "#4CAF50",
         name,
         intro: "Seu código de verificação é:",
@@ -163,9 +163,9 @@ app.post("/api/send-password-recovery-email", async (req, res) => {
     }
 
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `HubCompras <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: "🔐 Redefinir sua senha - AgroColetivo",
+      subject: "🔐 Redefinir sua senha - HubCompras",
       html: buildCodeEmailHtml({
         title: "Recuperação de Senha",
         headingColor: "#d97706",
@@ -217,9 +217,9 @@ app.post("/api/send-login-alert-email", async (req, res) => {
       : new Date().toLocaleString("pt-BR");
 
     const result = await transporter.sendMail({
-      from: `AgroColetivo <${process.env.GMAIL_USER}>`,
+      from: `HubCompras <${process.env.GMAIL_USER}>`,
       to: email,
-      subject: "🔐 Novo login na sua conta - AgroColetivo",
+      subject: "🔐 Novo login na sua conta - HubCompras",
       html: `
         <!DOCTYPE html>
         <html>
@@ -241,7 +241,7 @@ app.post("/api/send-login-alert-email", async (req, res) => {
                 <h1>🔐 Aviso de Login</h1>
               </div>
               <p>Olá ${safeName},</p>
-              <p>Detectamos um novo acesso à sua conta no AgroColetivo.</p>
+              <p>Detectamos um novo acesso à sua conta no HubCompras.</p>
 
               <div class="card">
                 <p><strong>Data e hora:</strong> ${when}</p>
@@ -254,7 +254,7 @@ app.post("/api/send-login-alert-email", async (req, res) => {
               </div>
 
               <div class="footer">
-                <p>© 2026 AgroColetivo. Todos os direitos reservados.</p>
+                <p>© 2026 HubCompras. Todos os direitos reservados.</p>
               </div>
             </div>
           </body>

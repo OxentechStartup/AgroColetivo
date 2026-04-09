@@ -14,15 +14,42 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { getSupabaseAdminConfig } from "./_supabaseAdmin.js";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let supabase = null;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios");
+function getSupabaseAdmin() {
+  if (supabase) return supabase;
+
+  const { url, serviceRoleKey } = getSupabaseAdminConfig();
+  supabase = createClient(url, serviceRoleKey);
+  return supabase;
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+function normalizeCredentialValue(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function normalizeAlphaNum(value) {
+  return normalizeCredentialValue(value).replace(/[^a-z0-9]/g, "");
+}
+
+function isPasswordBasedOnIdentity(password, identityCandidates = []) {
+  const normalizedPassword = normalizeAlphaNum(password);
+  if (!normalizedPassword) return false;
+
+  return identityCandidates.some((candidate) => {
+    const normalizedCandidate = normalizeAlphaNum(candidate);
+    return (
+      normalizedCandidate.length >= 3 &&
+      normalizedCandidate === normalizedPassword
+    );
+  });
+}
 
 export default async function handler(req, res) {
   // CORS
@@ -49,12 +76,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, code, newPassword } = req.body || {};
+    let supabase;
+    try {
+      supabase = getSupabaseAdmin();
+    } catch (configError) {
+      console.error("[reset-password] Configuração Supabase inválida:", configError.message);
+      return res.status(503).json({
+        success: false,
+        error: "Serviço indisponível",
+      });
+    }
+
+    const { email, code, newPassword, verifyOnly = false } = req.body || {};
 
     // ── 1. VALIDAÇÕES ────────────────────────────────────────────────────────
-    if (!email || !code || !newPassword) {
+    if (!email || !code || (!verifyOnly && !newPassword)) {
       return res.status(400).json({
-        error: "Email, código e nova senha são obrigatórios",
+        error: verifyOnly
+          ? "Email e código são obrigatórios"
+          : "Email, código e nova senha são obrigatórios",
       });
     }
 
@@ -64,7 +104,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (newPassword.length < 6) {
+    if (!verifyOnly && newPassword.length < 6) {
       return res.status(400).json({
         error: "Senha deve ter no mínimo 6 caracteres",
       });
@@ -73,7 +113,7 @@ export default async function handler(req, res) {
     // ── 2. BUSCAR USUÁRIO ────────────────────────────────────────────────────
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("id")
+      .select("id, name, phone")
       .eq("email", email)
       .maybeSingle();
 
@@ -112,6 +152,26 @@ export default async function handler(req, res) {
       console.log(`⚠️ Reset password: código expirado para ${email}`);
       return res.status(400).json({
         error: "Código de verificação expirado. Solicite um novo",
+      });
+    }
+
+    if (verifyOnly) {
+      return res.status(200).json({
+        success: true,
+        message: "Código válido",
+      });
+    }
+
+    const identityCandidates = [
+      user?.name,
+      email,
+      String(email).split("@")[0],
+      user?.phone,
+    ];
+
+    if (isPasswordBasedOnIdentity(newPassword, identityCandidates)) {
+      return res.status(400).json({
+        error: "A senha não pode ser igual ao nome, email ou telefone",
       });
     }
 

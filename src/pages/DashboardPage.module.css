@@ -140,6 +140,12 @@
     box-shadow 0.12s;
 }
 
+.statClickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--primary-mid);
+}
+
 /* ── Fee bar ── */
 .feeBar {
   display: flex;
@@ -555,10 +561,16 @@
     font-size: 0.58rem;
   }
 }
+@media (max-width: 480px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
 @media (max-width: 400px) {
   .statsGrid {
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
   .statValue {
     font-size: 1.2rem;

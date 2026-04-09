@@ -6,8 +6,14 @@
   overflow-y: auto;
   height: calc(100dvh - var(--topbar-h));
 }
-.heading { display: flex; flex-direction: column; gap: 2px; }
-.heading h1 { font-size: 1.3rem; }
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.heading h1 {
+  font-size: 1.3rem;
+}
 
 .card {
   background: var(--surface);
@@ -19,25 +25,155 @@
 }
 
 .emailRow {
-  display: flex; align-items: center; gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px 20px;
   background: var(--surface2);
   border-bottom: 1px solid var(--border);
 }
-.emailVal   { flex: 1; font-size: .84rem; color: var(--text2); }
+.emailVal {
+  flex: 1;
+  font-size: 0.84rem;
+  color: var(--text2);
+}
 .emailBadge {
-  font-size: .68rem; font-weight: 600;
-  color: var(--primary); background: var(--primary-dim);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-dim);
   border: 1px solid var(--primary-border);
-  border-radius: 99px; padding: 2px 8px;
+  border-radius: 99px;
+  padding: 2px 8px;
 }
 
-.section { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.section {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.photoWrap {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.photoControls {
+  flex: 1;
+}
+
+.photoPreview {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--bg2);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.photoPreview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+}
+
+.photoButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text);
+  transition: all 0.14s;
+}
+
+.photoButton:hover {
+  border-color: var(--primary-border);
+  color: var(--primary);
+  background: var(--primary-dim);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.photoHint {
+  font-size: 0.75rem;
+  color: var(--text3);
+  margin-top: 8px;
+}
+
+.labelIcon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.dangerZone {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dangerButton {
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.16s;
+}
+
+.dangerButton:hover {
+  background: rgba(220, 53, 69, 0.08);
+  color: var(--red);
+}
+
+.dangerButton:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
 
 @media (max-width: 768px) {
-  .page { height: auto; min-height: calc(100dvh - var(--topbar-h)); overflow-y: visible; }
-  .card { max-width: 100%; }
+  .page {
+    height: auto;
+    min-height: calc(100dvh - var(--topbar-h));
+    overflow-y: visible;
+  }
+  .card {
+    max-width: 100%;
+  }
 }
 @media (max-width: 540px) {
-  .page { gap: 14px; }
+  .page {
+    gap: 14px;
+  }
 }

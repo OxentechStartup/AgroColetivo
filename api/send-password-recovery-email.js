@@ -8,12 +8,13 @@
  * ✅ CORS restritivo
  * ✅ Timeout em envios
  *
- * Estratégia de envio:
- * 1. SendGrid (se SENDGRID_API_KEY configurada)
- * 2. Gmail SMTP (fallback automático)
- * 3. Retorno explícito de falha se ambas falharem
+ * Estratégia de envio (prioridade):
+ * 1. N8N Webhook (principal)
+ * 2. SendGrid (fallback)
+ * 3. Gmail SMTP (fallback)
  */
 
+import { sendPasswordRecoveryEmail as sendViaWebhook } from "../src/lib/n8n-service.js";
 import nodemailer from "nodemailer";
 import {
   getClientIp,
@@ -23,6 +24,14 @@ import {
   logEmailAttempt,
   updateEmailLogStatus,
 } from "../src/lib/email-security.js";
+
+const isDev = process.env.NODE_ENV !== "production";
+const debugLog = (...args) => {
+  if (isDev) console.log(...args);
+};
+const debugWarn = (...args) => {
+  if (isDev) console.warn(...args);
+};
 
 const htmlBody = (code, name) => `
 <!DOCTYPE html>
@@ -44,11 +53,11 @@ const htmlBody = (code, name) => `
 <body>
   <div class="container">
     <div class="header">
-      <h1>🔐 AgroColetivo</h1>
+      <h1>🔐 HubCompras</h1>
       <p style="color:#666;margin:8px 0 0">Redefinir Senha</p>
     </div>
     <p>Olá <strong>${name}</strong>,</p>
-    <p>Recebemos uma solicitação para redefinir sua senha no AgroColetivo. Use o código abaixo para prosseguir:</p>
+    <p>Recebemos uma solicitação para redefinir sua senha no HubCompras. Use o código abaixo para prosseguir:</p>
     <div class="code-box">
       <div class="code">${code}</div>
       <p class="code-label">Este código expira em 15 minutos</p>
@@ -58,7 +67,7 @@ const htmlBody = (code, name) => `
     </div>
     <p>Por motivos de segurança, esta solicitação foi registrada em nossos servidores.</p>
     <div class="footer">
-      <p>© 2026 AgroColetivo · Oxentech Software</p>
+      <p>© 2026 HubCompras · Oxentech Software</p>
     </div>
   </div>
 </body>
@@ -74,9 +83,8 @@ async function sendViaSendGrid(email, name, code) {
     process.env.SENDGRID_FROM_EMAIL ||
     process.env.GMAIL_USER ||
     "oxentech.software@gmail.com";
-  const fromName = process.env.SENDGRID_FROM_NAME || "AgroColetivo";
+  const fromName = process.env.SENDGRID_FROM_NAME || "HubCompras";
   if (!apiKey) {
-    console.log("⚠️ SendGrid: SENDGRID_API_KEY não configurada");
     return null;
   }
 
@@ -90,21 +98,20 @@ async function sendViaSendGrid(email, name, code) {
       body: JSON.stringify({
         personalizations: [{ to: [{ email }] }],
         from: { email: fromEmail, name: fromName },
-        subject: "🔐 Redefinir sua senha - AgroColetivo",
+        subject: "🔐 Redefinir sua senha - HubCompras",
         content: [{ type: "text/html", value: htmlBody(code, name) }],
       }),
     });
 
     if (response.status === 202) {
-      console.log(`✅ Email de recuperação enviado via SendGrid para ${email}`);
       return true;
     }
 
     const errText = await response.text();
-    console.warn(`⚠️ SendGrid erro: ${response.status}`, errText);
+    debugWarn(`SendGrid erro: ${response.status}`, errText);
     return null;
   } catch (error) {
-    console.warn("⚠️ SendGrid fetch error:", error.message);
+    debugWarn("SendGrid fetch error:", error.message);
     return null;
   }
 }
@@ -118,7 +125,6 @@ async function sendViaGmail(email, name, code) {
   const gmailPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
 
   if (!gmailUser || !gmailPassword) {
-    console.log("⚠️ Gmail: GMAIL_USER ou GMAIL_APP_PASSWORD não configuradas");
     return null;
   }
 
@@ -138,9 +144,9 @@ async function sendViaGmail(email, name, code) {
 
     // Enviar email com promise timeout de 10 segundos
     const sendPromise = transporter.sendMail({
-      from: `"AgroColetivo" <${gmailUser}>`,
+      from: `"HubCompras" <${gmailUser}>`,
       to: email,
-      subject: "🔐 Redefinir sua senha - AgroColetivo",
+      subject: "🔐 Redefinir sua senha - HubCompras",
       html: htmlBody(code, name),
     });
 
@@ -151,12 +157,9 @@ async function sendViaGmail(email, name, code) {
 
     const info = await Promise.race([sendPromise, timeoutPromise]);
 
-    console.log(
-      `✅ Email de recuperação enviado via Gmail para ${email} (${info.messageId})`,
-    );
     return true;
   } catch (error) {
-    console.warn("⚠️ Gmail error:", error.message);
+    debugWarn("Gmail error:", error.message);
     return null;
   }
 }
@@ -211,9 +214,7 @@ export default async function handler(req, res) {
     const rateCheck = checkRateLimit(clientIp, cleanEmail);
 
     if (!rateCheck.allowed) {
-      console.warn(
-        `⚠️ Rate limit excedido: ${rateCheck.reason} (IP: ${clientIp})`,
-      );
+      debugWarn(`Rate limit excedido: ${rateCheck.reason}`);
 
       res.setHeader("Retry-After", rateCheck.retryAfter);
 
@@ -228,9 +229,7 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log(
-      `📧 Enviando recuperação de senha para ${cleanEmail} (IP: ${clientIp})`,
-    );
+    debugLog("📧 Enviando recuperação de senha (rate limit ok)");
 
     // ── 3. REGISTRAR TENTATIVA NO BANCO ───────────────────────────────────
     // (Ignorar erros de logging em dev - tabela pode não estar criada)
@@ -239,26 +238,37 @@ export default async function handler(req, res) {
         "password_recovery",
         cleanEmail,
         cleanName,
-        "🔐 Redefinir sua senha - AgroColetivo",
+        "🔐 Redefinir sua senha - HubCompras",
         "pending",
       );
     } catch (err) {
-      console.warn("⚠️ Não foi possível log email:", err?.message);
+      debugWarn("Não foi possível log email:", err?.message);
     }
 
     // ── 4. TENTAR ENVIAR ──────────────────────────────────────────────────
     let sent = null;
     let service = null;
 
-    // Tentar SendGrid primeiro
-    sent = await sendViaSendGrid(cleanEmail, cleanName, code);
-    if (sent) {
-      service = "sendgrid";
+    // Tentar N8N primeiro
+    try {
+      sent = await sendViaWebhook(cleanEmail, code, cleanName);
+      if (sent?.success) {
+        service = sent.service;
+      }
+    } catch (error) {
+      debugWarn(`N8N falhou: ${error.message}`);
+    }
+
+    // Tentar SendGrid se N8N falhou
+    if (!sent) {
+      sent = await sendViaSendGrid(cleanEmail, cleanName, code);
+      if (sent) {
+        service = "sendgrid";
+      }
     }
 
     // Se SendGrid falhou, tentar Gmail
     if (!sent) {
-      console.log("📧 SendGrid falhou, tentando Gmail...");
       sent = await sendViaGmail(cleanEmail, cleanName, code);
       if (sent) {
         service = "gmail";
@@ -270,7 +280,7 @@ export default async function handler(req, res) {
       try {
         await updateEmailLogStatus(cleanEmail, "sent", service);
       } catch (err) {
-        console.warn("⚠️ Não foi possível atualizar log:", err?.message);
+        debugWarn("Não foi possível atualizar log:", err?.message);
       }
 
       return res.status(200).json({
@@ -281,7 +291,6 @@ export default async function handler(req, res) {
     }
 
     // Ambos falharam - retorno explícito para o frontend mostrar ação ao usuário
-    console.log("⚠️ SendGrid e Gmail falharam - retornando falha controlada");
     try {
       await updateEmailLogStatus(
         cleanEmail,
@@ -291,7 +300,7 @@ export default async function handler(req, res) {
         "Ambos SendGrid e Gmail falharam",
       );
     } catch (err) {
-      console.warn("⚠️ Não foi possível atualizar log:", err?.message);
+      debugWarn("Não foi possível atualizar log:", err?.message);
     }
 
     return res.status(200).json({
@@ -304,7 +313,10 @@ export default async function handler(req, res) {
       userAction: "Tente clicar em 'Reenviar Código' após alguns minutos",
     });
   } catch (error) {
-    console.error("❌ ERRO FATAL:", error.message);
+    console.error("❌ Erro ao enviar email de recuperacao:", error.message);
+    if (isDev && error.stack) {
+      console.error(error.stack);
+    }
 
     // Não retornar detalhes de erro em produção
     const message =

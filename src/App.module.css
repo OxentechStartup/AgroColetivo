@@ -1,23 +1,105 @@
 .app {
   display: flex;
   min-height: 100dvh;
+  position: relative;
+  isolation: isolate;
 }
+
+.appVisual::before,
+.appVisual::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: -2;
+}
+
+.appVisual::before {
+  inset: -24% auto auto -12%;
+  width: 46vw;
+  height: 46vw;
+  border-radius: 999px;
+  background: radial-gradient(circle,
+      rgba(15, 118, 110, 0.24) 0%,
+      rgba(15, 118, 110, 0) 68%);
+}
+
+.appVisual::after {
+  inset: auto -10% -28% auto;
+  width: 38vw;
+  height: 38vw;
+  border-radius: 999px;
+  background: radial-gradient(circle,
+      rgba(29, 110, 201, 0.26) 0%,
+      rgba(29, 110, 201, 0) 72%);
+}
+
 .main {
   flex: 1;
   margin-left: var(--sidebar-w);
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  background: var(--bg);
-  /* Prevent horizontal overflow from tables/panels */
-  overflow-x: hidden;
+  background: transparent;
 }
+
 .content {
   flex: 1;
-  overflow: hidden;
-  /* On desktop content has its own scroll per-page */
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
 }
+
+/* A página interna cresce naturalmente com o conteúdo */
+.content > * {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.content :global([class*="_page__"]) {
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.85) 0%,
+      rgba(247, 252, 250, 0.72) 100%),
+    var(--surface);
+  box-shadow: var(--shadow-panel);
+  backdrop-filter: blur(6px);
+}
+
+.content :global([class*="_card__"], [class*="_Card__"], [class*="_tableCard__"], [class*="_quoteCard__"], [class*="_gestorCard__"], [class*="_summaryItem__"], [class*="_stat__"], [class*="_kpi__"]) {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-glass);
+}
+
+.content :global([class*="_heading__"] h1),
+.content :global([class*="_pageTitle__"]),
+.content :global([class*="_detailTitle__"]) {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.content :global(.tbl thead th) {
+  background: rgba(226, 239, 235, 0.6);
+}
+
+.content :global(.tbl tbody tr:hover td) {
+  background: rgba(238, 247, 244, 0.9);
+}
+
+/* ── Responsivo ── */
 @media (max-width: 768px) {
-  .main    { margin-left: 0; overflow-x: hidden; }
-  .content { overflow: visible; flex: none; }
+  .main {
+    margin-left: 0;
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  .content :global([class*="_page__"]) {
+    border-radius: 16px;
+  }
 }

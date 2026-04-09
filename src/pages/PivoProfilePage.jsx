@@ -63,7 +63,14 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
       // Atualiza sessão no localStorage com a foto nova
       try {
         const current = JSON.parse(localStorage.getItem("agro_auth") || "{}");
-        localStorage.setItem("agro_auth", JSON.stringify({ ...current, ...result, profile_photo_url: photoUrl || null }));
+        localStorage.setItem(
+          "agro_auth",
+          JSON.stringify({
+            ...current,
+            ...result,
+            profile_photo_url: photoUrl || null,
+          }),
+        );
       } catch {}
       showToast("Perfil atualizado!");
       onSaved?.(result);
@@ -86,91 +93,47 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           {/* Foto */}
           <div className="form-group">
             <label className="form-label">
-              <Camera
-                size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
-              />
+              <Camera size={12} className={styles.labelIcon} />
               Foto do perfil
             </label>
-            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+
+            <div className={styles.photoWrap}>
               {photoUrl && (
-                <div
-                  style={{
-                    position: "relative",
-                    width: 100,
-                    height: 100,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    background: "var(--bg2)",
-                    flexShrink: 0,
-                  }}
-                >
+                <div className={styles.photoPreview}>
                   <img
                     src={photoUrl}
                     alt="Foto do perfil"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
                     onError={handlePhotoError}
                   />
+
                   <button
                     onClick={handleRemovePhoto}
-                    style={{
-                      position: "absolute",
-                      top: 4,
-                      right: 4,
-                      background: "rgba(0,0,0,0.6)",
-                      border: "none",
-                      borderRadius: 4,
-                      color: "white",
-                      cursor: "pointer",
-                      padding: "4px 6px",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
+                    className={styles.photoRemove}
                     title="Remover foto"
                   >
                     <X size={14} />
                   </button>
                 </div>
               )}
-              <div style={{ flex: 1 }}>
+
+              <div className={styles.photoControls}>
                 <label
                   htmlFor="pivo-photo-input"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "10px 16px",
-                    background: "var(--bg2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                    fontSize: "0.9rem",
-                    color: "var(--text1)",
-                  }}
+                  className={styles.photoButton}
                 >
                   <Camera size={16} />
                   {photoUrl ? "Trocar foto" : "Escolher foto"}
                 </label>
+
                 <input
                   id="pivo-photo-input"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={handlePhotoChange}
-                  style={{ display: "none" }}
+                  className={styles.hiddenInput}
                 />
-                <p
-                  style={{
-                    fontSize: ".75rem",
-                    color: "var(--text3)",
-                    marginTop: 8,
-                  }}
-                >
-                  JPG, PNG ou WebP · Máx. 5 MB
-                </p>
+
+                <p className={styles.photoHint}>JPG, PNG ou WebP · Máx. 5 MB</p>
               </div>
             </div>
           </div>
@@ -178,10 +141,7 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           {/* Nome */}
           <div className="form-group">
             <label className="form-label">
-              <User
-                size={12}
-                style={{ marginRight: 4, verticalAlign: "middle" }}
-              />
+              <User size={12} className={styles.labelIcon} />
               Nome completo *
             </label>
             <input
@@ -196,10 +156,7 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           <div className="grid-2">
             <div className="form-group">
               <label className="form-label">
-                <Phone
-                  size={12}
-                  style={{ marginRight: 4, verticalAlign: "middle" }}
-                />
+                <Phone size={12} className={styles.labelIcon} />
                 WhatsApp
               </label>
               <input
@@ -212,10 +169,7 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
             </div>
             <div className="form-group">
               <label className="form-label">
-                <MapPin
-                  size={12}
-                  style={{ marginRight: 4, verticalAlign: "middle" }}
-                />
+                <MapPin size={12} className={styles.labelIcon} />
                 Cidade
               </label>
               <input
@@ -242,39 +196,11 @@ export function PivoProfilePage({ user, onSaved, onDeleteAccount }) {
           </Button>
 
           {/* Zona de perigo */}
-          <div
-            style={{
-              marginTop: 24,
-              paddingTop: 16,
-              borderTop: "1px solid var(--border)",
-              display: "flex",
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className={styles.dangerZone}>
             <button
               onClick={onDeleteAccount}
               title="Deletar minha conta (irreversível)"
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--text3)",
-                fontSize: ".8rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "6px 10px",
-                borderRadius: 4,
-                transition: "all .2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(220,53,69,.05)";
-                e.currentTarget.style.color = "var(--red)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = "var(--text3)";
-              }}
+              className={styles.dangerButton}
             >
               <Trash2 size={12} /> Deletar conta
             </button>

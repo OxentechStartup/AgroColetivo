@@ -1,7 +1,11 @@
 .topbar {
   height: var(--topbar-h);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: linear-gradient(
+    180deg,
+    rgba(247, 253, 250, 0.84) 0%,
+    rgba(239, 248, 245, 0.74) 100%
+  );
+  border-bottom: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -9,6 +13,7 @@
   position: sticky;
   top: 0;
   z-index: 100;
+  backdrop-filter: blur(10px);
 }
 
 .menuBtn {
@@ -26,7 +31,7 @@
   justify-content: center;
 }
 .menuBtn:hover {
-  background: var(--surface3);
+  background: rgba(11, 143, 108, 0.08);
   color: var(--text);
 }
 
@@ -63,7 +68,8 @@
 }
 
 .title {
-  font-size: 0.9rem;
+  font-family: var(--font-display);
+  font-size: 0.94rem;
   font-weight: 700;
   flex: 1;
   color: var(--text);
@@ -86,18 +92,31 @@
   align-items: center;
   gap: 5px;
   padding: 8px 12px;
-  background: var(--primary-dim);
-  border: 1px solid var(--primary-border);
+  background: linear-gradient(
+    100deg,
+    rgba(11, 143, 108, 0.12) 0%,
+    rgba(29, 110, 201, 0.14) 100%
+  );
+  border: 1px solid rgba(11, 143, 108, 0.28);
   border-radius: var(--r);
-  color: var(--primary);
+  color: #0d7d5f;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.14s;
+  transition:
+    background 0.14s,
+    transform 0.14s,
+    border-color 0.14s;
   min-height: 36px;
 }
 .portalBtn:hover {
-  background: var(--primary-mid);
+  background: linear-gradient(
+    100deg,
+    rgba(11, 143, 108, 0.2) 0%,
+    rgba(29, 110, 201, 0.22) 100%
+  );
+  border-color: rgba(11, 143, 108, 0.38);
+  transform: translateY(-1px);
 }
 
 .userBtn {
@@ -244,8 +263,10 @@
     display: none !important;
   }
   .title {
-    display: none;
+    display: block;
+    font-size: 0.82rem;
   }
+  .actions { gap: 6px; }
   .userName {
     font-size: 0.76rem;
   }
@@ -270,6 +291,10 @@
   .topbar {
     padding: 0 12px;
     gap: 8px;
+  }
+  .title {
+    font-size: 0.78rem;
+    max-width: 42vw;
   }
   .mobileLogoText {
     display: none;

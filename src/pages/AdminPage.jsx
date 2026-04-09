@@ -274,198 +274,470 @@ export function AdminPage({ campaigns, actions, reload }) {
 
   return (
     <>
-      <div className={`${styles.page} page-enter`}>
-        <div className={styles.heading}>
-          <div>
-            <h1>Painel Administrativo</h1>
-            <p className="text-muted">
-              Monitoramento financeiro e gestão da plataforma
-            </p>
-          </div>
-          <div className={styles.feeBadge}>
-            <Activity size={12} /> Taxa: <strong>1,5% por cotação</strong>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className={styles.tabs}>
-          <button
-            className={`${styles.tab} ${tab === "dashboard" ? styles.tabOn : ""}`}
-            onClick={() => setTab("dashboard")}
-          >
-            <BarChart2 size={14} /> Dashboard
-          </button>
-          <button
-            className={`${styles.tab} ${tab === "gestors" ? styles.tabOn : ""}`}
-            onClick={() => setTab("gestors")}
-          >
-            <Users size={14} /> Gestores
-            {blockedGestors.length > 0 && (
-              <span className={styles.alertDot}>{blockedGestors.length}</span>
-            )}
-          </button>
-          <button
-            className={`${styles.tab} ${tab === "cotacoes" ? styles.tabOn : ""}`}
-            onClick={() => setTab("cotacoes")}
-          >
-            <Package size={14} /> Relatório
-          </button>
-          <button
-            className={`${styles.tab} ${tab === "cobranca" ? styles.tabOn : ""}`}
-            onClick={() => setTab("cobranca")}
-          >
-            <CreditCard size={14} /> Cobranças
-            {closedCamps.length > 0 && (
-              <span className={styles.alertDot}>{closedCamps.length}</span>
-            )}
-          </button>
-        </div>
-
-        {/* ── DASHBOARD ── */}
-        {tab === "dashboard" && (
-          <>
-            <div className={styles.kpiGrid}>
-              <KpiCard
-                icon={DollarSign}
-                color="green"
-                label="Receita Realizada"
-                value={formatCurrency(closedFee)}
-                sub={`${closedCamps.length} cotações encerradas`}
-              />
-              <KpiCard
-                icon={TrendingUp}
-                color="blue"
-                label="Receita Projetada"
-                value={formatCurrency(projectedFee)}
-                sub={`${openCamps.length} em aberto`}
-              />
-              <KpiCard
-                icon={Package}
-                color="amber"
-                label="Volume Total"
-                value={formatCurrency(totalVolume)}
-                sub="Soma de todas as cotações"
-              />
-              <KpiCard
-                icon={Users}
-                color="gray"
-                label="Participantes"
-                value={`${uniqueProducers} prod.`}
-                sub={`${uniqueVendors} fornec. · ${totalOrders_n} pedidos`}
-              />
+      <div className={styles.page}>
+        <div className={styles.headerArea}>
+          <div className={styles.heading}>
+            <div>
+              <h1>Painel Administrativo</h1>
+              <p className="text-muted">
+                Monitoramento financeiro e gestão da plataforma
+              </p>
             </div>
+            <div className={styles.feeBadge}>
+              <Activity size={12} /> Taxa: <strong>1,5% por cotação</strong>
+            </div>
+          </div>
 
-            <div className={styles.summaryStrip}>
-              {[
-                {
-                  icon: CheckCircle,
-                  color: "var(--primary)",
-                  val: formatCurrency(closedVolume),
-                  lbl: "Volume encerrado",
-                },
-                {
-                  icon: Clock,
-                  color: "var(--blue)",
-                  val: formatCurrency(
-                    openCamps.reduce((s, c) => s + c.totalValue, 0),
-                  ),
-                  lbl: "Em andamento",
-                },
-                {
-                  icon: BarChart2,
-                  color: "var(--amber)",
-                  val: formatCurrency(totalFee),
-                  lbl: "Receita total",
-                },
-                {
-                  icon: Users,
-                  color: "var(--text3)",
-                  val: `${gestors.filter((p) => p.active).length} / ${gestors.length}`,
-                  lbl: "Gestores ativos",
-                },
-              ].map(({ icon: Icon, color, val, lbl }, i) => (
-                <div key={i} className={styles.summaryItem}>
-                  <Icon size={15} style={{ color, flexShrink: 0 }} />
-                  <div>
-                    <div className={styles.summaryVal}>{val}</div>
-                    <div className={styles.summarySub}>{lbl}</div>
+          <div className={styles.tabs}>
+            <button
+              className={`${styles.tab} ${tab === "dashboard" ? styles.tabOn : ""}`}
+              onClick={() => setTab("dashboard")}
+            >
+              <BarChart2 size={14} /> Dashboard
+            </button>
+            <button
+              className={`${styles.tab} ${tab === "gestors" ? styles.tabOn : ""}`}
+              onClick={() => setTab("gestors")}
+            >
+              <Users size={14} /> Gestores
+              {blockedGestors.length > 0 && (
+                <span className={styles.alertDot}>{blockedGestors.length}</span>
+              )}
+            </button>
+            <button
+              className={`${styles.tab} ${tab === "cotacoes" ? styles.tabOn : ""}`}
+              onClick={() => setTab("cotacoes")}
+            >
+              <Package size={14} /> Relatório
+            </button>
+            <button
+              className={`${styles.tab} ${tab === "cobranca" ? styles.tabOn : ""}`}
+              onClick={() => setTab("cobranca")}
+            >
+              <CreditCard size={14} /> Cobranças
+              {closedCamps.length > 0 && (
+                <span className={styles.alertDot}>{closedCamps.length}</span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.scrollArea}>
+          {/* ── DASHBOARD ── */}
+          {tab === "dashboard" && (
+            <>
+              <div className={styles.kpiGrid}>
+                <KpiCard
+                  icon={DollarSign}
+                  color="green"
+                  label="Receita Realizada"
+                  value={formatCurrency(closedFee)}
+                  sub={`${closedCamps.length} cotações encerradas`}
+                />
+                <KpiCard
+                  icon={TrendingUp}
+                  color="blue"
+                  label="Receita Projetada"
+                  value={formatCurrency(projectedFee)}
+                  sub={`${openCamps.length} em aberto`}
+                />
+                <KpiCard
+                  icon={Package}
+                  color="amber"
+                  label="Volume Total"
+                  value={formatCurrency(totalVolume)}
+                  sub="Soma de todas as cotações"
+                />
+                <KpiCard
+                  icon={Users}
+                  color="gray"
+                  label="Participantes"
+                  value={`${uniqueProducers} prod.`}
+                  sub={`${uniqueVendors} fornec. · ${totalOrders_n} pedidos`}
+                />
+              </div>
+
+              <div className={styles.summaryStrip}>
+                {[
+                  {
+                    icon: CheckCircle,
+                    color: "var(--primary)",
+                    val: formatCurrency(closedVolume),
+                    lbl: "Volume encerrado",
+                  },
+                  {
+                    icon: Clock,
+                    color: "var(--blue)",
+                    val: formatCurrency(
+                      openCamps.reduce((s, c) => s + c.totalValue, 0),
+                    ),
+                    lbl: "Em andamento",
+                  },
+                  {
+                    icon: BarChart2,
+                    color: "var(--amber)",
+                    val: formatCurrency(totalFee),
+                    lbl: "Receita total",
+                  },
+                  {
+                    icon: Users,
+                    color: "var(--text3)",
+                    val: `${gestors.filter((p) => p.active).length} / ${gestors.length}`,
+                    lbl: "Gestores ativos",
+                  },
+                ].map(({ icon: Icon, color, val, lbl }, i) => (
+                  <div key={i} className={styles.summaryItem}>
+                    <div className={styles.summaryIcon}>
+                      <Icon size={18} style={{ color }} />
+                    </div>
+                    <div className={styles.summaryText}>
+                      <span className={styles.summaryVal}>{val}</span>
+                      <span className={styles.summarySub}>{lbl}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {gestors.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Receita por Gestor</CardTitle>
+                  </CardHeader>
+                  <CardBody noPad>
+                    <div className={styles.tableWrap}>
+                      <table className="tbl">
+                        <thead>
+                          <tr>
+                            <th className={styles.textLeft}>Gestor</th>
+                            <th className={styles.textCenter}>Cotações</th>
+                            <th className={styles.textRight}>Volume</th>
+                            <th className={styles.textRight}>Taxa</th>
+                            <th className={styles.textCenter}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gestors.map((p) => {
+                            const pc = campaigns.filter((c) => c.pivoId === p.id);
+                            const vol = pc.reduce(
+                              (s, c) => s + campaignRealValue(c),
+                              0,
+                            );
+                            const fee = pc.reduce(
+                              (s, c) =>
+                                s +
+                                calcPlatformFee(campaignRealValue(c), 1.5)
+                                  .feeValue,
+                              0,
+                            );
+                            const hasEst = pc.some((c) =>
+                              campaignValueIsEstimate(c),
+                            );
+                            return (
+                              <tr
+                                key={p.id}
+                                style={
+                                  !p.active
+                                    ? {
+                                      opacity: 0.5,
+                                      background: "var(--red-dim)",
+                                    }
+                                    : {}
+                                }
+                              >
+                                <td className={styles.textLeft}>
+                                  <strong>{p.name}</strong>
+                                  {p.city && (
+                                    <div className={styles.gestorCity}>
+                                      {p.city}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className={styles.textCenter}>
+                                  {pc.length}
+                                </td>
+                                <td className={styles.textRight}>
+                                  {vol > 0 ? (
+                                    <>
+                                      {formatCurrency(vol)}
+                                      {hasEst && (
+                                        <span className={styles.estPill}>
+                                          est.
+                                        </span>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className={styles.cellMuted}>—</span>
+                                  )}
+                                </td>
+                                <td className={styles.textRight}>
+                                  {fee > 0 ? (
+                                    <strong className={styles.cellHighlight}>
+                                      {formatCurrency(fee)}
+                                      {hasEst && (
+                                        <span className={styles.estPill}>
+                                          est.
+                                        </span>
+                                      )}
+                                    </strong>
+                                  ) : (
+                                    <span className={styles.cellMuted}>—</span>
+                                  )}
+                                </td>
+                                <td className={styles.textCenter}>
+                                  {p.active ? (
+                                    <span className={styles.activePill}>
+                                      Ativo
+                                    </span>
+                                  ) : (
+                                    <span className={styles.blockedPill}>
+                                      Bloqueado
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardBody>
+                </Card>
+              )}
+
+              {openCamps.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Em Andamento</CardTitle>
+                    <span style={{ fontSize: ".78rem", color: "var(--text3)" }}>
+                      Potencial:{" "}
+                      <strong style={{ color: "var(--blue)" }}>
+                        {formatCurrency(projectedFee)}
+                      </strong>
+                    </span>
+                  </CardHeader>
+                  <CardBody noPad>
+                    <div className={styles.tableWrap}>
+                      <table className="tbl">
+                        <thead>
+                          <tr>
+                            <th className={styles.textLeft}>Produto</th>
+                            <th className={styles.textLeft}>Gestor</th>
+                            <th className={styles.textCenter}>Produtores</th>
+                            <th className={styles.textCenter}>Progresso</th>
+                            <th className={styles.textRight}>Taxa Est.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {openCamps.map((c, i) => {
+                            const ord = totalOrdered(c);
+                            const pct =
+                              c.goalQty > 0
+                                ? Math.round((ord / c.goalQty) * 100)
+                                : 0;
+                            const gestor = gestors.find((p) => p.id === c.pivoId);
+                            return (
+                              <tr key={i}>
+                                <td className={styles.textLeft} style={{ fontWeight: 600 }}>{c.product}</td>
+                                <td className={`${styles.textLeft} ${styles.gestorCity}`}>
+                                  {gestor?.name ?? "—"}
+                                </td>
+                                <td className={styles.textCenter}>
+                                  {c.orders.length}
+                                </td>
+                                <td className={styles.textCenter}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: 12,
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        width: 80,
+                                        height: 6,
+                                        background: "var(--border)",
+                                        borderRadius: 4,
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          width: `${pct}%`,
+                                          height: "100%",
+                                          background: "var(--primary)",
+                                          borderRadius: 4,
+                                        }}
+                                      />
+                                    </div>
+                                    <span
+                                      style={{
+                                        fontSize: "0.85rem",
+                                        fontWeight: 600,
+                                        color: "var(--text2)",
+                                        minWidth: 40,
+                                      }}
+                                    >
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className={styles.textRight}>
+                                  {c.fee.feeValue > 0 ? (
+                                    <span
+                                      className={styles.cellHighlight}
+                                      style={{ fontWeight: 700 }}
+                                    >
+                                      {formatCurrency(c.fee.feeValue)}
+                                    </span>
+                                  ) : (
+                                    <span className={styles.cellMuted}>—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardBody>
+                </Card>
+              )}
+            </>
+          )}
+
+          {/* ── PIVÔS ── */}
+          {tab === "gestors" && (
+            <div className={styles.gestorsSection}>
+              <div className={styles.gestorsHeader}>
+                <div className={styles.gestorsQuickStats}>
+                  <div className={styles.qStat}>
+                    <span style={{ color: "var(--primary)" }}>
+                      {gestors.filter((p) => p.active).length}
+                    </span>{" "}
+                    ativos
+                  </div>
+                  <div className={styles.qStatDiv} />
+                  <div className={styles.qStat}>
+                    <span style={{ color: "var(--red)" }}>
+                      {blockedGestors.length}
+                    </span>{" "}
+                    bloqueados
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className={styles.searchWrap}>
+                  <Search size={13} className={styles.searchIcon} />
+                  <input
+                    className={styles.searchInput}
+                    placeholder="Buscar gestor…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+              </div>
 
-            {gestors.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Receita por Gestor</CardTitle>
-                </CardHeader>
-                <CardBody noPad>
+              {blockedGestors.length > 0 && !search && (
+                <div className={styles.alertBanner}>
+                  <AlertTriangle size={13} />
+                  {blockedGestors.length} gestor
+                  {blockedGestors.length > 1 ? "es" : ""} com acesso bloqueado.
+                  Clique em "Desbloquear" para restaurar o acesso.
+                </div>
+              )}
+
+              {gestorLoad ? (
+                <div className={styles.gestorLoading}>Carregando gestors…</div>
+              ) : filteredGestors.length === 0 ? (
+                <div className={styles.gestorEmpty}>
+                  {search ? "Nenhum resultado." : "Nenhum gestor cadastrado."}
+                </div>
+              ) : (
+                <div className={styles.gestorList}>
+                  {filteredGestors.map((p) => (
+                    <GestorRow
+                      key={p.id}
+                      gestor={p}
+                      campaigns={campaigns}
+                      onToggle={handleToggle}
+                      toggling={toggling}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── COTAÇÕES ── */}
+          {tab === "cotacoes" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatório — Cotações Encerradas</CardTitle>
+                <span style={{ fontSize: ".78rem", color: "var(--text3)" }}>
+                  Receita realizada:{" "}
+                  <strong style={{ color: "var(--primary)" }}>
+                    {formatCurrency(closedFee)}
+                  </strong>
+                </span>
+              </CardHeader>
+              <CardBody noPad>
+                {closedCamps.length === 0 ? (
+                  <p
+                    className="text-muted text-center"
+                    style={{ padding: "32px" }}
+                  >
+                    Nenhuma cotação encerrada ainda.
+                  </p>
+                ) : (
                   <div className={styles.tableWrap}>
                     <table className="tbl">
                       <thead>
                         <tr>
+                          <th>Produto</th>
                           <th>Gestor</th>
-                          <th>Cotações</th>
-                          <th>Volume</th>
-                          <th>Taxa</th>
-                          <th>Status</th>
+                          <th>Produtores</th>
+                          <th>Qtd</th>
+                          <th>Valor Bruto</th>
+                          <th>Taxa (1,5%)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {gestors.map((p) => {
-                          const pc = campaigns.filter((c) => c.pivoId === p.id);
-                          const vol = pc.reduce(
-                            (s, c) => s + campaignRealValue(c),
-                            0,
-                          );
-                          const fee = pc.reduce(
-                            (s, c) =>
-                              s +
-                              calcPlatformFee(campaignRealValue(c), 1.5)
-                                .feeValue,
-                            0,
-                          );
-                          const hasEst = pc.some((c) =>
-                            campaignValueIsEstimate(c),
-                          );
+                        {closedCamps.map((c, i) => {
+                          const gestor = gestors.find((p) => p.id === c.pivoId);
                           return (
-                            <tr
-                              key={p.id}
-                              style={
-                                !p.active
-                                  ? {
-                                      opacity: 0.5,
-                                      background: "var(--red-dim)",
-                                    }
-                                  : {}
-                              }
-                            >
+                            <tr key={i}>
                               <td>
-                                <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                {p.city && (
+                                <div style={{ fontWeight: 600 }}>{c.product}</div>
+                                {c.deadline && (
                                   <div
                                     style={{
                                       fontSize: ".7rem",
                                       color: "var(--text3)",
                                     }}
                                   >
-                                    {p.city}
+                                    Prazo: {fmtDate(c.deadline)}
                                   </div>
                                 )}
                               </td>
+                              <td className={styles.gestorCity}>
+                                {gestor?.name ?? "—"}
+                              </td>
                               <td style={{ color: "var(--text2)" }}>
-                                {pc.length}
+                                {c.orders.length}
+                              </td>
+                              <td style={{ color: "var(--text2)" }}>
+                                {totalOrdered(c)} {c.unit}
                               </td>
                               <td>
-                                {vol > 0 ? (
+                                {c.totalValue > 0 ? (
                                   <>
-                                    {formatCurrency(vol)}
-                                    {hasEst && (
+                                    {formatCurrency(c.totalValue)}
+                                    {c.isEstimate && (
                                       <span
                                         style={{
                                           fontSize: ".65rem",
                                           color: "var(--text3)",
-                                          marginLeft: 3,
+                                          marginLeft: 4,
                                         }}
                                       >
                                         est.
@@ -474,743 +746,439 @@ export function AdminPage({ campaigns, actions, reload }) {
                                   </>
                                 ) : (
                                   <span style={{ color: "var(--text3)" }}>
-                                    —
+                                    Sem fornecedor
                                   </span>
                                 )}
                               </td>
                               <td>
-                                {fee > 0 ? (
-                                  <strong style={{ color: "var(--primary)" }}>
-                                    {formatCurrency(fee)}
-                                    {hasEst && (
+                                {c.fee.feeValue > 0 ? (
+                                  <>
+                                    <span
+                                      style={{
+                                        color: "var(--primary)",
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      {formatCurrency(c.fee.feeValue)}
+                                    </span>
+                                    {c.isEstimate && (
                                       <span
                                         style={{
                                           fontSize: ".65rem",
-                                          fontWeight: 400,
                                           color: "var(--text3)",
-                                          marginLeft: 3,
+                                          marginLeft: 4,
                                         }}
                                       >
                                         est.
                                       </span>
                                     )}
-                                  </strong>
+                                  </>
                                 ) : (
-                                  <span style={{ color: "var(--text3)" }}>
-                                    —
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                {p.active ? (
-                                  <span className={styles.activePill}>
-                                    Ativo
-                                  </span>
-                                ) : (
-                                  <span className={styles.blockedPill}>
-                                    Bloqueado
-                                  </span>
+                                  <span style={{ color: "var(--text3)" }}>—</span>
                                 )}
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
+                      <tfoot>
+                        <tr>
+                          <td colSpan={3} style={{ fontWeight: 700 }}>
+                            TOTAL
+                          </td>
+                          <td style={{ fontWeight: 700 }}>
+                            {closedCamps.reduce((s, c) => s + totalOrdered(c), 0)}
+                          </td>
+                          <td style={{ fontWeight: 700 }}>
+                            {formatCurrency(closedVolume)}
+                          </td>
+                          <td
+                            style={{ fontWeight: 700, color: "var(--primary)" }}
+                          >
+                            {formatCurrency(closedFee)}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
-                </CardBody>
-              </Card>
-            )}
+                )}
+              </CardBody>
+            </Card>
+          )}
 
-            {openCamps.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Em Andamento</CardTitle>
-                  <span style={{ fontSize: ".78rem", color: "var(--text3)" }}>
-                    Potencial:{" "}
-                    <strong style={{ color: "var(--blue)" }}>
-                      {formatCurrency(projectedFee)}
-                    </strong>
-                  </span>
-                </CardHeader>
-                <CardBody noPad>
-                  <div className={styles.tableWrap}>
-                    <table className="tbl">
-                      <thead>
-                        <tr>
-                          <th>Produto</th>
-                          <th>Gestor</th>
-                          <th>Produtores</th>
-                          <th>Progresso</th>
-                          <th>Taxa Est.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {openCamps.map((c, i) => {
-                          const ord = totalOrdered(c);
-                          const pct =
-                            c.goalQty > 0
-                              ? Math.round((ord / c.goalQty) * 100)
-                              : 0;
-                          const gestor = gestors.find((p) => p.id === c.pivoId);
-                          return (
-                            <tr key={i}>
-                              <td style={{ fontWeight: 600 }}>{c.product}</td>
-                              <td
+          {/* ── ABA COBRANÇAS ── */}
+          {tab === "cobranca" &&
+            (() => {
+              // Agrupa cotações encerradas por gestor
+              const byGestor = {};
+              closedCamps.forEach((c) => {
+                const gestor = gestors.find((p) => p.id === c.pivoId);
+                if (!gestor) return;
+                if (!byGestor[gestor.id])
+                  byGestor[gestor.id] = { gestor, campaigns: [] };
+                byGestor[gestor.id].campaigns.push(c);
+              });
+              const groups = Object.values(byGestor);
+              const _unpaidGroups = groups
+                .map((g) => ({
+                  ...g,
+                  unpaid: g.campaigns.filter((c) => !c.feePaidAt),
+                  paid: g.campaigns.filter((c) => c.feePaidAt),
+                }))
+                .filter((g) => g.campaigns.length > 0);
+
+              const handleMarkPaid = async (group, adminName) => {
+                setPaying(group.gestor.id);
+                try {
+                  for (const c of group.campaigns) {
+                    await markFeePaid(c.id, adminName);
+                  }
+                  if (reload) await reload();
+                } catch (e) {
+                  showToast(
+                    "Erro ao registrar pagamento: " +
+                    (e?.message || "erro desconhecido"),
+                    "error",
+                  );
+                } finally {
+                  setPaying(null);
+                  setConfirmBill(null);
+                }
+              };
+
+              return (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 16 }}
+                >
+                  {groups.length === 0 ? (
+                    <Card>
+                      <CardBody>
+                        <p
+                          className="text-muted text-center"
+                          style={{ padding: "32px" }}
+                        >
+                          Nenhuma cobrança pendente. Todas as cotações encerradas
+                          já foram processadas.
+                        </p>
+                      </CardBody>
+                    </Card>
+                  ) : (
+                    groups.map((group) => {
+                      const unpaidCamps = group.campaigns.filter(
+                        (c) => !c.feePaidAt,
+                      );
+                      const totalVol = unpaidCamps.reduce(
+                        (s, c) => s + c.totalValue,
+                        0,
+                      );
+                      const totalTax = unpaidCamps.reduce(
+                        (s, c) => s + c.fee.feeValue,
+                        0,
+                      );
+                      const paidTax = group.campaigns
+                        .filter((c) => c.feePaidAt)
+                        .reduce((s, c) => s + c.fee.feeValue, 0);
+                      const isPaying = paying === group.gestor.id;
+                      const unpaid = group.campaigns.filter((c) => !c.feePaidAt);
+                      const paid = group.campaigns.filter((c) => c.feePaidAt);
+                      return (
+                        <Card key={group.gestor.id}>
+                          <CardHeader>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 2,
+                              }}
+                            >
+                              <CardTitle>{group.gestor.name}</CardTitle>
+                              <div
                                 style={{
-                                  fontSize: ".8rem",
-                                  color: "var(--text2)",
+                                  fontSize: ".75rem",
+                                  color: "var(--text3)",
+                                  display: "flex",
+                                  gap: 10,
                                 }}
                               >
-                                {gestor?.name ?? "—"}
-                              </td>
-                              <td style={{ color: "var(--text2)" }}>
-                                {c.orders.length}
-                              </td>
-                              <td>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 8,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      width: 64,
-                                      height: 5,
-                                      background: "var(--border)",
-                                      borderRadius: 3,
-                                      overflow: "hidden",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        width: `${pct}%`,
-                                        height: "100%",
-                                        background: "var(--primary)",
-                                        borderRadius: 3,
-                                      }}
-                                    />
-                                  </div>
-                                  <span
-                                    style={{
-                                      fontSize: ".75rem",
-                                      color: "var(--text2)",
-                                    }}
-                                  >
-                                    {pct}%
-                                  </span>
-                                </div>
-                              </td>
-                              <td>
-                                {c.fee.feeValue > 0 ? (
-                                  <span
-                                    style={{
-                                      color: "var(--blue)",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {formatCurrency(c.fee.feeValue)}
-                                  </span>
-                                ) : (
-                                  <span style={{ color: "var(--text3)" }}>
-                                    —
+                                {group.gestor.phone && (
+                                  <span>
+                                    <Phone size={10} /> {group.gestor.phone}
                                   </span>
                                 )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardBody>
-              </Card>
-            )}
-          </>
-        )}
-
-        {/* ── PIVÔS ── */}
-        {tab === "gestors" && (
-          <div className={styles.gestorsSection}>
-            <div className={styles.gestorsHeader}>
-              <div className={styles.gestorsQuickStats}>
-                <div className={styles.qStat}>
-                  <span style={{ color: "var(--primary)" }}>
-                    {gestors.filter((p) => p.active).length}
-                  </span>{" "}
-                  ativos
-                </div>
-                <div className={styles.qStatDiv} />
-                <div className={styles.qStat}>
-                  <span style={{ color: "var(--red)" }}>
-                    {blockedGestors.length}
-                  </span>{" "}
-                  bloqueados
-                </div>
-              </div>
-              <div className={styles.searchWrap}>
-                <Search size={13} className={styles.searchIcon} />
-                <input
-                  className={styles.searchInput}
-                  placeholder="Buscar gestor…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {blockedGestors.length > 0 && !search && (
-              <div className={styles.alertBanner}>
-                <AlertTriangle size={13} />
-                {blockedGestors.length} gestor
-                {blockedGestors.length > 1 ? "es" : ""} com acesso bloqueado.
-                Clique em "Desbloquear" para restaurar o acesso.
-              </div>
-            )}
-
-            {gestorLoad ? (
-              <div className={styles.gestorLoading}>Carregando gestors…</div>
-            ) : filteredGestors.length === 0 ? (
-              <div className={styles.gestorEmpty}>
-                {search ? "Nenhum resultado." : "Nenhum gestor cadastrado."}
-              </div>
-            ) : (
-              <div className={styles.gestorList}>
-                {filteredGestors.map((p) => (
-                  <GestorRow
-                    key={p.id}
-                    gestor={p}
-                    campaigns={campaigns}
-                    onToggle={handleToggle}
-                    toggling={toggling}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── COTAÇÕES ── */}
-        {tab === "cotacoes" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Relatório — Cotações Encerradas</CardTitle>
-              <span style={{ fontSize: ".78rem", color: "var(--text3)" }}>
-                Receita realizada:{" "}
-                <strong style={{ color: "var(--primary)" }}>
-                  {formatCurrency(closedFee)}
-                </strong>
-              </span>
-            </CardHeader>
-            <CardBody noPad>
-              {closedCamps.length === 0 ? (
-                <p
-                  className="text-muted text-center"
-                  style={{ padding: "32px" }}
-                >
-                  Nenhuma cotação encerrada ainda.
-                </p>
-              ) : (
-                <div className={styles.tableWrap}>
-                  <table className="tbl">
-                    <thead>
-                      <tr>
-                        <th>Produto</th>
-                        <th>Gestor</th>
-                        <th>Produtores</th>
-                        <th>Qtd</th>
-                        <th>Valor Bruto</th>
-                        <th>Taxa (1,5%)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {closedCamps.map((c, i) => {
-                        const gestor = gestors.find((p) => p.id === c.pivoId);
-                        return (
-                          <tr key={i}>
-                            <td>
-                              <div style={{ fontWeight: 600 }}>{c.product}</div>
-                              {c.deadline && (
+                                {group.gestor.city && (
+                                  <span>
+                                    <MapPin size={10} /> {group.gestor.city}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                flexShrink: 0,
+                              }}
+                            >
+                              <div style={{ textAlign: "right" }}>
                                 <div
                                   style={{
-                                    fontSize: ".7rem",
+                                    fontSize: ".68rem",
+                                    color: "var(--text3)",
+                                    fontWeight: 600,
+                                    textTransform: "uppercase",
+                                  }}
+                                >
+                                  Taxa a cobrar
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: "1.1rem",
+                                    fontWeight: 800,
+                                    color: "var(--primary)",
+                                  }}
+                                >
+                                  {formatCurrency(totalTax)}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: ".72rem",
                                     color: "var(--text3)",
                                   }}
                                 >
-                                  Prazo: {fmtDate(c.deadline)}
+                                  sobre {formatCurrency(totalVol)}
                                 </div>
-                              )}
-                            </td>
-                            <td
-                              style={{
-                                fontSize: ".8rem",
-                                color: "var(--text2)",
-                              }}
-                            >
-                              {gestor?.name ?? "—"}
-                            </td>
-                            <td style={{ color: "var(--text2)" }}>
-                              {c.orders.length}
-                            </td>
-                            <td style={{ color: "var(--text2)" }}>
-                              {totalOrdered(c)} {c.unit}
-                            </td>
-                            <td>
-                              {c.totalValue > 0 ? (
-                                <>
-                                  {formatCurrency(c.totalValue)}
-                                  {c.isEstimate && (
-                                    <span
-                                      style={{
-                                        fontSize: ".65rem",
-                                        color: "var(--text3)",
-                                        marginLeft: 4,
-                                      }}
-                                    >
-                                      est.
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                <span style={{ color: "var(--text3)" }}>
-                                  Sem fornecedor
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              {c.fee.feeValue > 0 ? (
-                                <>
-                                  <span
-                                    style={{
-                                      color: "var(--primary)",
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    {formatCurrency(c.fee.feeValue)}
-                                  </span>
-                                  {c.isEstimate && (
-                                    <span
-                                      style={{
-                                        fontSize: ".65rem",
-                                        color: "var(--text3)",
-                                        marginLeft: 4,
-                                      }}
-                                    >
-                                      est.
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                <span style={{ color: "var(--text3)" }}>—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={3} style={{ fontWeight: 700 }}>
-                          TOTAL
-                        </td>
-                        <td style={{ fontWeight: 700 }}>
-                          {closedCamps.reduce((s, c) => s + totalOrdered(c), 0)}
-                        </td>
-                        <td style={{ fontWeight: 700 }}>
-                          {formatCurrency(closedVolume)}
-                        </td>
-                        <td
-                          style={{ fontWeight: 700, color: "var(--primary)" }}
-                        >
-                          {formatCurrency(closedFee)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        )}
-
-        {/* ── ABA COBRANÇAS ── */}
-        {tab === "cobranca" &&
-          (() => {
-            // Agrupa cotações encerradas por gestor
-            const byGestor = {};
-            closedCamps.forEach((c) => {
-              const gestor = gestors.find((p) => p.id === c.pivoId);
-              if (!gestor) return;
-              if (!byGestor[gestor.id])
-                byGestor[gestor.id] = { gestor, campaigns: [] };
-              byGestor[gestor.id].campaigns.push(c);
-            });
-            const groups = Object.values(byGestor);
-            const _unpaidGroups = groups
-              .map((g) => ({
-                ...g,
-                unpaid: g.campaigns.filter((c) => !c.feePaidAt),
-                paid: g.campaigns.filter((c) => c.feePaidAt),
-              }))
-              .filter((g) => g.campaigns.length > 0);
-
-            const handleMarkPaid = async (group, adminName) => {
-              setPaying(group.gestor.id);
-              try {
-                for (const c of group.campaigns) {
-                  await markFeePaid(c.id, adminName);
-                }
-                if (reload) await reload();
-              } catch (e) {
-                showToast(
-                  "Erro ao registrar pagamento: " +
-                    (e?.message || "erro desconhecido"),
-                  "error",
-                );
-              } finally {
-                setPaying(null);
-                setConfirmBill(null);
-              }
-            };
-
-            return (
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 16 }}
-              >
-                {groups.length === 0 ? (
-                  <Card>
-                    <CardBody>
-                      <p
-                        className="text-muted text-center"
-                        style={{ padding: "32px" }}
-                      >
-                        Nenhuma cobrança pendente. Todas as cotações encerradas
-                        já foram processadas.
-                      </p>
-                    </CardBody>
-                  </Card>
-                ) : (
-                  groups.map((group) => {
-                    const unpaidCamps = group.campaigns.filter(
-                      (c) => !c.feePaidAt,
-                    );
-                    const totalVol = unpaidCamps.reduce(
-                      (s, c) => s + c.totalValue,
-                      0,
-                    );
-                    const totalTax = unpaidCamps.reduce(
-                      (s, c) => s + c.fee.feeValue,
-                      0,
-                    );
-                    const paidTax = group.campaigns
-                      .filter((c) => c.feePaidAt)
-                      .reduce((s, c) => s + c.fee.feeValue, 0);
-                    const isPaying = paying === group.gestor.id;
-                    const unpaid = group.campaigns.filter((c) => !c.feePaidAt);
-                    const paid = group.campaigns.filter((c) => c.feePaidAt);
-                    return (
-                      <Card key={group.gestor.id}>
-                        <CardHeader>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 2,
-                            }}
-                          >
-                            <CardTitle>{group.gestor.name}</CardTitle>
-                            <div
-                              style={{
-                                fontSize: ".75rem",
-                                color: "var(--text3)",
-                                display: "flex",
-                                gap: 10,
-                              }}
-                            >
-                              {group.gestor.phone && (
-                                <span>
-                                  <Phone size={10} /> {group.gestor.phone}
-                                </span>
-                              )}
-                              {group.gestor.city && (
-                                <span>
-                                  <MapPin size={10} /> {group.gestor.city}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 10,
-                              flexShrink: 0,
-                            }}
-                          >
-                            <div style={{ textAlign: "right" }}>
-                              <div
-                                style={{
-                                  fontSize: ".68rem",
-                                  color: "var(--text3)",
-                                  fontWeight: 600,
-                                  textTransform: "uppercase",
-                                }}
-                              >
-                                Taxa a cobrar
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: "1.1rem",
-                                  fontWeight: 800,
-                                  color: "var(--primary)",
-                                }}
-                              >
-                                {formatCurrency(totalTax)}
-                              </div>
-                              <div
-                                style={{
-                                  fontSize: ".72rem",
-                                  color: "var(--text3)",
-                                }}
-                              >
-                                sobre {formatCurrency(totalVol)}
                               </div>
                             </div>
-                          </div>
-                        </CardHeader>
-                        <CardBody noPad>
-                          <div className={styles.tableWrap}>
-                            <table className="tbl">
-                              <thead>
-                                <tr>
-                                  <th>Cotação</th>
-                                  <th>Compradores</th>
-                                  <th>Volume</th>
-                                  <th>Taxa (1,5%)</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {group.campaigns.map((c, i) => (
-                                  <tr
-                                    key={i}
-                                    style={{ opacity: c.feePaidAt ? 0.6 : 1 }}
-                                  >
-                                    <td style={{ fontWeight: 600 }}>
-                                      {c.product}
-                                      {c.feePaidAt && (
-                                        <span
-                                          style={{
-                                            marginLeft: 8,
-                                            fontSize: ".65rem",
-                                            background: "var(--primary-dim)",
-                                            color: "var(--primary)",
-                                            borderRadius: 99,
-                                            padding: "1px 7px",
-                                            fontWeight: 600,
-                                          }}
+                          </CardHeader>
+                          <CardBody noPad>
+                            <div className={styles.tableWrap}>
+                              <table className="tbl">
+                                <thead>
+                                  <tr>
+                                    <th>Cotação</th>
+                                    <th>Compradores</th>
+                                    <th>Volume</th>
+                                    <th>Taxa (1,5%)</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {group.campaigns.map((c, i) => (
+                                    <tr
+                                      key={i}
+                                      style={{ opacity: c.feePaidAt ? 0.6 : 1 }}
+                                    >
+                                      <td style={{ fontWeight: 600 }}>
+                                        {c.product}
+                                        {c.feePaidAt && (
+                                          <span
+                                            style={{
+                                              marginLeft: 8,
+                                              fontSize: ".65rem",
+                                              background: "var(--primary-dim)",
+                                              color: "var(--primary)",
+                                              borderRadius: 99,
+                                              padding: "1px 7px",
+                                              fontWeight: 600,
+                                            }}
+                                          >
+                                            ✓ Pago
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td style={{ color: "var(--text2)" }}>
+                                        {c.orders.length}
+                                      </td>
+                                      <td>
+                                        {c.totalValue > 0 ? (
+                                          formatCurrency(c.totalValue)
+                                        ) : (
+                                          <span style={{ color: "var(--text3)" }}>
+                                            —
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td>
+                                        <strong
+                                          className={c.feePaidAt ? styles.cellMuted : styles.cellHighlight}
                                         >
-                                          ✓ Pago
-                                        </span>
-                                      )}
+                                          {c.fee.feeValue > 0
+                                            ? formatCurrency(c.fee.feeValue)
+                                            : "—"}
+                                        </strong>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot>
+                                  <tr>
+                                    <td colSpan={2} style={{ fontWeight: 700 }}>
+                                      TOTAL
                                     </td>
-                                    <td style={{ color: "var(--text2)" }}>
-                                      {c.orders.length}
+                                    <td style={{ fontWeight: 700 }}>
+                                      {formatCurrency(totalVol)}
                                     </td>
-                                    <td>
-                                      {c.totalValue > 0 ? (
-                                        formatCurrency(c.totalValue)
-                                      ) : (
-                                        <span style={{ color: "var(--text3)" }}>
-                                          —
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td>
-                                      <strong
-                                        style={{
-                                          color: c.feePaidAt
-                                            ? "var(--text3)"
-                                            : "var(--primary)",
-                                        }}
-                                      >
-                                        {c.fee.feeValue > 0
-                                          ? formatCurrency(c.fee.feeValue)
-                                          : "—"}
-                                      </strong>
+                                    <td
+                                      style={{
+                                        fontWeight: 700,
+                                        color: "var(--primary)",
+                                      }}
+                                    >
+                                      {formatCurrency(totalTax)}
                                     </td>
                                   </tr>
-                                ))}
-                              </tbody>
-                              <tfoot>
-                                <tr>
-                                  <td colSpan={2} style={{ fontWeight: 700 }}>
-                                    TOTAL
-                                  </td>
-                                  <td style={{ fontWeight: 700 }}>
-                                    {formatCurrency(totalVol)}
-                                  </td>
-                                  <td
-                                    style={{
-                                      fontWeight: 700,
-                                      color: "var(--primary)",
-                                    }}
-                                  >
-                                    {formatCurrency(totalTax)}
-                                  </td>
-                                </tr>
-                              </tfoot>
-                            </table>
-                          </div>
-                          <div
-                            style={{
-                              padding: "12px 16px",
-                              borderTop: "1px solid var(--border)",
-                              display: "flex",
-                              justifyContent: "flex-end",
-                              gap: 8,
-                            }}
-                          >
-                            {paidTax > 0 && (
-                              <span
-                                style={{
-                                  fontSize: ".78rem",
-                                  color: "var(--primary)",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                <CheckCircle size={12} />{" "}
-                                {formatCurrency(paidTax)} já pago
-                              </span>
-                            )}
-                            {unpaidCamps.length > 0 && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() =>
-                                  setConfirmBill({
-                                    gestorId: group.gestor.id,
-                                    gestorName: group.gestor.name,
-                                    group: { ...group, campaigns: unpaidCamps },
-                                  })
-                                }
-                                disabled={isPaying}
-                              >
-                                <CreditCard size={13} />{" "}
-                                {isPaying
-                                  ? "Registrando…"
-                                  : `Marcar como pago (${formatCurrency(unpaidCamps.reduce((s, c) => s + c.fee.feeValue, 0))})`}
-                              </Button>
-                            )}
-                          </div>
-                        </CardBody>
-                      </Card>
-                    );
-                  })
-                )}
+                                </tfoot>
+                              </table>
+                            </div>
+                            <div
+                              style={{
+                                padding: "12px 16px",
+                                borderTop: "1px solid var(--border)",
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                gap: 8,
+                              }}
+                            >
+                              {paidTax > 0 && (
+                                <span
+                                  style={{
+                                    fontSize: ".78rem",
+                                    color: "var(--primary)",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  <CheckCircle size={12} />{" "}
+                                  {formatCurrency(paidTax)} já pago
+                                </span>
+                              )}
+                              {unpaidCamps.length > 0 && (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() =>
+                                    setConfirmBill({
+                                      gestorId: group.gestor.id,
+                                      gestorName: group.gestor.name,
+                                      group: { ...group, campaigns: unpaidCamps },
+                                    })
+                                  }
+                                  disabled={isPaying}
+                                >
+                                  <CreditCard size={13} />{" "}
+                                  {isPaying
+                                    ? "Registrando…"
+                                    : `Marcar como pago (${formatCurrency(unpaidCamps.reduce((s, c) => s + c.fee.feeValue, 0))})`}
+                                </Button>
+                              )}
+                            </div>
+                          </CardBody>
+                        </Card>
+                      );
+                    })
+                  )}
 
-                {/* Modal de confirmação de pagamento */}
-                {confirmBill && (
-                  <div
-                    style={{
-                      position: "fixed",
-                      inset: 0,
-                      background: "rgba(0,0,0,.4)",
-                      zIndex: 500,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "20px",
-                    }}
-                    onClick={() => setConfirmBill(null)}
-                  >
+                  {/* Modal de confirmação de pagamento */}
+                  {confirmBill && (
                     <div
                       style={{
-                        background: "var(--surface)",
-                        borderRadius: "var(--r-xl)",
-                        padding: "24px",
-                        maxWidth: "420px",
-                        width: "100%",
-                        boxShadow: "var(--shadow-lg)",
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,.4)",
+                        zIndex: 500,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "20px",
                       }}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={() => setConfirmBill(null)}
                     >
                       <div
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          marginBottom: 12,
+                          background: "var(--surface)",
+                          borderRadius: "var(--r-xl)",
+                          padding: "24px",
+                          maxWidth: "420px",
+                          width: "100%",
+                          boxShadow: "var(--shadow-lg)",
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <AlertCircle
-                          size={20}
-                          style={{ color: "var(--red)", flexShrink: 0 }}
-                        />
-                        <strong style={{ fontSize: ".95rem" }}>
-                          Registrar pagamento recebido
-                        </strong>
-                      </div>
-                      <p
-                        style={{
-                          fontSize: ".85rem",
-                          color: "var(--text2)",
-                          lineHeight: 1.6,
-                          marginBottom: 16,
-                        }}
-                      >
-                        Confirme que <strong>{confirmBill.gestorName}</strong>{" "}
-                        efetuou o pagamento da taxa devida.
-                        <br />O pagamento ficará registrado no histórico com
-                        data e hora.
-                      </p>
-                      <div
-                        style={{
-                          background: "var(--primary-dim)",
-                          border: "1px solid var(--primary-border)",
-                          borderRadius: "var(--r)",
-                          padding: "10px 14px",
-                          fontSize: ".82rem",
-                          color: "var(--primary)",
-                          marginBottom: 16,
-                        }}
-                      >
-                        ✓ O registro permanece no sistema como comprovante.
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <Button
-                          variant="outline"
-                          onClick={() => setConfirmBill(null)}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          variant="outline"
+                        <div
                           style={{
-                            background: "var(--primary)",
-                            color: "#fff",
-                            borderColor: "var(--primary)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            marginBottom: 12,
                           }}
-                          onClick={() =>
-                            handleMarkPaid(confirmBill.group, "Admin")
-                          }
                         >
-                          <CreditCard size={13} /> Confirmar pagamento recebido
-                        </Button>
+                          <AlertCircle
+                            size={20}
+                            style={{ color: "var(--red)", flexShrink: 0 }}
+                          />
+                          <strong style={{ fontSize: ".95rem" }}>
+                            Registrar pagamento recebido
+                          </strong>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: ".85rem",
+                            color: "var(--text2)",
+                            lineHeight: 1.6,
+                            marginBottom: 16,
+                          }}
+                        >
+                          Confirme que <strong>{confirmBill.gestorName}</strong>{" "}
+                          efetuou o pagamento da taxa devida.
+                          <br />O pagamento ficará registrado no histórico com
+                          data e hora.
+                        </p>
+                        <div
+                          style={{
+                            background: "var(--primary-dim)",
+                            border: "1px solid var(--primary-border)",
+                            borderRadius: "var(--r)",
+                            padding: "10px 14px",
+                            fontSize: ".82rem",
+                            color: "var(--primary)",
+                            marginBottom: 16,
+                          }}
+                        >
+                          ✓ O registro permanece no sistema como comprovante.
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <Button
+                            variant="outline"
+                            onClick={() => setConfirmBill(null)}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            style={{
+                              background: "var(--primary)",
+                              color: "#fff",
+                              borderColor: "var(--primary)",
+                            }}
+                            onClick={() =>
+                              handleMarkPaid(confirmBill.group, "Admin")
+                            }
+                          >
+                            <CreditCard size={13} /> Confirmar pagamento recebido
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+                  )}
+                </div>
+              );
+            })()}
+        </div>
       </div>
       {toast && (
         <Toast message={toast.msg} type={toast.type} onDone={clearToast} />

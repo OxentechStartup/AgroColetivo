@@ -6,17 +6,18 @@ import {
   Users,
   ShieldCheck,
   Send,
-  UserSquare2,
   X,
   Lock,
-  DollarSign,
-  Package,
   User,
   LogOut,
   ChevronUp,
 } from "lucide-react";
 import { ROLES } from "../constants/roles";
 import { supabase } from "../lib/supabase";
+import {
+  BRAND_NAME,
+  BRAND_LOGO_URL,
+} from "../constants/branding";
 import styles from "./Sidebar.module.css";
 
 const NAV_GESTOR = [
@@ -37,7 +38,7 @@ const NAV_VENDOR = [
   { id: "vendor-pivos", label: "Gestores", Icon: Users },
 ];
 
-// Mapeamento de role → classe CSS (corrigido "Gestort" → "Gestor")
+// Mapeamento de role → classe CSS
 const ROLE_CSS = {
   [ROLES.GESTOR]: styles.roleGestor,
   [ROLES.ADMIN]: styles.roleAdmin,
@@ -89,8 +90,6 @@ export function Sidebar({
     }
   }, [user?.id, user?.role, user?.profile_photo_url]);
 
-
-
   // Recalcular posição do dropdown quando abrir
   useEffect(() => {
     if (showUserMenu && buttonRef.current) {
@@ -120,10 +119,6 @@ export function Sidebar({
     }
   }, [showUserMenu]);
 
-  // Fechar dropdown ao clicar fora (via overlay portal)
-  // Removido: addEventListener pode interferir com portal
-  // O overlay do portal usa onClick direto
-
   const role = user?.role ?? ROLES.GESTOR;
   const nav =
     role === ROLES.ADMIN
@@ -146,13 +141,13 @@ export function Sidebar({
         {/* Marca */}
         <div className={styles.brandRow}>
           <img
-            src="https://i.imgur.com/clDJyAh.png"
-            alt="AgroColetivo"
+            src={BRAND_LOGO_URL}
+            alt={BRAND_NAME}
             width="28"
             height="28"
             style={{ borderRadius: 7, objectFit: "cover", flexShrink: 0 }}
           />
-          <span className={styles.brandName}>AgroColetivo</span>
+          <span className={styles.brandName}>{BRAND_NAME}</span>
           <button
             className={styles.closeBtn}
             onClick={onClose}
@@ -200,7 +195,7 @@ export function Sidebar({
             className={styles.userChip}
             onClick={() => setShowUserMenu(!showUserMenu)}
             title={displayName}
-            style={{ width: "100%", cursor: "pointer" }}
+            type="button"
           >
             <div className={styles.userAvatar}>
               {user?.profile_photo_url || vendorPhoto ? (
@@ -226,11 +221,7 @@ export function Sidebar({
             </div>
             <ChevronUp
               size={16}
-              style={{
-                marginLeft: "auto",
-                transition: "transform 0.2s",
-                transform: showUserMenu ? "rotate(180deg)" : "rotate(0deg)",
-              }}
+              className={`${styles.userChipChevron} ${showUserMenu ? styles.userChipChevronOpen : ""}`}
             />
           </button>
 

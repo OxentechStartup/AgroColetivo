@@ -114,11 +114,24 @@ function CampaignBarChart({ campaigns }) {
 
 // ── Card de stat ──────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, sub, accent, onClick }) {
+  const clickable = typeof onClick === "function";
+
+  const handleKeyDown = (event) => {
+    if (!clickable) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <div
-      className={`${styles.stat} ${accent ? styles["stat_" + accent] : ""} ${onClick ? styles.statClickable : ""}`}
+      className={`${styles.stat} ${accent ? styles["stat_" + accent] : ""} ${clickable ? styles.statClickable : ""}`}
       onClick={onClick}
-      role={onClick ? "button" : undefined}
+      onKeyDown={handleKeyDown}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      aria-label={clickable ? `${label}: ${value}` : undefined}
     >
       <div className={styles.statTop}>
         <div className={styles.statIcon}>
@@ -380,7 +393,7 @@ export function DashboardPage({ campaigns, setPage, user }) {
       {isEmpty && (
         <div className={styles.emptyState}>
           <Leaf size={36} style={{ color: "#16a34a", opacity: 0.5 }} />
-          <h3>Bem-vindo ao AgroColetivo</h3>
+          <h3>Bem-vindo ao HubCompras</h3>
           <p>Crie sua primeira cotação coletiva para começar.</p>
           <Button variant="primary" onClick={() => setPage("campaigns")}>
             Criar cotação <ArrowRight size={14} />
