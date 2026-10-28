@@ -112,3 +112,5 @@ npm run preview  # Preview do build
 ---
 
 **Última atualização**: Março 2026 | **Status**: ✅ Pronto para desenvolvimento
+
+---
